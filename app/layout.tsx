@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Gemma Chat",
-  description: "Local AI chatbot powered by Gemma 4 via Ollama",
+  description: "AI chatbot powered by Gemma 4",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
