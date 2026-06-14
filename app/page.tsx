@@ -14,15 +14,14 @@ export default function Page() {
         } as React.CSSProperties
       }
     >
+      {/* Starfield background */}
+      <div className="starfield" />
+
       <AppSidebar variant="inset" />
-      <SidebarInset>
+      <SidebarInset className="relative z-10 bg-transparent">
         <SiteHeader />
         <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <ChatPage />
-            </div>
-          </div>
+          <ChatPage />
         </div>
       </SidebarInset>
     </SidebarProvider>
