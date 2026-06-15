@@ -2,6 +2,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import ChatPage  from "@/components/chatbot"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import BackgroundAnimation from "@/components/background-animation"
 
 
 export default function Page() {
@@ -14,8 +15,8 @@ export default function Page() {
         } as React.CSSProperties
       }
     >
-      {/* Starfield background */}
-      <div className="starfield" />
+      {/* Animated neural background */}
+      <BackgroundAnimation />
 
       <AppSidebar variant="inset" />
       <SidebarInset className="relative z-10 bg-transparent">

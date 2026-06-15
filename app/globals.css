@@ -155,30 +155,6 @@
   }
 }
 
-/* Starfield background — pure CSS */
-.starfield {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(1px 1px at 10% 15%, oklch(0.8 0.02 250 / 40%), transparent),
-    radial-gradient(1px 1px at 25% 35%, oklch(0.7 0.02 260 / 30%), transparent),
-    radial-gradient(1.5px 1.5px at 40% 80%, oklch(0.75 0.02 250 / 35%), transparent),
-    radial-gradient(1px 1px at 55% 20%, oklch(0.85 0.01 260 / 25%), transparent),
-    radial-gradient(1px 1px at 70% 65%, oklch(0.7 0.02 250 / 30%), transparent),
-    radial-gradient(1.5px 1.5px at 85% 45%, oklch(0.8 0.02 260 / 20%), transparent),
-    radial-gradient(1px 1px at 15% 70%, oklch(0.65 0.02 250 / 35%), transparent),
-    radial-gradient(1px 1px at 90% 10%, oklch(0.75 0.01 260 / 25%), transparent),
-    radial-gradient(1px 1px at 50% 50%, oklch(0.7 0.02 250 / 20%), transparent),
-    radial-gradient(1.5px 1.5px at 30% 90%, oklch(0.8 0.02 260 / 30%), transparent),
-    radial-gradient(1px 1px at 65% 5%, oklch(0.65 0.01 250 / 25%), transparent),
-    radial-gradient(1px 1px at 80% 85%, oklch(0.75 0.02 260 / 20%), transparent),
-    radial-gradient(1px 1px at 5% 45%, oklch(0.7 0.02 250 / 30%), transparent),
-    radial-gradient(1px 1px at 95% 55%, oklch(0.8 0.01 260 / 25%), transparent),
-    radial-gradient(1.5px 1.5px at 45% 30%, oklch(0.65 0.02 250 / 15%), transparent),
-    radial-gradient(600px 400px at 50% 110%, oklch(0.15 0.05 260 / 50%), transparent);
-}
 
 /* ── Animations ── */
 @keyframes fade-in-up {
