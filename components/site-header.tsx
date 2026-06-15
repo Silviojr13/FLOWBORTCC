@@ -10,11 +10,11 @@ export function SiteHeader() {
         <SidebarTrigger className="-ml-1 text-muted-foreground transition-colors duration-150 hover:text-foreground" />
         <Separator
           orientation="vertical"
-          className="mx-2 data-[orientation=vertical]:h-4 bg-white/10"
+          className="mx-2 data-[orientation=vertical]:h-6 bg-white/10"
         />
-        <h1 className="text-base font-medium tracking-wide text-foreground/90">
+        {/* <h1 className="text-base font-medium tracking-wide text-foreground/90">
           FLOWBOT
-        </h1>
+        </h1> */}
       </div>
     </header>
   )
