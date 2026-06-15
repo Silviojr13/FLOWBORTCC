@@ -37,7 +37,7 @@ export function WelcomeScreen({
 
       {/* Subtitle */}
       <p className="mb-8 max-w-md text-sm text-muted-foreground sm:mb-10 sm:text-base">
-        Descreva sua ideia de projeto.
+        Descreva sua ideia de projeto de sistema embarcado ou robótica e eu vou te ajudar a levantar os requisitos.
       </p>
 
       {/* Suggestion chips */}
