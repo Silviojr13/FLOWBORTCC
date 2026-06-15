@@ -85,6 +85,7 @@ function MessageBubble({ msg }: { msg: Message }) {
 export default function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -94,6 +95,23 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Carregar conversas do banco de dados ao inicializar o componente
+  useEffect(() => {
+    const loadConversations = async () => {
+      try {
+        const res = await fetch('/api/conversations');
+        if (res.ok) {
+          const data = await res.json();
+          setConversations(data.conversations || []);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar conversas:', error);
+      }
+    };
+    
+    loadConversations();
+  }, []);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
@@ -119,17 +137,36 @@ export default function ChatPage() {
     const newConv: Conversation = { id, title: "Nova conversa", date: now, messages: [] };
     setConversations(prev => [newConv, ...prev]);
     setActiveId(id);
+    setCurrentChatId(null); // Resetar o chatId ao criar nova conversa
     setMessages([]);
   }, []);
 
-  const selectConversation = useCallback((id: string) => {
+  const selectConversation = useCallback(async (id: string) => {
     if (activeId && messages.length > 0) {
+      // Atualizar as mensagens da conversa ativa anterior no estado
       setConversations(prev => prev.map(c => c.id === activeId ? { ...c, messages } : c));
     }
-    const conv = conversations.find(c => c.id === id);
-    if (conv) {
-      setActiveId(id);
-      setMessages(conv.messages);
+    
+    // Carregar mensagens da conversa selecionada do banco de dados
+    try {
+      const res = await fetch(`/api/conversations/${id}/messages`);
+      if (res.ok) {
+        const data = await res.json();
+        const loadedMessages: Message[] = data.messages || [];
+        setMessages(loadedMessages);
+        setActiveId(id);
+        setCurrentChatId(id); // Atualizar o chatId com o ID da conversa selecionada
+      }
+    } catch (error) {
+      console.error('Erro ao carregar mensagens da conversa:', error);
+      
+      // Se não conseguir carregar do banco, tentar encontrar a conversa no estado local
+      const conv = conversations.find(c => c.id === id);
+      if (conv) {
+        setActiveId(id);
+        setCurrentChatId(id);
+        setMessages(conv.messages);
+      }
     }
   }, [activeId, messages, conversations]);
 
@@ -149,6 +186,7 @@ export default function ChatPage() {
       const title = trimmed.slice(0, 30) + (trimmed.length > 30 ? "..." : "");
       setConversations(prev => [{ id, title, date: now, messages: [] }, ...prev]);
       setActiveId(id);
+      setCurrentChatId(null); // Definir como null pois o backend irá gerar um novo ID
     }
 
     const userMsg: Message = { role: "user", content: trimmed };
@@ -171,7 +209,11 @@ export default function ChatPage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages, model }),
+        body: JSON.stringify({ 
+          messages: newMessages, 
+          model,
+          chatId: currentChatId // Enviar o chatId atual
+        }),
         signal: controller.signal,
       });
 
@@ -179,6 +221,12 @@ export default function ChatPage() {
         const err = await res.json();
         setMessages(prev => { const u = [...prev]; u[u.length - 1] = { role: "assistant", content: `Erro: ${err.error}` }; return u; });
         return;
+      }
+
+      // Ler o chatId do header da resposta
+      const newChatId = res.headers.get("X-Chat-Id");
+      if (newChatId && !currentChatId) {
+        setCurrentChatId(newChatId); // Armazenar o novo chatId se não tínhamos um
       }
 
       const reader = res.body!.getReader();
@@ -200,10 +248,10 @@ export default function ChatPage() {
     } finally {
       setIsStreaming(false);
       abortRef.current = null;
-      // Salva conversa
-      setConversations(prev => prev.map(c => c.id === activeId ? { ...c, messages: [...newMessages, { role: "assistant" as const, content: "" }] } : c));
+      // Atualiza a conversa no estado local
+      setConversations(prev => prev.map(c => c.id === activeId ? { ...c, messages: [...newMessages, { role: "assistant" as const, content: newMessages[newMessages.length - 1].content }] } : c));
     }
-  }, [input, isStreaming, messages, model, activeId]);
+  }, [input, isStreaming, messages, model, activeId, currentChatId]);
 
   return (
     <div style={{ display: "flex", height: "100dvh", overflow: "hidden", background: "var(--background)" }}>
@@ -224,7 +272,7 @@ export default function ChatPage() {
             width: "100%",
             margin: "0 auto"
           }}>
-            <main style={{ flex: 1, overflowY: "auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: "16px", maxWidth: "80%", width: "100%", margin: "0 auto" }}>
+            <main style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px", maxWidth: "80%", height:"30%", width: "100%", margin: "0 auto" }}>
               {messages.length === 0 && (
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", color: "var(--muted-foreground)", textAlign: "center", padding: "60px 20px" }}>
                   <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "linear-gradient(135deg, rgba(124,106,247,0.15), rgba(167,139,250,0.1))", border: "1px solid rgba(124,106,247,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>✦</div>
@@ -233,7 +281,7 @@ export default function ChatPage() {
                     <p style={{ fontSize: "13px" }}>Usando {model}</p>
                   </div>
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "center", marginTop: "8px" }}>
-                    {["Explique Scrum em 3 pontos", "Como funciona um diagrama UML?", "Exemplo de user story"].map(s => (
+                    {["Explaine Scrum em 3 pontos", "Como funciona um diagrama UML?", "Exemplo de user story"].map(s => (
                       <button key={s} onClick={() => setInput(s)} style={{ background: "var(--muted)", border: "1px solid var(--border)", borderRadius: "20px", padding: "6px 14px", color: "var(--muted-foreground)", fontSize: "12px", cursor: "pointer" }}>{s}</button>
                     ))}
                   </div>
