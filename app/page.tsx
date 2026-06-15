@@ -1,30 +1,14 @@
-import { AppSidebar } from "@/components/app-sidebar"
-import ChatPage  from "@/components/chatbot"
-import { SiteHeader } from "@/components/site-header"
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import BackgroundAnimation from "@/components/background-animation"
+import { auth } from "../auth";
+import { redirect } from "next/navigation";
 
-
-export default function Page() {
-  return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties
-      }
-    >
-      {/* Animated neural background */}
-      <BackgroundAnimation />
-
-      <AppSidebar variant="inset" />
-      <SidebarInset className="relative z-10 bg-transparent">
-        <SiteHeader />
-        <div className="flex flex-1 flex-col">
-          <ChatPage />
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
-  )
+export default async function HomePage() {
+  const session = await auth();
+  
+  if (session) {
+    // Usuário autenticado, redirecionar para o dashboard
+    redirect("/dashboard");
+  } else {
+    // Usuário não autenticado, redirecionar para a página de login
+    redirect("/login");
+  }
 }

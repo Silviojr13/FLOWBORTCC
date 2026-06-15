@@ -1,4 +1,6 @@
 import { NextRequest } from "next/server";
+import { getCurrentUser } from "../../../lib/auth";
+import { tursoDb } from "../../../lib/turso-db";
 
 export const runtime = "nodejs";
 
@@ -8,7 +10,17 @@ interface Message {
 }
 
 export async function POST(req: NextRequest) {
-  const { messages, model = "gemma-4-31b-it" } = await req.json();
+  // Verificar se o usuário está autenticado
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    return new Response(
+      JSON.stringify({ error: "Usuário não autenticado" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const { messages, model = "gemma-4-31b-it", chatId: providedChatId } = await req.json();
   const apiKey = process.env.GEMINI_API_KEY;
 
   const lastUserMsg = messages[messages.length - 1];
@@ -16,6 +28,32 @@ export async function POST(req: NextRequest) {
   console.log(`[${new Date().toLocaleTimeString("pt-BR")}] USUÁRIO → ${lastUserMsg.content}`);
   console.log(`Modelo: ${model}`);
   console.log("─────────────────────────────────────");
+
+  // Determinar o chatId: usar o fornecido ou criar um novo
+  let chatId: string;
+  if (providedChatId) {
+    // Usar o chatId fornecido
+    chatId = providedChatId;
+  } else {
+    // Criar um novo chat
+    const chatTitle = lastUserMsg.content.slice(0, 30) + (lastUserMsg.content.length > 30 ? "..." : "");
+    const chat = await tursoDb.chat.create({
+      data: {
+        title: chatTitle,
+        userId: user.id,
+      },
+    });
+    chatId = chat.id;
+  }
+
+  // Salvar a mensagem do usuário no banco de dados
+  const userMessage = await tursoDb.message.create({
+    data: {
+      chatId: chatId,
+      role: 'user',
+      content: lastUserMsg.content,
+    },
+  });
 
   const body = {
     contents: messages.map((m: Message) => ({
@@ -57,6 +95,8 @@ export async function POST(req: NextRequest) {
       const reader = geminiRes.body!.getReader();
       const decoder = new TextDecoder();
       process.stdout.write("[GEMMA] ");
+      let fullResponse = "";
+
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -71,11 +111,24 @@ export async function POST(req: NextRequest) {
               const token = parsed.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
               if (token) {
                 process.stdout.write(token);
+                fullResponse += token;
                 controller.enqueue(encoder.encode(token));
               }
             } catch { /* skip */ }
           }
         }
+
+        // Salvar a resposta da IA no banco de dados após completar a resposta
+        if (fullResponse.trim()) {
+          await tursoDb.message.create({
+            data: {
+              chatId: chatId,
+              role: 'assistant',
+              content: fullResponse,
+            },
+          });
+        }
+
         console.log("\n[GEMMA] ✓ Resposta completa");
         console.log("─────────────────────────────────────\n");
         controller.close();
@@ -88,11 +141,13 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Retornar o chatId no header para o frontend
   return new Response(stream, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Transfer-Encoding": "chunked",
       "Cache-Control": "no-cache",
+      "X-Chat-Id": chatId,
     },
   });
 }
