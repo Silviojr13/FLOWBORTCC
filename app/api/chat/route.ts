@@ -1,4 +1,6 @@
 import { NextRequest } from "next/server";
+import { getCurrentUser } from "../../../lib/auth";
+import { tursoDb } from "../../../lib/turso-db";
 
 export const runtime = "nodejs";
 
@@ -8,7 +10,17 @@ interface Message {
 }
 
 export async function POST(req: NextRequest) {
-  const { messages, model = "gemma-4-31b-it" } = await req.json();
+  // Verificar se o usuário está autenticado
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    return new Response(
+      JSON.stringify({ error: "Usuário não autenticado" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const { messages, model = "gemini-2.5-flash", chatId: providedChatId } = await req.json();
   const apiKey = process.env.GEMINI_API_KEY;
 
   const lastUserMsg = messages[messages.length - 1];
@@ -152,8 +164,9 @@ RNF01 – ...
     }
 
     const text = await geminiRes.text();
+    console.log(`[ERROR] Resposta de erro da API do Google:`, text);
     return new Response(
-      JSON.stringify({ error: `Erro ${geminiRes.status}: ${text}` }),
+      JSON.stringify({ error: `Erro ${geminiRes.status}: ${text}`, modelUsed: model, urlCalled: apiUrl }),
       { status: geminiRes.status, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -172,6 +185,8 @@ RNF01 – ...
       const reader = geminiRes.body!.getReader();
       const decoder = new TextDecoder();
       process.stdout.write("[GEMMA] ");
+      let fullResponse = "";
+
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -189,11 +204,24 @@ RNF01 – ...
               const token = textParts.map((p: Record<string, unknown>) => p.text).join("");
               if (token) {
                 process.stdout.write(token);
+                fullResponse += token;
                 controller.enqueue(encoder.encode(token));
               }
             } catch { /* skip */ }
           }
         }
+
+        // Salvar a resposta da IA no banco de dados após completar a resposta
+        if (fullResponse.trim()) {
+          await tursoDb.message.create({
+            data: {
+              chatId: chatId,
+              role: 'assistant',
+              content: fullResponse,
+            },
+          });
+        }
+
         console.log("\n[GEMMA] ✓ Resposta completa");
         console.log("─────────────────────────────────────\n");
         controller.close();
@@ -206,11 +234,13 @@ RNF01 – ...
     },
   });
 
+  // Retornar o chatId no header para o frontend
   return new Response(stream, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Transfer-Encoding": "chunked",
       "Cache-Control": "no-cache",
+      "X-Chat-Id": chatId,
     },
   });
 }

@@ -130,13 +130,15 @@ export default function ChatPage() {
   const { setOpen } = useSidebar();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [model, setModel] = useState("gemma-4-31b-it");
+  const [model, setModel] = useState("gemini-2.5-flash");
   const [availableModels, setAvailableModels] = useState<string[]>([
-    "gemma-4-31b-it",
-    "gemma-4-26b-a4b-it",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.5-pro",
   ]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -174,6 +176,7 @@ export default function ChatPage() {
     };
     setConversations((prev) => [newConv, ...prev]);
     setActiveId(id);
+    setCurrentChatId(null); // Resetar o chatId ao criar nova conversa
     setMessages([]);
   }, []);
 
@@ -211,6 +214,7 @@ export default function ChatPage() {
       const title = trimmed.slice(0, 30) + (trimmed.length > 30 ? "..." : "");
       setConversations((prev) => [{ id, title, date: now, messages: [] }, ...prev]);
       setActiveId(id);
+      setCurrentChatId(null); // Definir como null pois o backend irá gerar um novo ID
     }
 
     const userMsg: Message = { role: "user", content: trimmed };
@@ -235,7 +239,11 @@ export default function ChatPage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages, model }),
+        body: JSON.stringify({ 
+          messages: newMessages, 
+          model,
+          chatId: currentChatId // Enviar o chatId atual
+        }),
         signal: controller.signal,
       });
 
@@ -250,6 +258,12 @@ export default function ChatPage() {
           return u;
         });
         return;
+      }
+
+      // Ler o chatId do header da resposta
+      const newChatId = res.headers.get("X-Chat-Id");
+      if (newChatId && !currentChatId) {
+        setCurrentChatId(newChatId); // Armazenar o novo chatId se não tínhamos um
       }
 
       const reader = res.body!.getReader();

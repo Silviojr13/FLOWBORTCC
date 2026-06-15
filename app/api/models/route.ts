@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   return NextResponse.json({
-    models: ["gemma-4-31b-it", "gemma-4-26b-a4b-it"],
+    models: ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-pro"],
     connected: true,
   });
 }
