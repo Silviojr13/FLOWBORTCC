@@ -79,18 +79,6 @@ export async function POST(req: NextRequest) {
     });
 
     console.log(`[DEBUG] Status da resposta: ${geminiRes.status}`);
-    if (!geminiRes.ok) {
-      const errorBody = await geminiRes.text();
-      console.log(`[ERROR] Resposta de erro da API do Google:`, errorBody);
-      return new Response(
-        JSON.stringify({ 
-          error: `Erro ${geminiRes.status}: ${errorBody}`,
-          modelUsed: model,
-          urlCalled: apiUrl
-        }),
-        { status: geminiRes.status, headers: { "Content-Type": "application/json" } }
-      );
-    }
   } catch (error) {
     console.error('[ERROR] Falha na conexão com a API do Google:', error);
     return new Response(
@@ -105,10 +93,14 @@ export async function POST(req: NextRequest) {
   }
 
   if (!geminiRes.ok) {
-    const text = await geminiRes.text();
-    console.log(`[ERROR] Resposta de erro da API do Google:`, text);
+    const errorBody = await geminiRes.text();
+    console.log(`[ERROR] Resposta de erro da API do Google:`, errorBody);
     return new Response(
-      JSON.stringify({ error: `Erro ${geminiRes.status}: ${text}`, modelUsed: model, urlCalled: apiUrl }),
+      JSON.stringify({ 
+        error: `Erro ${geminiRes.status}: ${errorBody}`,
+        modelUsed: model,
+        urlCalled: apiUrl
+      }),
       { status: geminiRes.status, headers: { "Content-Type": "application/json" } }
     );
   }
