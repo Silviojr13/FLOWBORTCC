@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "db:migrate": "prisma migrate dev",
@@ -16,7 +16,8 @@
     "script:debug-env": "dotenv -e .env -- tsx scripts/debug-env.ts",
     "script:test-prisma": "dotenv -e .env -- tsx scripts/test-prisma-direct.ts",
     "script:test-turso-url": "dotenv -e .env -- tsx scripts/test-turso-url.ts",
-    "script:test-db-final": "dotenv -e .env -- tsx scripts/test-db-final.ts"
+    "script:test-db-final": "dotenv -e .env -- tsx scripts/test-db-final.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

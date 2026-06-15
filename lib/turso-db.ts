@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from ".prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
 
 // A partir do Prisma 6.6.0, o adapter recebe a config direto (url + authToken),
