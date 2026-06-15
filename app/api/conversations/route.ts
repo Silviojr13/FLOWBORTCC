@@ -33,11 +33,11 @@ export async function GET(req: NextRequest) {
     });
 
     // Transformar os dados para o formato esperado pelo componente
-    const conversations = userChats.map(chat => ({
+    const conversations = userChats.map((chat: typeof userChats[number]) => ({
       id: chat.id,
       title: chat.title,
       date: chat.createdAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }),
-      messages: chat.messages.map(msg => ({
+      messages: chat.messages.map((msg: typeof chat.messages[number]) => ({
         role: msg.role as "user" | "assistant",
         content: msg.content,
       })),

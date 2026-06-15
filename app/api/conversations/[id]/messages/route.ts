@@ -2,6 +2,12 @@ import { NextRequest } from "next/server";
 import { getCurrentUser } from "../../../../../lib/auth";
 import { tursoDb } from "../../../../../lib/turso-db";
 
+// Definir o tipo para a mensagem
+interface Message {
+  role: string;
+  content: string;
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -33,7 +39,7 @@ export async function GET(
     });
 
     // Transformar os dados para o formato esperado pelo componente
-    const formattedMessages = messages.map(msg => ({
+    const formattedMessages = messages.map((msg: typeof messages[number]) => ({
       role: msg.role as "user" | "assistant",
       content: msg.content,
     }));
