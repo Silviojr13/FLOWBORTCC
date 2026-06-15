@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { BotIcon, RadioIcon, LeafIcon, CarIcon } from "lucide-react";
+import Image from "next/image";
 
 const suggestions = [
   { label: "Robô Autônomo", icon: <BotIcon className="size-3.5" /> },
@@ -18,10 +19,15 @@ export function WelcomeScreen({
   return (
     <div className="animate-fade-in-up flex flex-1 flex-col items-center justify-center px-4 py-10 text-center sm:px-6 sm:py-12">
       {/* Image placeholder — replace with your own image later */}
-      <div className="mb-6 flex size-36 items-center justify-center rounded-3xl border border-white/8 bg-white/3 shadow-[0_0_40px_-12px_oklch(0.65_0.2_250/40%)] transition-shadow duration-200 sm:mb-8 sm:size-40">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-linear-to-br from-primary/30 to-primary/10 sm:size-16">
-          <BotIcon className="size-7 text-primary sm:size-8" />
-        </div>
+      <div className="mb-6 sm:mb-8">
+        <Image
+          src="/images/robo3.png"
+          alt="Robô"
+          width={180}
+          height={180}
+          className="object-contain"
+          priority
+        />
       </div>
 
       {/* Title */}

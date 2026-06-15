@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { ChatInput } from "@/components/chat-input";
+import { useSidebar } from "@/components/ui/sidebar";
 import { BotIcon, UserIcon } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -126,6 +127,7 @@ function MessageBubble({ msg }: { msg: Message }) {
 /* ------------------------------------------------------------------ */
 
 export default function ChatPage() {
+  const { setOpen } = useSidebar();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -196,6 +198,9 @@ export default function ChatPage() {
   const sendMessage = useCallback(async () => {
     const trimmed = input.trim();
     if (!trimmed || isStreaming) return;
+
+    // Close sidebar on send for a cleaner chat experience
+    setOpen(false);
 
     if (!activeId) {
       const id = crypto.randomUUID();
@@ -291,7 +296,7 @@ export default function ChatPage() {
         )
       );
     }
-  }, [input, isStreaming, messages, model, activeId]);
+  }, [input, isStreaming, messages, model, activeId, setOpen]);
 
   /* ---------------------------------------------------------------- */
   /*  Render                                                          */
