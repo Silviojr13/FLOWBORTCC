@@ -134,10 +134,11 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [model, setModel] = useState("gemma-4-31b-it");
+  const [model, setModel] = useState("gemini-2.5-flash");
   const [availableModels, setAvailableModels] = useState<string[]>([
-    "gemma-4-31b-it",
-    "gemma-4-26b-a4b-it",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.5-pro",
   ]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);

@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { messages, model = "gemma-4-31b-it", chatId: providedChatId } = await req.json();
+  const { messages, model = "gemini-2.5-flash", chatId: providedChatId } = await req.json();
   const apiKey = process.env.GEMINI_API_KEY;
 
   const lastUserMsg = messages[messages.length - 1];
@@ -63,27 +63,52 @@ export async function POST(req: NextRequest) {
     generationConfig: { maxOutputTokens: 2048 },
   };
 
+  // Logging detalhado da chamada à API do Google
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+  console.log(`[DEBUG] Chamando API do Google:`);
+  console.log(`[DEBUG] URL: ${apiUrl}`);
+  console.log(`[DEBUG] Modelo: ${model}`);
+  console.log(`[DEBUG] Corpo da requisição:`, JSON.stringify(body, null, 2));
+
   let geminiRes: Response;
   try {
-    geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      }
-    );
-  } catch {
+    geminiRes = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    console.log(`[DEBUG] Status da resposta: ${geminiRes.status}`);
+    if (!geminiRes.ok) {
+      const errorBody = await geminiRes.text();
+      console.log(`[ERROR] Resposta de erro da API do Google:`, errorBody);
+      return new Response(
+        JSON.stringify({ 
+          error: `Erro ${geminiRes.status}: ${errorBody}`,
+          modelUsed: model,
+          urlCalled: apiUrl
+        }),
+        { status: geminiRes.status, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  } catch (error) {
+    console.error('[ERROR] Falha na conexão com a API do Google:', error);
     return new Response(
-      JSON.stringify({ error: "Não foi possível conectar à API do Google." }),
+      JSON.stringify({ 
+        error: "Não foi possível conectar à API do Google.",
+        details: error instanceof Error ? error.message : String(error),
+        modelUsed: model,
+        urlCalled: apiUrl
+      }),
       { status: 503, headers: { "Content-Type": "application/json" } }
     );
   }
 
   if (!geminiRes.ok) {
     const text = await geminiRes.text();
+    console.log(`[ERROR] Resposta de erro da API do Google:`, text);
     return new Response(
-      JSON.stringify({ error: `Erro ${geminiRes.status}: ${text}` }),
+      JSON.stringify({ error: `Erro ${geminiRes.status}: ${text}`, modelUsed: model, urlCalled: apiUrl }),
       { status: geminiRes.status, headers: { "Content-Type": "application/json" } }
     );
   }
