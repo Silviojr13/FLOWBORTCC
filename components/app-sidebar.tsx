@@ -66,7 +66,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       {/* ── Footer: auth buttons + user ── */}
       <SidebarFooter className="gap-2 px-3 pb-3">
-        <Button
+        {/* <Button
           size="lg"
           className="w-full rounded-xl bg-primary text-primary-foreground transition-all duration-200 hover:bg-primary/90"
           style={{ height: "44px" }}
@@ -80,7 +80,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           style={{ height: "44px" }}
         >
           Login
-        </Button>
+        </Button> */}
 
         {/* Separator */}
         <div className="my-1 h-px bg-white/6" />
