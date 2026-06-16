@@ -332,7 +332,7 @@ export default function ChatPage() {
             {isStreaming &&
               messages[messages.length - 1]?.content === "" && (
                 <div className="animate-fade-in-up flex gap-3">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/8 bg-white/4">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full">
                     <BotIcon className="size-3.5 text-muted-foreground" />
                   </div>
                   <TypingIndicator />
