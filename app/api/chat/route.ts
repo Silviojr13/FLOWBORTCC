@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { messages, model = "gemini-2.5-flash", chatId: providedChatId } = await req.json();
+  const chatId = providedChatId || crypto.randomUUID();
   const apiKey = process.env.GEMINI_API_KEY;
 
   const lastUserMsg = messages[messages.length - 1];
@@ -132,10 +133,12 @@ RNF01 – ...
   const RETRY_DELAY_MS = 2000;
   let geminiRes: Response | undefined;
 
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`,
+        apiUrl,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -167,7 +170,7 @@ RNF01 – ...
     console.log(`[ERROR] Resposta de erro da API do Google:`, text);
     return new Response(
       JSON.stringify({ 
-        error: `Erro ${geminiRes.status}: ${errorBody}`,
+        error: `Erro ${geminiRes.status}: ${text}`,
         modelUsed: model,
         urlCalled: apiUrl
       }),
