@@ -3,7 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 
-import { NavUser } from "@/components/nav-user"
+import { NavUser, type SidebarUser } from "@/components/nav-user"
 import {
   Sidebar,
   SidebarContent,
@@ -16,13 +16,14 @@ import {
 import { Button } from "@/components/ui/button"
 import { PlusIcon } from "lucide-react"
 
-const user = {
-  name: "shadcn",
-  email: "m@example.com",
-  avatar: "",
-}
-
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  user,
+  isUserLoading = false,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & {
+  user?: SidebarUser | null
+  isUserLoading?: boolean
+}) {
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       {/* ── Logo ── */}
@@ -86,7 +87,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <div className="my-1 h-px bg-white/6" />
 
         {/* User area */}
-        <NavUser user={user} />
+        <NavUser user={user} isLoading={isUserLoading} />
       </SidebarFooter>
     </Sidebar>
   )
