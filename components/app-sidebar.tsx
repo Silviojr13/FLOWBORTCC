@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 
 import { NavUser, type SidebarUser } from "@/components/nav-user"
 import {
@@ -14,7 +15,18 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
-import { PlusIcon } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  ChevronDownIcon,
+  ClipboardListIcon,
+  PlusIcon,
+  SparklesIcon,
+} from "lucide-react"
 
 export function AppSidebar({
   user,
@@ -24,6 +36,8 @@ export function AppSidebar({
   user?: SidebarUser | null
   isUserLoading?: boolean
 }) {
+  const router = useRouter()
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       {/* ── Logo ── */}
@@ -34,7 +48,7 @@ export function AppSidebar({
               asChild
               className="data-[slot=sidebar-menu-button]:p-0! hover:bg-transparent!"
             >
-              <a href="/" className="flex items-center">
+              <a href="/dashboard" className="flex items-center">
                 <Image
                   src="/flowbot-logo.svg"
                   alt="FlowBot"
@@ -51,15 +65,39 @@ export function AppSidebar({
 
       {/* ── Main content ── */}
       <SidebarContent className="px-3 pt-2">
-        {/* Primary CTA — Criar Projeto */}
-        <Button
-          size="lg"
-          className="w-full gap-2 rounded-xl bg-primary text-primary-foreground shadow-[0_0_20px_-6px_oklch(0.65_0.2_250/40%)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_0_24px_-4px_oklch(0.65_0.2_250/55%)]"
-          style={{ height: "46px" }}
-        >
-          <PlusIcon className="size-5" />
-          <span className="text-sm font-medium">Criar Projeto</span>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="lg"
+              className="w-full gap-2 rounded-xl bg-primary text-primary-foreground shadow-[0_0_20px_-6px_oklch(0.65_0.2_250/40%)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_0_24px_-4px_oklch(0.65_0.2_250/55%)]"
+              style={{ height: "46px" }}
+            >
+              <PlusIcon className="size-5" />
+              <span className="flex-1 text-left text-sm font-medium">
+                Criar novo projeto
+              </span>
+              <ChevronDownIcon className="size-4 opacity-70" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-(--radix-dropdown-menu-trigger-width)">
+            <DropdownMenuItem
+              onClick={() =>
+                router.push(`/dashboard?new=ai&t=${Date.now()}`)
+              }
+              className="gap-2 rounded-md py-2.5 font-medium text-primary focus:bg-primary/10 focus:text-primary"
+            >
+              <SparklesIcon className="size-4" />
+              Criar com IA
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => router.push("/dashboard/projects/new/manual")}
+              className="gap-2 py-2 text-muted-foreground"
+            >
+              <ClipboardListIcon className="size-4" />
+              Manual
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Flexible spacer — pushes auth + user to bottom */}
         <div className="flex-1" />
@@ -67,22 +105,6 @@ export function AppSidebar({
 
       {/* ── Footer: auth buttons + user ── */}
       <SidebarFooter className="gap-2 px-3 pb-3">
-        {/* <Button
-          size="lg"
-          className="w-full rounded-xl bg-primary text-primary-foreground transition-all duration-200 hover:bg-primary/90"
-          style={{ height: "44px" }}
-        >
-          Registrar
-        </Button>
-        <Button
-          size="lg"
-          variant="outline"
-          className="w-full rounded-xl border-white/10 bg-white/4 text-foreground transition-all duration-200 hover:border-white/20 hover:bg-white/8"
-          style={{ height: "44px" }}
-        >
-          Login
-        </Button> */}
-
         {/* Separator */}
         <div className="my-1 h-px bg-white/6" />
 

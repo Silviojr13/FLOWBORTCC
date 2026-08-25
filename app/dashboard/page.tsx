@@ -1,36 +1,28 @@
-import { auth } from "@/auth"
-import { AppSidebar } from "@/components/app-sidebar"
-import ChatPage  from "@/components/chatbot"
-import { SiteHeader } from "@/components/site-header"
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import BackgroundAnimation from "@/components/background-animation"
+"use client"
 
+import { Suspense, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import ChatPage from "@/components/chatbot"
 
-export default async function Page() {
-  const session = await auth()
+function DashboardChatContent() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const isNewAiSession = searchParams.get("new") === "ai"
+  const sessionKey = searchParams.get("t") ?? "default"
 
+  useEffect(() => {
+    if (isNewAiSession) {
+      router.replace("/dashboard")
+    }
+  }, [isNewAiSession, router])
+
+  return <ChatPage key={sessionKey} />
+}
+
+export default function Page() {
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties
-      }
-    >
-      <BackgroundAnimation />
-
-      <AppSidebar variant="inset" user={session?.user ?? null} />
-      <SidebarInset>
-        <SiteHeader />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <ChatPage />
-            </div>
-          </div>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <Suspense>
+      <DashboardChatContent />
+    </Suspense>
   )
 }
