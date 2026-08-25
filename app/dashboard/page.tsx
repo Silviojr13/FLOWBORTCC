@@ -1,3 +1,4 @@
+import { auth } from "@/auth"
 import { AppSidebar } from "@/components/app-sidebar"
 import ChatPage  from "@/components/chatbot"
 import { SiteHeader } from "@/components/site-header"
@@ -5,7 +6,9 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import BackgroundAnimation from "@/components/background-animation"
 
 
-export default function Page() {
+export default async function Page() {
+  const session = await auth()
+
   return (
     <SidebarProvider
       style={
@@ -17,7 +20,7 @@ export default function Page() {
     >
       <BackgroundAnimation />
 
-      <AppSidebar variant="inset" />
+      <AppSidebar variant="inset" user={session?.user ?? null} />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col">
