@@ -4,7 +4,7 @@ import * as React from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 
-import { NavUser } from "@/components/nav-user"
+import { NavUser, type SidebarUser } from "@/components/nav-user"
 import {
   Sidebar,
   SidebarContent,
@@ -28,13 +28,14 @@ import {
   SparklesIcon,
 } from "lucide-react"
 
-const user = {
-  name: "shadcn",
-  email: "m@example.com",
-  avatar: "",
-}
-
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  user,
+  isUserLoading = false,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & {
+  user?: SidebarUser | null
+  isUserLoading?: boolean
+}) {
   const router = useRouter()
 
   return (
@@ -108,7 +109,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <div className="my-1 h-px bg-white/6" />
 
         {/* User area */}
-        <NavUser user={user} />
+        <NavUser user={user} isLoading={isUserLoading} />
       </SidebarFooter>
     </Sidebar>
   )

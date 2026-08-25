@@ -1,13 +1,16 @@
+import { auth } from "@/auth"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import BackgroundAnimation from "@/components/background-animation"
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const session = await auth()
+
   return (
     <SidebarProvider
       style={
@@ -19,7 +22,7 @@ export default function DashboardLayout({
     >
       <BackgroundAnimation />
 
-      <AppSidebar variant="inset" />
+      <AppSidebar variant="inset" user={session?.user ?? null} />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col">
