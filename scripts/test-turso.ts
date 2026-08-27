@@ -23,7 +23,7 @@ async function testTursoClient() {
       WHERE type='table' 
       AND name IN ('users', 'accounts', 'sessions', 'chats', 'messages')
     `);
-    console.log('Tabelas encontradas:', tables.rows.map((row: any) => row.name));
+    console.log('Tabelas encontradas:', tables.rows.map((row) => row.name));
     
   } catch (error) {
     console.error('❌ Erro ao criar cliente do LibSQL:', error);

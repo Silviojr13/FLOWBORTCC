@@ -23,7 +23,6 @@ const LAYER_CONFIG = [
 ] as const;
 
 const CONNECTION_ALPHA = 0.08;
-const PULSE_CHANCE = 0.15;       // 15 % of nodes pulse
 const PULSE_MIN = 0.003;
 const PULSE_MAX = 0.008;
 
@@ -82,6 +81,7 @@ export default function BackgroundAnimation() {
     const nodes = nodesRef.current;
 
     /* ── Update positions ── */
+    /* eslint-disable react-hooks/immutability -- imperative canvas loop mutates node positions in place for performance */
     for (const n of nodes) {
       n.x += n.vx;
       n.y += n.vy;
@@ -93,6 +93,7 @@ export default function BackgroundAnimation() {
       if (n.y < -pad) n.y = h + pad;
       if (n.y > h + pad) n.y = -pad;
     }
+    /* eslint-enable react-hooks/immutability */
 
     /* ── Draw connections (layers 1 & 2 only) ── */
     for (let i = 0; i < nodes.length; i++) {

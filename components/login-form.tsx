@@ -24,28 +24,32 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
-    // Add your authentication logic here
     try {
       setIsLoading(true);
-      // Example API call for authentication
-      // const response = await fetch('/api/login', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, password })
-      // });
       
-      // if (response.ok) {
+      // Chama a função de login do NextAuth
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false, // Não redireciona automaticamente
+      });
+
+      if (result?.error) {
+        setError("Credenciais inválidas. Por favor, verifique seu e-mail e senha.");
+      } else {
+        // Login bem-sucedido, redireciona para o dashboard
         router.push("/dashboard");
-      // } else {
-      //   // Handle login error
-      //   console.error('Login failed');
-      // }
+        router.refresh(); // Atualiza para refletir a sessão
+      }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Erro de login:', error);
+      setError("Ocorreu um erro durante o login. Por favor, tente novamente.");
     } finally {
       setIsLoading(false);
     }
@@ -55,10 +59,11 @@ export function LoginForm({
     setIsGoogleLoading(true);
     try {
       await signIn("google", { 
-        callbackUrl: "/dashboard"  // Mudança: redirecionar para dashboard após login
+        callbackUrl: "/dashboard"  // Redirecionar para dashboard após login
       });
     } catch (error) {
-      console.error('Google login error:', error);
+      console.error('Erro no login do Google:', error);
+      setError("Ocorreu um erro durante o login com Google.");
       setIsGoogleLoading(false);
     }
   };
@@ -67,21 +72,27 @@ export function LoginForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0">
         <CardContent className="grid p-0 md:grid-cols-2">
-          {/* Remove nested form - use single form */}
           <form className="p-6 md:p-8" onSubmit={handleSubmit}>
             <FieldGroup>
               <div className="flex flex-col items-center gap-2 text-center">
-                <h1 className="text-2xl font-bold">Welcome back</h1>
+                <h1 className="text-2xl font-bold">Bem-vindo de volta</h1>
                 <p className="text-balance text-muted-foreground">
-                  Login to your Acme Inc account
+                  Faça login na sua conta
                 </p>
               </div>
+              
+              {error && (
+                <div className="mb-4 p-3 bg-destructive/20 text-destructive rounded-md text-sm">
+                  {error}
+                </div>
+              )}
+              
               <Field>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
+                <FieldLabel htmlFor="email">E-mail</FieldLabel>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -89,12 +100,12 @@ export function LoginForm({
               </Field>
               <Field>
                 <div className="flex items-center">
-                  <FieldLabel htmlFor="password">Password</FieldLabel>
+                  <FieldLabel htmlFor="password">Senha</FieldLabel>
                   <a
                     href="#"
                     className="ml-auto text-sm underline-offset-2 hover:underline"
                   >
-                    Forgot your password?
+                    Esqueceu sua senha?
                   </a>
                 </div>
                 <Input 
@@ -107,11 +118,11 @@ export function LoginForm({
               </Field>
               <Field>
                 <Button type="submit" disabled={isLoading}>
-                  {isLoading ? 'Entrando...' : 'Login'}
+                  {isLoading ? 'Entrando...' : 'Entrar'}
                 </Button>
               </Field>
               <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
-                Or continue with
+                Ou continue com
               </FieldSeparator>
               <Field className="grid grid-cols-3 gap-4">
                 <Button variant="outline" type="button" disabled={true} title="Em breve">
@@ -121,7 +132,7 @@ export function LoginForm({
                       fill="currentColor"
                     />
                   </svg>
-                  <span className="sr-only">Login with Apple</span>
+                  <span className="sr-only">Faça login com Apple</span>
                 </Button>
                 <Button 
                   variant="outline" 
@@ -130,7 +141,7 @@ export function LoginForm({
                   disabled={isGoogleLoading}
                 >
                   {isGoogleLoading ? (
-                    <span>Loading...</span>
+                    <span>Carregando...</span>
                   ) : (
                     <>
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -139,7 +150,7 @@ export function LoginForm({
                           fill="currentColor"
                         />
                       </svg>
-                      <span className="sr-only">Login with Google</span>
+                      <span className="sr-only">Faça login com Google</span>
                     </>
                   )}
                 </Button>
@@ -150,26 +161,26 @@ export function LoginForm({
                       fill="currentColor"
                     />
                   </svg>
-                  <span className="sr-only">Login with Meta</span>
+                  <span className="sr-only">Faça login com Meta</span>
                 </Button>
               </Field>
               <FieldDescription className="text-center">
-                Don&apos;t have an account? <a href="#">Sign up</a>
+                Não tem uma conta? <a href="/signup">Cadastre-se</a>
               </FieldDescription>
             </FieldGroup>
           </form>
           <div className="relative hidden bg-muted md:block">
             <img
               src="/placeholder.svg"
-              alt="Image"
+              alt="Imagem"
               className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
             />
           </div>
         </CardContent>
       </Card>
       <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
+        Ao clicar em continuar, você concorda com nossos <a href="#">Termos de Serviço</a>{" "}
+        e <a href="#">Política de Privacidade</a>.
       </FieldDescription>
     </div>
   )
