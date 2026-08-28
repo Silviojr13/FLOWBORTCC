@@ -90,6 +90,9 @@ model Project {
   id          String    @id @default(cuid())
   name        String
   description String?
+  // "manual" | "ia" — de onde o projeto veio (define, por exemplo, se a vitrine de
+  // componentes gera sugestões automaticamente ou só quando o usuário pedir)
+  origin      String    @default("manual")
   startDate   DateTime?
   endDate     DateTime?
   userId      String

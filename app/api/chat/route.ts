@@ -12,7 +12,7 @@ interface Message {
 export async function POST(req: NextRequest) {
   // Verificar se o usuário está autenticado
   const user = await getCurrentUser();
-  
+
   if (!user) {
     return new Response(
       JSON.stringify({ error: "Usuário não autenticado" }),
@@ -20,9 +20,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { messages, model = "gemini-2.5-flash", chatId: providedChatId } = await req.json();
+  const { messages, model = "openai/gpt-oss-120b", chatId: providedChatId } = await req.json();
   const chatId = providedChatId || crypto.randomUUID();
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
+
+  if (!apiKey) {
+    return new Response(
+      JSON.stringify({ error: "GROQ_API_KEY não configurada no servidor." }),
+      { status: 503, headers: { "Content-Type": "application/json" } }
+    );
+  }
 
   const lastUserMsg = messages[messages.length - 1];
   console.log("\n─────────────────────────────────────");
@@ -113,42 +120,40 @@ RNF01 – ...
 --- FIM DAS INSTRUCOES ---`;
 
   const body = {
-    systemInstruction: {
-      parts: [{ text: SYSTEM_INSTRUCTION }],
-    },
-    contents: messages.map((m: Message) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    })),
-    generationConfig: { maxOutputTokens: 1024 },
+    model,
+    stream: true,
+    max_tokens: 1024,
+    messages: [
+      { role: "system", content: SYSTEM_INSTRUCTION },
+      ...messages.map((m: Message) => ({ role: m.role, content: m.content })),
+    ],
   };
 
   console.log("[PAYLOAD]", JSON.stringify({
-    ...body,
-    systemInstruction: { parts: [{ text: body.systemInstruction.parts[0].text.slice(0, 100) + "..." }] },
-    contentsCount: body.contents.length,
+    model: body.model,
+    messagesCount: body.messages.length,
   }, null, 2));
 
   const MAX_RETRIES = 2;
   const RETRY_DELAY_MS = 2000;
-  let geminiRes: Response | undefined;
+  let groqRes: Response | undefined;
 
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+  const apiUrl = "https://api.groq.com/openai/v1/chat/completions";
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      geminiRes = await fetch(
-        apiUrl,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        }
-      );
+      groqRes = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(body),
+      });
     } catch {
       if (attempt === MAX_RETRIES) {
         return new Response(
-          JSON.stringify({ error: "Não foi possível conectar à API do Google." }),
+          JSON.stringify({ error: "Não foi possível conectar à API do Groq." }),
           { status: 503, headers: { "Content-Type": "application/json" } }
         );
       }
@@ -157,28 +162,36 @@ RNF01 – ...
       continue;
     }
 
-    if (geminiRes.ok) break;
+    if (groqRes.ok) break;
 
-    const isTransient = geminiRes.status === 500 || geminiRes.status === 503;
+    const isTransient = groqRes.status === 500 || groqRes.status === 503;
     if (isTransient && attempt < MAX_RETRIES) {
-      console.log(`[RETRY] HTTP ${geminiRes.status}, tentativa ${attempt + 1}/${MAX_RETRIES}...`);
+      console.log(`[RETRY] HTTP ${groqRes.status}, tentativa ${attempt + 1}/${MAX_RETRIES}...`);
       await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
       continue;
     }
 
-    const text = await geminiRes.text();
-    console.log(`[ERROR] Resposta de erro da API do Google:`, text);
+    const text = await groqRes.text();
+    console.log(`[ERROR] Resposta de erro da API do Groq:`, text);
+
+    if (groqRes.status === 429) {
+      return new Response(
+        JSON.stringify({ error: "Limite de requisições do Groq atingido. Tente novamente em instantes." }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
-      JSON.stringify({ 
-        error: `Erro ${geminiRes.status}: ${text}`,
+      JSON.stringify({
+        error: `Erro ${groqRes.status}: ${text}`,
         modelUsed: model,
-        urlCalled: apiUrl
+        urlCalled: apiUrl,
       }),
-      { status: geminiRes.status, headers: { "Content-Type": "application/json" } }
+      { status: groqRes.status, headers: { "Content-Type": "application/json" } }
     );
   }
 
-  if (!geminiRes) {
+  if (!groqRes) {
     return new Response(
       JSON.stringify({ error: "Erro desconhecido ao conectar à API." }),
       { status: 500, headers: { "Content-Type": "application/json" } }
@@ -189,9 +202,9 @@ RNF01 – ...
 
   const stream = new ReadableStream({
     async start(controller) {
-      const reader = geminiRes.body!.getReader();
+      const reader = groqRes.body!.getReader();
       const decoder = new TextDecoder();
-      process.stdout.write("[GEMMA] ");
+      process.stdout.write("[GROQ] ");
       let fullResponse = "";
 
       try {
@@ -205,10 +218,7 @@ RNF01 – ...
             if (!json || json === "[DONE]") continue;
             try {
               const parsed = JSON.parse(json);
-              const parts = parsed.candidates?.[0]?.content?.parts ?? [];
-              // Filter out "thought" tokens (internal reasoning from thinking models)
-              const textParts = parts.filter((p: Record<string, unknown>) => p.text && !p.thought);
-              const token = textParts.map((p: Record<string, unknown>) => p.text).join("");
+              const token: string | undefined = parsed.choices?.[0]?.delta?.content;
               if (token) {
                 process.stdout.write(token);
                 fullResponse += token;
@@ -229,7 +239,7 @@ RNF01 – ...
           });
         }
 
-        console.log("\n[GEMMA] ✓ Resposta completa");
+        console.log("\n[GROQ] ✓ Resposta completa");
         console.log("─────────────────────────────────────\n");
         controller.close();
       } catch (err) {

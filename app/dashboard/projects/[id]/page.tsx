@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { RequirementsTable } from "@/components/project-manual/requirements-table"
 import { FeaturesTable } from "@/components/project-manual/features-table"
 import { ComponentsTable } from "@/components/project-manual/components-table"
+import { ComponentSuggestions } from "@/components/project-manual/component-suggestions"
 import { CostSummary } from "@/components/project-manual/cost-summary"
 import { ProjectCreationLayout } from "@/components/project-steps/project-creation-layout"
 import { Button } from "@/components/ui/button"
@@ -21,6 +22,7 @@ interface ProjectDetail {
   id: string
   name: string
   description: string | null
+  origin: "manual" | "ia"
 }
 
 const STEP_KEYS = PROJECT_STEPS.map((s) => s.key)
@@ -37,6 +39,7 @@ export default function ProjectDetailPage() {
   const searchParams = useSearchParams()
   const [project, setProject] = useState<ProjectDetail | null>(null)
   const [notFound, setNotFound] = useState(false)
+  const [componentsRefreshKey, setComponentsRefreshKey] = useState(0)
 
   const step = resolveStep(searchParams.get("step"))
   const stepIndex = getCurrentStepIndex(step)
@@ -103,7 +106,16 @@ export default function ProjectDetailPage() {
 
         {step === "requisitos" && <RequirementsTable projectId={project.id} />}
         {step === "funcionalidades" && <FeaturesTable projectId={project.id} />}
-        {step === "componentes" && <ComponentsTable projectId={project.id} />}
+        {step === "componentes" && (
+          <div className="flex flex-col gap-6">
+            <ComponentSuggestions
+              projectId={project.id}
+              autoGenerate={project.origin === "ia"}
+              onAdded={() => setComponentsRefreshKey((k) => k + 1)}
+            />
+            <ComponentsTable key={componentsRefreshKey} projectId={project.id} />
+          </div>
+        )}
         {step === "custos" && <CostSummary projectId={project.id} />}
         {step === "finalizar" && (
           <Card>

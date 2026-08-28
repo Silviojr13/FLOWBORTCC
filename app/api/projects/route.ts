@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { name, description } = await req.json();
+  const { name, description, origin } = await req.json();
 
   if (!name || typeof name !== "string" || !name.trim()) {
     return new Response(
@@ -53,11 +53,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const resolvedOrigin = origin === "ia" ? "ia" : "manual";
+
   try {
     const project = await tursoDb.project.create({
       data: {
         name: name.trim(),
         description: typeof description === "string" ? description.trim() || null : null,
+        origin: resolvedOrigin,
         userId: user.id,
       },
     });

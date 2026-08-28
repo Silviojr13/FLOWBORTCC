@@ -15,6 +15,7 @@ async function createProjectTables() {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
+        origin TEXT NOT NULL DEFAULT 'manual',
         startDate TEXT,
         endDate TEXT,
         userId TEXT NOT NULL,
