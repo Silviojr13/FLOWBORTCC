@@ -52,7 +52,11 @@ export default function ManualProjectPage() {
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmed, description: description.trim() || undefined }),
+        body: JSON.stringify({
+          name: trimmed,
+          description: description.trim() || undefined,
+          origin: chatImport ? "ia" : "manual",
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Erro ao criar projeto")

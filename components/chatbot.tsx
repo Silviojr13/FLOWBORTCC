@@ -163,11 +163,10 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [model, setModel] = useState("gemini-2.5-flash");
+  const [model, setModel] = useState("openai/gpt-oss-120b");
   const [availableModels, setAvailableModels] = useState<string[]>([
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-2.5-pro",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
   ]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
