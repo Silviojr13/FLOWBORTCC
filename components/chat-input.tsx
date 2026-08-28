@@ -18,7 +18,7 @@ export function ChatInput({
 }: {
   input: string;
   onInputChange: (value: string) => void;
-  onSend: () => void;
+  onSend: (text?: string) => void;
   isStreaming: boolean;
   onStop: () => void;
 }) {
@@ -87,7 +87,7 @@ export function ChatInput({
             ) : (
               <Button
                 size="icon-sm"
-                onClick={onSend}
+                onClick={() => onSend()}
                 disabled={!input.trim()}
                 className="rounded-xl bg-primary text-primary-foreground shadow-[0_0_20px_-6px_oklch(0.65_0.2_250/50%)] transition-all hover:bg-primary/90 hover:shadow-[0_0_24px_-4px_oklch(0.65_0.2_250/60%)] disabled:shadow-none"
               >

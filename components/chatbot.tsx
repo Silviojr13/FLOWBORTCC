@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { ChatInput } from "@/components/chat-input";
+import { ProjectCreationLayout } from "@/components/project-steps/project-creation-layout";
 import { useSidebar } from "@/components/ui/sidebar";
 import { BotIcon, UserIcon } from "lucide-react";
 
@@ -163,6 +164,9 @@ export default function ChatPage() {
 
   /* Create new conversation */
   const createNewConversation = useCallback(() => {
+    abortRef.current?.abort();
+    setIsStreaming(false);
+    setInput("");
     const id = crypto.randomUUID();
     const now = new Date().toLocaleDateString("pt-BR", {
       day: "2-digit",
@@ -176,7 +180,7 @@ export default function ChatPage() {
     };
     setConversations((prev) => [newConv, ...prev]);
     setActiveId(id);
-    setCurrentChatId(null); // Resetar o chatId ao criar nova conversa
+    setCurrentChatId(null);
     setMessages([]);
   }, []);
 
@@ -198,8 +202,8 @@ export default function ChatPage() {
   );
 
   /* Send message */
-  const sendMessage = useCallback(async () => {
-    const trimmed = input.trim();
+  const sendMessage = useCallback(async (overrideText?: string) => {
+    const trimmed = (overrideText ?? input).trim();
     if (!trimmed || isStreaming) return;
 
     // Close sidebar on send for a cleaner chat experience
@@ -310,40 +314,50 @@ export default function ChatPage() {
         )
       );
     }
-  }, [input, isStreaming, messages, model, activeId, setOpen]);
+  }, [input, isStreaming, messages, model, activeId, currentChatId, setOpen]);
 
   /* ---------------------------------------------------------------- */
   /*  Render                                                          */
   /* ---------------------------------------------------------------- */
 
   const hasMessages = messages.length > 0;
+  const hasStartedChat = messages.some((message) => message.role === "user");
 
-  return (
+  const chatContent = (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Message area */}
       <div className="flex-1 overflow-y-auto">
         {hasMessages ? (
           /* ---- Conversation view ---- */
           <div className="mx-auto flex max-w-215 flex-col gap-5 px-4 py-6 sm:py-8 sm:px-6">
-            {messages.map((msg, i) => (
-              <MessageBubble key={i} msg={msg} />
-            ))}
+            {messages.map((msg, i) => {
+              const isStreamingPlaceholder =
+                isStreaming &&
+                i === messages.length - 1 &&
+                msg.role === "assistant" &&
+                msg.content === "";
 
-            {isStreaming &&
-              messages[messages.length - 1]?.content === "" && (
-                <div className="animate-fade-in-up flex gap-3">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full">
-                    <BotIcon className="size-3.5 text-muted-foreground" />
+              if (isStreamingPlaceholder) {
+                return (
+                  <div key={i} className="animate-fade-in-up flex gap-3">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/8 bg-white/4 text-muted-foreground">
+                      <BotIcon className="size-3.5" />
+                    </div>
+                    <div className="rounded-2xl rounded-tl-md border border-white/6 bg-white/4 px-4 py-3">
+                      <TypingIndicator />
+                    </div>
                   </div>
-                  <TypingIndicator />
-                </div>
-              )}
+                );
+              }
+
+              return <MessageBubble key={i} msg={msg} />;
+            })}
 
             <div ref={bottomRef} />
           </div>
         ) : (
           /* ---- Welcome screen ---- */
-          <WelcomeScreen onSuggestionClick={(text) => setInput(text)} />
+          <WelcomeScreen onSuggestionClick={(text) => sendMessage(text)} />
         )}
       </div>
 
@@ -359,5 +373,15 @@ export default function ChatPage() {
         }}
       />
     </div>
+  );
+
+  if (!hasStartedChat) {
+    return chatContent;
+  }
+
+  return (
+    <ProjectCreationLayout currentStep="requisitos">
+      {chatContent}
+    </ProjectCreationLayout>
   );
 }
