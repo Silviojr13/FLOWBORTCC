@@ -1,12 +1,20 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { ChatInput } from "@/components/chat-input";
 import { ProjectCreationLayout } from "@/components/project-steps/project-creation-layout";
+import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
-import { BotIcon, UserIcon } from "lucide-react";
+import { BotIcon, SaveIcon, UserIcon } from "lucide-react";
+import {
+  messageHasGeneratedRequirements,
+  parseRequirementsFromMessage,
+} from "@/lib/parse-requirements";
+
+const CHAT_IMPORT_KEY = "flowbot:chat-requirements";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -42,8 +50,15 @@ function TypingIndicator() {
 /*  Message Bubble                                                     */
 /* ------------------------------------------------------------------ */
 
-function MessageBubble({ msg }: { msg: Message }) {
+function MessageBubble({
+  msg,
+  onSaveRequirements,
+}: {
+  msg: Message;
+  onSaveRequirements: (content: string) => void;
+}) {
   const isUser = msg.role === "user";
+  const hasRequirements = !isUser && messageHasGeneratedRequirements(msg.content);
 
   return (
     <div
@@ -118,6 +133,18 @@ function MessageBubble({ msg }: { msg: Message }) {
             {msg.content}
           </ReactMarkdown>
         )}
+
+        {hasRequirements && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="mt-2 gap-1.5"
+            onClick={() => onSaveRequirements(msg.content)}
+          >
+            <SaveIcon className="size-3.5" />
+            Salvar requisitos em um projeto
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -128,6 +155,7 @@ function MessageBubble({ msg }: { msg: Message }) {
 /* ------------------------------------------------------------------ */
 
 export default function ChatPage() {
+  const router = useRouter();
   const { setOpen } = useSidebar();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -316,6 +344,25 @@ export default function ChatPage() {
     }
   }, [input, isStreaming, messages, model, activeId, currentChatId, setOpen]);
 
+  /* Save requirements generated in Modo A into a new project */
+  const handleSaveRequirements = useCallback(
+    (content: string) => {
+      const requirements = parseRequirementsFromMessage(content);
+      if (requirements.length === 0) return;
+
+      const firstUserMsg = messages.find((m) => m.role === "user")?.content ?? "";
+      const projectName =
+        firstUserMsg.slice(0, 60).trim() || "Projeto do chat";
+
+      sessionStorage.setItem(
+        CHAT_IMPORT_KEY,
+        JSON.stringify({ projectName, requirements })
+      );
+      router.push("/dashboard/projects/new/manual");
+    },
+    [messages, router]
+  );
+
   /* ---------------------------------------------------------------- */
   /*  Render                                                          */
   /* ---------------------------------------------------------------- */
@@ -350,7 +397,13 @@ export default function ChatPage() {
                 );
               }
 
-              return <MessageBubble key={i} msg={msg} />;
+              return (
+                <MessageBubble
+                  key={i}
+                  msg={msg}
+                  onSaveRequirements={handleSaveRequirements}
+                />
+              );
             })}
 
             <div ref={bottomRef} />

@@ -2,12 +2,6 @@ import { NextRequest } from "next/server";
 import { getCurrentUser } from "../../../../../lib/auth";
 import { tursoDb } from "../../../../../lib/turso-db";
 
-// Definir o tipo para a mensagem
-interface Message {
-  role: string;
-  content: string;
-}
-
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

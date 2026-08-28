@@ -1,8 +1,7 @@
-import { NextRequest } from "next/server";
 import { getCurrentUser } from "../../../lib/auth";
 import { tursoDb } from "../../../lib/turso-db";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   // Verificar se o usuário está autenticado
   const user = await getCurrentUser();
   

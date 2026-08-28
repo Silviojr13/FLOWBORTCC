@@ -9,7 +9,6 @@ const adapter = new PrismaLibSql({
 });
 
 declare global {
-  // eslint-disable-next-line no-var
   var prismaTurso: PrismaClient | undefined;
 }
 

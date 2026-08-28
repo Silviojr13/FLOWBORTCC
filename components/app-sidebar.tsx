@@ -25,6 +25,7 @@ import {
 import {
   ChevronDownIcon,
   ClipboardListIcon,
+  FolderIcon,
   PlusIcon,
   SparklesIcon,
 } from "lucide-react"
@@ -99,6 +100,17 @@ export function AppSidebar({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <SidebarMenu className="mt-1">
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <Link href="/dashboard/projects" className="gap-2 text-muted-foreground">
+                <FolderIcon className="size-4" />
+                Projetos
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
 
         {/* Flexible spacer — pushes auth + user to bottom */}
         <div className="flex-1" />
