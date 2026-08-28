@@ -64,6 +64,22 @@ async function createProjectTables() {
     console.log('Tabela requirement_history criada.');
 
     await client.execute(`
+      CREATE TABLE IF NOT EXISTS features (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        status TEXT NOT NULL DEFAULT 'Planejada',
+        projectId TEXT NOT NULL,
+        requirementId TEXT,
+        createdAt TEXT,
+        updatedAt TEXT,
+        FOREIGN KEY (projectId) REFERENCES projects(id) ON DELETE CASCADE,
+        FOREIGN KEY (requirementId) REFERENCES requirements(id) ON DELETE SET NULL
+      );
+    `);
+    console.log('Tabela features criada.');
+
+    await client.execute(`
       CREATE TABLE IF NOT EXISTS tasks (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,

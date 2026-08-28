@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -21,42 +22,43 @@ import {
 } from "@/components/ui/table"
 import { PencilIcon, PlusIcon, Trash2Icon, XIcon, CheckIcon } from "lucide-react"
 
-interface HardwareComponentItem {
+interface Feature {
   id: string
   name: string
   description: string | null
-  quantity: number
-  unitPrice: number
+  status: "Planejada" | "Em desenvolvimento" | "Concluída"
   requirementId: string | null
 }
 
 interface RequirementOption {
   id: string
   code: string
-  description: string
 }
 
+const STATUSES: Feature["status"][] = ["Planejada", "Em desenvolvimento", "Concluída"]
 const NEW_ROW_ID = "__new__"
 const NO_REQUIREMENT = "__none__"
 
 type DraftFields = {
   name: string
-  quantity: string
-  unitPrice: string
+  status: Feature["status"]
   requirementId: string
 }
 
 const EMPTY_DRAFT: DraftFields = {
   name: "",
-  quantity: "1",
-  unitPrice: "0",
+  status: "Planejada",
   requirementId: NO_REQUIREMENT,
 }
 
-const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
+function statusVariant(status: Feature["status"]) {
+  if (status === "Concluída") return "default"
+  if (status === "Em desenvolvimento") return "secondary"
+  return "outline"
+}
 
-export function ComponentsTable({ projectId }: { projectId: string }) {
-  const [components, setComponents] = useState<HardwareComponentItem[]>([])
+export function FeaturesTable({ projectId }: { projectId: string }) {
+  const [features, setFeatures] = useState<Feature[]>([])
   const [requirements, setRequirements] = useState<RequirementOption[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -69,20 +71,20 @@ export function ComponentsTable({ projectId }: { projectId: string }) {
     async function load() {
       setIsLoading(true)
       try {
-        const [componentsRes, requirementsRes] = await Promise.all([
-          fetch(`/api/projects/${projectId}/components`),
+        const [featuresRes, requirementsRes] = await Promise.all([
+          fetch(`/api/projects/${projectId}/features`),
           fetch(`/api/projects/${projectId}/requirements`),
         ])
-        const componentsData = await componentsRes.json()
+        const featuresData = await featuresRes.json()
         const requirementsData = await requirementsRes.json()
-        if (!componentsRes.ok) throw new Error(componentsData.error || "Erro ao carregar componentes")
+        if (!featuresRes.ok) throw new Error(featuresData.error || "Erro ao carregar funcionalidades")
         if (!cancelled) {
-          setComponents(componentsData.components)
+          setFeatures(featuresData.features)
           if (requirementsRes.ok) setRequirements(requirementsData.requirements)
         }
       } catch (error) {
         console.error(error)
-        toast.error("Não foi possível carregar os componentes.")
+        toast.error("Não foi possível carregar as funcionalidades.")
       } finally {
         if (!cancelled) setIsLoading(false)
       }
@@ -105,13 +107,12 @@ export function ComponentsTable({ projectId }: { projectId: string }) {
     setDraft(EMPTY_DRAFT)
   }
 
-  function startEdit(component: HardwareComponentItem) {
-    setEditingId(component.id)
+  function startEdit(feature: Feature) {
+    setEditingId(feature.id)
     setDraft({
-      name: component.name,
-      quantity: String(component.quantity),
-      unitPrice: String(component.unitPrice),
-      requirementId: component.requirementId ?? NO_REQUIREMENT,
+      name: feature.name,
+      status: feature.status,
+      requirementId: feature.requirementId ?? NO_REQUIREMENT,
     })
   }
 
@@ -122,72 +123,58 @@ export function ComponentsTable({ projectId }: { projectId: string }) {
 
   async function confirmEdit() {
     const name = draft.name.trim()
-    const quantity = Number(draft.quantity)
-    const unitPrice = Number(draft.unitPrice)
-
     if (!name || isSaving) return
-    if (!Number.isFinite(quantity) || quantity < 1) {
-      toast.error("Quantidade inválida.")
-      return
-    }
-    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
-      toast.error("Preço unitário inválido.")
-      return
-    }
 
     const payload = {
       name,
-      quantity,
-      unitPrice,
+      status: draft.status,
       requirementId: draft.requirementId === NO_REQUIREMENT ? null : draft.requirementId,
     }
 
     setIsSaving(true)
     try {
       if (editingId === NEW_ROW_ID) {
-        const res = await fetch(`/api/projects/${projectId}/components`, {
+        const res = await fetch(`/api/projects/${projectId}/features`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         })
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error || "Erro ao criar componente")
-        setComponents((prev) => [...prev, data.component])
-        toast.success(`${data.component.name} adicionado.`)
+        if (!res.ok) throw new Error(data.error || "Erro ao criar funcionalidade")
+        setFeatures((prev) => [...prev, data.feature])
+        toast.success(`${data.feature.name} adicionada.`)
       } else if (editingId) {
-        const res = await fetch(`/api/projects/${projectId}/components/${editingId}`, {
+        const res = await fetch(`/api/projects/${projectId}/features/${editingId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         })
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error || "Erro ao atualizar componente")
-        setComponents((prev) => prev.map((c) => (c.id === editingId ? data.component : c)))
-        toast.success(`${data.component.name} atualizado.`)
+        if (!res.ok) throw new Error(data.error || "Erro ao atualizar funcionalidade")
+        setFeatures((prev) => prev.map((f) => (f.id === editingId ? data.feature : f)))
+        toast.success(`${data.feature.name} atualizada.`)
       }
       setEditingId(null)
       setDraft(EMPTY_DRAFT)
     } catch (error) {
       console.error(error)
-      toast.error(error instanceof Error ? error.message : "Erro ao salvar componente.")
+      toast.error(error instanceof Error ? error.message : "Erro ao salvar funcionalidade.")
     } finally {
       setIsSaving(false)
     }
   }
 
-  async function deleteComponent(id: string) {
+  async function deleteFeature(id: string) {
     try {
-      const res = await fetch(`/api/projects/${projectId}/components/${id}`, {
-        method: "DELETE",
-      })
+      const res = await fetch(`/api/projects/${projectId}/features/${id}`, { method: "DELETE" })
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.error || "Erro ao excluir componente")
+        throw new Error(data.error || "Erro ao excluir funcionalidade")
       }
-      setComponents((prev) => prev.filter((c) => c.id !== id))
+      setFeatures((prev) => prev.filter((f) => f.id !== id))
     } catch (error) {
       console.error(error)
-      toast.error(error instanceof Error ? error.message : "Erro ao excluir componente.")
+      toast.error(error instanceof Error ? error.message : "Erro ao excluir funcionalidade.")
     }
   }
 
@@ -196,7 +183,7 @@ export function ComponentsTable({ projectId }: { projectId: string }) {
       <TableCell>
         <Input
           autoFocus
-          placeholder="Nome do componente"
+          placeholder="Ex.: Detecção de linha em curvas"
           value={draft.name}
           onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
           onKeyDown={(e) => {
@@ -206,31 +193,17 @@ export function ComponentsTable({ projectId }: { projectId: string }) {
         />
       </TableCell>
       <TableCell>
-        <Input
-          type="number"
-          min={1}
-          step={1}
-          value={draft.quantity}
-          onChange={(e) => setDraft((d) => ({ ...d, quantity: e.target.value }))}
-        />
+        <Select value={draft.status} onValueChange={(v) => setDraft((d) => ({ ...d, status: v as Feature["status"] }))}>
+          <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </TableCell>
       <TableCell>
-        <Input
-          type="number"
-          min={0}
-          step="0.01"
-          value={draft.unitPrice}
-          onChange={(e) => setDraft((d) => ({ ...d, unitPrice: e.target.value }))}
-        />
-      </TableCell>
-      <TableCell className="text-muted-foreground">
-        {currency.format((Number(draft.quantity) || 0) * (Number(draft.unitPrice) || 0))}
-      </TableCell>
-      <TableCell>
-        <Select
-          value={draft.requirementId}
-          onValueChange={(v) => setDraft((d) => ({ ...d, requirementId: v }))}
-        >
+        <Select value={draft.requirementId} onValueChange={(v) => setDraft((d) => ({ ...d, requirementId: v }))}>
           <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value={NO_REQUIREMENT}>Nenhum</SelectItem>
@@ -259,10 +232,8 @@ export function ComponentsTable({ projectId }: { projectId: string }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Componente</TableHead>
-              <TableHead className="w-20">Qtd.</TableHead>
-              <TableHead className="w-28">Preço unit.</TableHead>
-              <TableHead className="w-28">Subtotal</TableHead>
+              <TableHead>Funcionalidade</TableHead>
+              <TableHead className="w-40">Status</TableHead>
               <TableHead className="w-28">Requisito</TableHead>
               <TableHead className="w-20 text-right">Ações</TableHead>
             </TableRow>
@@ -270,50 +241,38 @@ export function ComponentsTable({ projectId }: { projectId: string }) {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
-                  Carregando componentes...
+                <TableCell colSpan={4} className="py-6 text-center text-sm text-muted-foreground">
+                  Carregando funcionalidades...
                 </TableCell>
               </TableRow>
             )}
 
-            {!isLoading && components.length === 0 && editingId !== NEW_ROW_ID && (
+            {!isLoading && features.length === 0 && editingId !== NEW_ROW_ID && (
               <TableRow>
-                <TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
-                  Nenhum componente cadastrado ainda.
+                <TableCell colSpan={4} className="py-6 text-center text-sm text-muted-foreground">
+                  Nenhuma funcionalidade cadastrada ainda. Transforme um requisito em algo concreto que o robô vai fazer.
                 </TableCell>
               </TableRow>
             )}
 
-            {components.map((component) =>
-              editingId === component.id ? (
-                <TableRow key={component.id}>{draftRowFields}</TableRow>
+            {features.map((feature) =>
+              editingId === feature.id ? (
+                <TableRow key={feature.id}>{draftRowFields}</TableRow>
               ) : (
-                <TableRow key={component.id}>
-                  <TableCell>{component.name}</TableCell>
-                  <TableCell>{component.quantity}</TableCell>
-                  <TableCell>{currency.format(component.unitPrice)}</TableCell>
-                  <TableCell className="font-medium">
-                    {currency.format(component.quantity * component.unitPrice)}
+                <TableRow key={feature.id}>
+                  <TableCell>{feature.name}</TableCell>
+                  <TableCell>
+                    <Badge variant={statusVariant(feature.status)}>{feature.status}</Badge>
                   </TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">
-                    {requirementLabel(component.requirementId)}
+                    {requirementLabel(feature.requirementId)}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => startEdit(component)}
-                        aria-label="Editar componente"
-                      >
+                      <Button size="icon" variant="ghost" onClick={() => startEdit(feature)} aria-label="Editar funcionalidade">
                         <PencilIcon className="size-4" />
                       </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => deleteComponent(component.id)}
-                        aria-label="Excluir componente"
-                      >
+                      <Button size="icon" variant="ghost" onClick={() => deleteFeature(feature.id)} aria-label="Excluir funcionalidade">
                         <Trash2Icon className="size-4" />
                       </Button>
                     </div>
@@ -327,16 +286,10 @@ export function ComponentsTable({ projectId }: { projectId: string }) {
         </Table>
       </div>
 
-      {components.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          Veja o custo total consolidado na aba <strong>Custos</strong>.
-        </p>
-      )}
-
       {editingId !== NEW_ROW_ID && (
         <Button variant="outline" size="sm" className="w-fit gap-1.5" onClick={startCreate}>
           <PlusIcon className="size-4" />
-          Adicionar componente
+          Adicionar funcionalidade
         </Button>
       )}
     </div>
