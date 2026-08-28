@@ -98,6 +98,7 @@ model Project {
 
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   requirements Requirement[]
+  features     Feature[]
   tasks        Task[]
   components   HardwareComponent[]
 
@@ -121,11 +122,31 @@ model Requirement {
 
   project    Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
   history    RequirementHistory[]
+  features   Feature[]
   tasks      Task[]
   components HardwareComponent[]
 
   @@unique([projectId, code])
   @@map("requirements")
+}
+
+// Status possíveis: "Planejada" | "Em desenvolvimento" | "Concluída"
+// Funcionalidade concreta derivada de um ou mais requisitos — etapa de planejamento,
+// diferente das tarefas do Kanban (Task), que só entram em jogo na execução do projeto.
+model Feature {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  status        String   @default("Planejada")
+  projectId     String
+  requirementId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requirement Requirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+
+  @@map("features")
 }
 
 // Snapshot do requisito no momento da alteração, para satisfazer RF03/RNF04 (versionamento)

@@ -4,6 +4,7 @@ import {
   ClipboardListIcon,
   CpuIcon,
   LayoutGridIcon,
+  WalletIcon,
 } from "lucide-react"
 
 export const PROJECT_STEPS = [
@@ -17,16 +18,23 @@ export const PROJECT_STEPS = [
   {
     key: "funcionalidades",
     label: "Funcionalidades",
-    subtitle: "Organize as capacidades do projeto.",
-    completedSubtitle: "Capacidades definidas.",
+    subtitle: "Transforme os requisitos em capacidades concretas.",
+    completedSubtitle: "Funcionalidades definidas.",
     icon: LayoutGridIcon,
   },
   {
     key: "componentes",
-    label: "Componentes e Custos",
-    subtitle: "Planeje os componentes necessários.",
+    label: "Componentes",
+    subtitle: "Escolha os componentes físicos necessários.",
     completedSubtitle: "Componentes planejados.",
     icon: CpuIcon,
+  },
+  {
+    key: "custos",
+    label: "Custos",
+    subtitle: "Veja o custo total estimado do projeto.",
+    completedSubtitle: "Custo estimado.",
+    icon: WalletIcon,
   },
   {
     key: "finalizar",

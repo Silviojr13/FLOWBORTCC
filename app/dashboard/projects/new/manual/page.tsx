@@ -8,6 +8,7 @@ import { RequirementsTable } from "@/components/project-manual/requirements-tabl
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { ArrowRightIcon } from "lucide-react"
 
 interface CreatedProject {
   id: string
@@ -124,6 +125,15 @@ export default function ManualProjectPage() {
               projectId={project.id}
               initialRequirements={chatImport?.requirements}
             />
+            <div className="flex justify-end border-t pt-4">
+              <Button
+                className="gap-1.5"
+                onClick={() => router.push(`/dashboard/projects/${project.id}?step=funcionalidades`)}
+              >
+                Próximo: Funcionalidades
+                <ArrowRightIcon className="size-4" />
+              </Button>
+            </div>
           </>
         )}
       </div>
