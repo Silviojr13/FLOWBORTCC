@@ -20,9 +20,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { messages, model = "openai/gpt-oss-120b", chatId: providedChatId } = await req.json();
+  const { messages, chatId: providedChatId } = await req.json();
   const chatId = providedChatId || crypto.randomUUID();
   const apiKey = process.env.GROQ_API_KEY;
+  // O projeto no Groq só libera um modelo por vez (ver console.groq.com) — respeita essa
+  // configuração em vez de aceitar um model vindo do cliente, que falharia contra o allowlist.
+  const model = process.env.GROQ_MODEL_NAME || "qwen/qwen3.8-27b";
 
   if (!apiKey) {
     return new Response(
