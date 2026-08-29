@@ -85,7 +85,8 @@ Responda SOMENTE com um objeto JSON válido, sem texto antes ou depois, exatamen
 }`;
 
   try {
-    const model = "openai/gpt-oss-120b";
+    // Respeita o mesmo modelo configurado para o chat (allowlist do projeto no Groq).
+    const model = process.env.GROQ_MODEL_NAME || "qwen/qwen3.8-27b";
     const MAX_RETRIES = 2;
     const RETRY_DELAY_MS = 2000;
     let groqRes: Response | undefined;

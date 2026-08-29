@@ -163,10 +163,9 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [model, setModel] = useState("openai/gpt-oss-120b");
+  const [model, setModel] = useState("qwen/qwen3.8-27b");
   const [availableModels, setAvailableModels] = useState<string[]>([
-    "openai/gpt-oss-120b",
-    "openai/gpt-oss-20b",
+    "qwen/qwen3.8-27b",
   ]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);

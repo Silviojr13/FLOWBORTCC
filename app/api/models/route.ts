@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 
+const DEFAULT_MODEL = "qwen/qwen3.8-27b";
+
 export async function GET() {
+  const model = process.env.GROQ_MODEL_NAME || DEFAULT_MODEL;
+
   return NextResponse.json({
-    models: ["openai/gpt-oss-120b", "openai/gpt-oss-20b"],
+    models: [model],
     connected: true,
   });
 }
