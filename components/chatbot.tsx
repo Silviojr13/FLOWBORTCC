@@ -68,8 +68,8 @@ function MessageBubble({
       <div
         className={`flex size-8 shrink-0 items-center justify-center rounded-full transition-colors duration-150 ${
           isUser
-            ? "bg-linear-to-br from-primary to-primary/70 text-primary-foreground"
-            : "border border-white/8 bg-white/4 text-muted-foreground"
+            ? "bg-primary/10 text-primary"
+            : "border border-border bg-muted text-muted-foreground"
         }`}
       >
         {isUser ? (
@@ -81,10 +81,10 @@ function MessageBubble({
 
       {/* Bubble */}
       <div
-        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed transition-shadow duration-150 sm:max-w-[75%] ${
+        className={`max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed transition-shadow duration-150 sm:max-w-[75%] ${
           isUser
-            ? "rounded-tr-md bg-primary text-primary-foreground hover:shadow-[0_0_16px_-4px_oklch(0.65_0.2_250/30%)]"
-            : "rounded-tl-md border border-white/6 bg-white/4 text-foreground hover:border-white/10"
+            ? "rounded-tr-md bg-blue-light text-navy dark:bg-accent dark:text-accent-foreground"
+            : "rounded-tl-md border border-border bg-card text-foreground shadow-sm"
         }`}
       >
         {isUser ? (
@@ -110,12 +110,12 @@ function MessageBubble({
                 <strong className="font-semibold">{children}</strong>
               ),
               code: ({ children }) => (
-                <code className="rounded bg-white/6 px-1.5 py-0.5 font-mono text-xs">
+                <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
                   {children}
                 </code>
               ),
               pre: ({ children }) => (
-                <pre className="my-2 overflow-x-auto rounded-lg bg-white/4 p-3 font-mono text-xs">
+                <pre className="my-2 overflow-x-auto rounded-lg border border-border bg-muted/60 p-3 font-mono text-xs">
                   {children}
                 </pre>
               ),
@@ -385,10 +385,10 @@ export default function ChatPage() {
               if (isStreamingPlaceholder) {
                 return (
                   <div key={i} className="animate-fade-in-up flex gap-3">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/8 bg-white/4 text-muted-foreground">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground">
                       <BotIcon className="size-3.5" />
                     </div>
-                    <div className="rounded-2xl rounded-tl-md border border-white/6 bg-white/4 px-4 py-3">
+                    <div className="rounded-xl rounded-tl-md border border-border bg-card px-4 py-3 shadow-sm">
                       <TypingIndicator />
                     </div>
                   </div>

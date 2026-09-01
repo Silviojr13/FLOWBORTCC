@@ -3,6 +3,7 @@ import { Roboto, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/ui/sonner"
+import { ThemeProvider } from "@/components/theme-provider"
 
 const robotoSans = Roboto({
   variable: "--font-roboto-sans",
@@ -29,12 +30,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`dark ${robotoSans.variable} ${robotoMono.variable}`}>
+    <html lang="pt-BR" className={`${robotoSans.variable} ${robotoMono.variable}`} suppressHydrationWarning>
       <body>
-        <TooltipProvider>
-          {children}
-        </TooltipProvider>
-        <Toaster />
+        <ThemeProvider>
+          <TooltipProvider>
+            {children}
+          </TooltipProvider>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

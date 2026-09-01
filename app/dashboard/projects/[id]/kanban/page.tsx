@@ -1,24 +1,15 @@
 "use client"
 
-import { useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ProjectShell } from "@/components/project/project-shell"
-import {
-  ProjectOverviewContent,
-  ProjectWizardPage,
-} from "@/components/project/project-wizard-page"
+import { KanbanBoard } from "@/components/project/kanban-board"
 import { useProject } from "@/lib/use-project"
 
-export default function ProjectDetailPage() {
+export default function ProjectKanbanPage() {
   const { id } = useParams<{ id: string }>()
-  const searchParams = useSearchParams()
-  const stepParam = searchParams.get("step")
   const { project, notFound, isLoading } = useProject(id)
-
-  if (stepParam) {
-    return <ProjectWizardPage projectId={id} stepParam={stepParam} />
-  }
 
   if (notFound) {
     return (
@@ -42,10 +33,10 @@ export default function ProjectDetailPage() {
   return (
     <ProjectShell
       project={project}
-      title="Visão geral"
-      description="Resumo do projeto e atalhos para os módulos de gestão."
+      title="Kanban"
+      description="Acompanhe o desenvolvimento das funcionalidades do projeto. Arraste os cards ou altere o status pelo select."
     >
-      <ProjectOverviewContent projectId={id} />
+      <KanbanBoard projectId={id} />
     </ProjectShell>
   )
 }

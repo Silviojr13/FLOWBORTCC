@@ -21,22 +21,22 @@ export function WelcomeScreen({
       {/* Image placeholder — replace with your own image later */}
       <div className="mb-6 sm:mb-8">
         <Image
-          src="/images/robo3.png"
-          alt="Robô"
-          width={180}
-          height={180}
-          className="object-contain"
+          src="/images/robo-flowbot.png"
+          alt="Mascote Flowbot"
+          width={120}
+          height={120}
+          className="h-auto max-h-[200px] w-auto max-w-[200px] object-contain"
           priority
         />
       </div>
 
       {/* Title */}
-      <h2 className="mb-2 text-2xl font-medium tracking-tight text-foreground sm:mb-3 sm:text-3xl md:text-4xl">
+      <h2 className="mb-2 text-2xl font-semibold tracking-tight text-navy dark:text-foreground sm:mb-3 sm:text-3xl">
         O que você deseja criar?
       </h2>
 
       {/* Subtitle */}
-      <p className="mb-8 max-w-md text-sm text-muted-foreground sm:mb-10 sm:text-base">
+      <p className="mb-8 max-w-md text-sm leading-relaxed text-muted-foreground sm:mb-10 sm:text-base">
         Descreva sua ideia de projeto de sistema embarcado ou robótica e eu vou te ajudar a levantar os requisitos.
       </p>
 
@@ -48,7 +48,7 @@ export function WelcomeScreen({
             variant="outline"
             size="sm"
             onClick={() => onSuggestionClick(s.label)}
-            className="rounded-full border-white/8 bg-white/3 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur-sm transition-all duration-200 hover:border-primary/30 hover:bg-primary/8 hover:text-foreground hover:shadow-[0_0_20px_-8px_oklch(0.65_0.2_250/30%)] sm:px-4 sm:py-2 sm:text-sm"
+      className="rounded-full border-border bg-input-bg px-3 py-1.5 text-xs text-muted-foreground shadow-sm transition-all duration-200 hover:border-primary/30 hover:bg-blue-light hover:text-primary dark:hover:bg-accent sm:px-4 sm:py-2 sm:text-sm"
           >
             {s.icon}
             <span>{s.label}</span>

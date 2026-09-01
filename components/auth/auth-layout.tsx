@@ -1,11 +1,12 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
+import { FlowbotBrandLogo } from "@/components/flowbot-brand-logo"
 import { signIn } from "next-auth/react"
 import { useState } from "react"
 
 import BackgroundAnimation from "@/components/background-animation"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { FieldDescription, FieldSeparator } from "@/components/ui/field"
@@ -23,6 +24,11 @@ export function AuthPageShell({
   return (
     <>
       <BackgroundAnimation />
+      <div className="pointer-events-none fixed right-4 top-4 z-20">
+        <div className="pointer-events-auto">
+          <ThemeToggle />
+        </div>
+      </div>
       <div
         className={cn(
           "relative z-10 flex min-h-svh flex-col items-center justify-center p-4 sm:p-6 md:p-10",
@@ -37,7 +43,7 @@ export function AuthPageShell({
 
 export function AuthCard({ children }: { children: React.ReactNode }) {
   return (
-    <Card className="border-border/80 bg-card/95 shadow-lg shadow-black/30 backdrop-blur-sm">
+    <Card className="border-border bg-card shadow-md">
       <CardContent className="p-6 sm:p-8">{children}</CardContent>
     </Card>
   )
@@ -46,14 +52,7 @@ export function AuthCard({ children }: { children: React.ReactNode }) {
 export function AuthLogo() {
   return (
     <div className="mb-6 flex justify-center px-2">
-      <Image
-        src="/flowbot_name.svg"
-        alt="Flowbot"
-        width={220}
-        height={37}
-        className="h-9 w-auto max-w-full sm:h-10"
-        priority
-      />
+      <FlowbotBrandLogo variant="auth" priority />
     </div>
   )
 }
@@ -67,7 +66,7 @@ export function AuthHeader({
 }) {
   return (
     <div className="mb-6 flex flex-col gap-2 text-center">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+      <h1 className="text-2xl font-semibold tracking-tight text-navy dark:text-foreground">
         {title}
       </h1>
       <p className="text-pretty text-sm leading-relaxed text-muted-foreground">

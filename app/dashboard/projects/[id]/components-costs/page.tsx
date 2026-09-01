@@ -1,24 +1,18 @@
 "use client"
 
-import { useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { useParams } from "next/navigation"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ProjectShell } from "@/components/project/project-shell"
-import {
-  ProjectOverviewContent,
-  ProjectWizardPage,
-} from "@/components/project/project-wizard-page"
+import { ComponentsTable } from "@/components/project-manual/components-table"
+import { CostSummary } from "@/components/project-manual/cost-summary"
 import { useProject } from "@/lib/use-project"
 
-export default function ProjectDetailPage() {
+export default function ProjectComponentsCostsPage() {
   const { id } = useParams<{ id: string }>()
-  const searchParams = useSearchParams()
-  const stepParam = searchParams.get("step")
   const { project, notFound, isLoading } = useProject(id)
-
-  if (stepParam) {
-    return <ProjectWizardPage projectId={id} stepParam={stepParam} />
-  }
+  const [refreshToken, setRefreshToken] = useState(0)
 
   if (notFound) {
     return (
@@ -42,10 +36,16 @@ export default function ProjectDetailPage() {
   return (
     <ProjectShell
       project={project}
-      title="Visão geral"
-      description="Resumo do projeto e atalhos para os módulos de gestão."
+      title="Componentes e Custos"
+      description="Lista de componentes do projeto e resumo do investimento estimado."
     >
-      <ProjectOverviewContent projectId={id} />
+      <div className="flex flex-col gap-8">
+        <ComponentsTable
+          projectId={id}
+          onChange={() => setRefreshToken((t) => t + 1)}
+        />
+        <CostSummary projectId={id} refreshToken={refreshToken} />
+      </div>
     </ProjectShell>
   )
 }

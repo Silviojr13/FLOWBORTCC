@@ -2,24 +2,30 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+import {
+  BotIcon,
+  PencilIcon,
+  PlusIcon,
+  SearchIcon,
+  SparklesIcon,
+  Trash2Icon,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { ComponentAddDialog } from "@/components/project-manual/component-add-dialog"
+import { ComponentSearchSheet } from "@/components/project-manual/component-search-sheet"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { PencilIcon, PlusIcon, Trash2Icon, XIcon, CheckIcon } from "lucide-react"
+  loadComponentOrigins,
+  removeComponentOrigin,
+  type ComponentOrigin,
+} from "@/lib/component-origin-store"
 
 interface HardwareComponentItem {
   id: string
@@ -36,32 +42,22 @@ interface RequirementOption {
   description: string
 }
 
-const NEW_ROW_ID = "__new__"
-const NO_REQUIREMENT = "__none__"
-
-type DraftFields = {
-  name: string
-  quantity: string
-  unitPrice: string
-  requirementId: string
-}
-
-const EMPTY_DRAFT: DraftFields = {
-  name: "",
-  quantity: "1",
-  unitPrice: "0",
-  requirementId: NO_REQUIREMENT,
-}
-
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
 
-export function ComponentsTable({ projectId }: { projectId: string }) {
+export function ComponentsTable({
+  projectId,
+  onChange,
+}: {
+  projectId: string
+  onChange?: () => void
+}) {
   const [components, setComponents] = useState<HardwareComponentItem[]>([])
   const [requirements, setRequirements] = useState<RequirementOption[]>([])
+  const [origins, setOrigins] = useState<Record<string, ComponentOrigin>>({})
   const [isLoading, setIsLoading] = useState(true)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [draft, setDraft] = useState<DraftFields>(EMPTY_DRAFT)
-  const [isSaving, setIsSaving] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [editingComponent, setEditingComponent] = useState<HardwareComponentItem | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -78,6 +74,7 @@ export function ComponentsTable({ projectId }: { projectId: string }) {
         if (!componentsRes.ok) throw new Error(componentsData.error || "Erro ao carregar componentes")
         if (!cancelled) {
           setComponents(componentsData.components)
+          setOrigins(loadComponentOrigins(projectId))
           if (requirementsRes.ok) setRequirements(requirementsData.requirements)
         }
       } catch (error) {
@@ -94,85 +91,28 @@ export function ComponentsTable({ projectId }: { projectId: string }) {
     }
   }, [projectId])
 
-  function requirementLabel(id: string | null) {
-    if (!id) return "—"
-    const requirement = requirements.find((r) => r.id === id)
-    return requirement ? requirement.code : "—"
-  }
-
-  function startCreate() {
-    setEditingId(NEW_ROW_ID)
-    setDraft(EMPTY_DRAFT)
-  }
-
-  function startEdit(component: HardwareComponentItem) {
-    setEditingId(component.id)
-    setDraft({
-      name: component.name,
-      quantity: String(component.quantity),
-      unitPrice: String(component.unitPrice),
-      requirementId: component.requirementId ?? NO_REQUIREMENT,
-    })
-  }
-
-  function cancelEdit() {
-    setEditingId(null)
-    setDraft(EMPTY_DRAFT)
-  }
-
-  async function confirmEdit() {
-    const name = draft.name.trim()
-    const quantity = Number(draft.quantity)
-    const unitPrice = Number(draft.unitPrice)
-
-    if (!name || isSaving) return
-    if (!Number.isFinite(quantity) || quantity < 1) {
-      toast.error("Quantidade inválida.")
-      return
-    }
-    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
-      toast.error("Preço unitário inválido.")
-      return
-    }
-
-    const payload = {
-      name,
-      quantity,
-      unitPrice,
-      requirementId: draft.requirementId === NO_REQUIREMENT ? null : draft.requirementId,
-    }
-
-    setIsSaving(true)
+  async function reloadComponents() {
     try {
-      if (editingId === NEW_ROW_ID) {
-        const res = await fetch(`/api/projects/${projectId}/components`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || "Erro ao criar componente")
-        setComponents((prev) => [...prev, data.component])
-        toast.success(`${data.component.name} adicionado.`)
-      } else if (editingId) {
-        const res = await fetch(`/api/projects/${projectId}/components/${editingId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || "Erro ao atualizar componente")
-        setComponents((prev) => prev.map((c) => (c.id === editingId ? data.component : c)))
-        toast.success(`${data.component.name} atualizado.`)
-      }
-      setEditingId(null)
-      setDraft(EMPTY_DRAFT)
+      const [componentsRes, requirementsRes] = await Promise.all([
+        fetch(`/api/projects/${projectId}/components`),
+        fetch(`/api/projects/${projectId}/requirements`),
+      ])
+      const componentsData = await componentsRes.json()
+      const requirementsData = await requirementsRes.json()
+      if (!componentsRes.ok) throw new Error(componentsData.error || "Erro ao carregar componentes")
+      setComponents(componentsData.components)
+      setOrigins(loadComponentOrigins(projectId))
+      if (requirementsRes.ok) setRequirements(requirementsData.requirements)
+      onChange?.()
     } catch (error) {
       console.error(error)
-      toast.error(error instanceof Error ? error.message : "Erro ao salvar componente.")
-    } finally {
-      setIsSaving(false)
+      toast.error("Não foi possível recarregar os componentes.")
     }
+  }
+
+  function requirementInfo(id: string | null) {
+    if (!id) return null
+    return requirements.find((r) => r.id === id) ?? null
   }
 
   async function deleteComponent(id: string) {
@@ -184,161 +124,169 @@ export function ComponentsTable({ projectId }: { projectId: string }) {
         const data = await res.json()
         throw new Error(data.error || "Erro ao excluir componente")
       }
+      removeComponentOrigin(projectId, id)
       setComponents((prev) => prev.filter((c) => c.id !== id))
+      onChange?.()
     } catch (error) {
       console.error(error)
       toast.error(error instanceof Error ? error.message : "Erro ao excluir componente.")
     }
   }
 
-  const draftRowFields = (
-    <>
-      <TableCell>
-        <Input
-          autoFocus
-          placeholder="Nome do componente"
-          value={draft.name}
-          onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") confirmEdit()
-            if (e.key === "Escape") cancelEdit()
-          }}
-        />
-      </TableCell>
-      <TableCell>
-        <Input
-          type="number"
-          min={1}
-          step={1}
-          value={draft.quantity}
-          onChange={(e) => setDraft((d) => ({ ...d, quantity: e.target.value }))}
-        />
-      </TableCell>
-      <TableCell>
-        <Input
-          type="number"
-          min={0}
-          step="0.01"
-          value={draft.unitPrice}
-          onChange={(e) => setDraft((d) => ({ ...d, unitPrice: e.target.value }))}
-        />
-      </TableCell>
-      <TableCell className="text-muted-foreground">
-        {currency.format((Number(draft.quantity) || 0) * (Number(draft.unitPrice) || 0))}
-      </TableCell>
-      <TableCell>
-        <Select
-          value={draft.requirementId}
-          onValueChange={(v) => setDraft((d) => ({ ...d, requirementId: v }))}
-        >
-          <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NO_REQUIREMENT}>Nenhum</SelectItem>
-            {requirements.map((r) => (
-              <SelectItem key={r.id} value={r.id}>{r.code}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </TableCell>
-      <TableCell className="text-right">
-        <div className="flex justify-end gap-1">
-          <Button size="icon" variant="ghost" disabled={isSaving} onClick={confirmEdit} aria-label="Salvar">
-            <CheckIcon className="size-4" />
-          </Button>
-          <Button size="icon" variant="ghost" disabled={isSaving} onClick={cancelEdit} aria-label="Cancelar">
-            <XIcon className="size-4" />
-          </Button>
-        </div>
-      </TableCell>
-    </>
-  )
+  const existingNames = components.map((c) => c.name)
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="overflow-x-auto rounded-lg border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Componente</TableHead>
-              <TableHead className="w-20">Qtd.</TableHead>
-              <TableHead className="w-28">Preço unit.</TableHead>
-              <TableHead className="w-28">Subtotal</TableHead>
-              <TableHead className="w-28">Requisito</TableHead>
-              <TableHead className="w-20 text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading && (
-              <TableRow>
-                <TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
-                  Carregando componentes...
-                </TableCell>
-              </TableRow>
-            )}
-
-            {!isLoading && components.length === 0 && editingId !== NEW_ROW_ID && (
-              <TableRow>
-                <TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
-                  Nenhum componente cadastrado ainda.
-                </TableCell>
-              </TableRow>
-            )}
-
-            {components.map((component) =>
-              editingId === component.id ? (
-                <TableRow key={component.id}>{draftRowFields}</TableRow>
-              ) : (
-                <TableRow key={component.id}>
-                  <TableCell>{component.name}</TableCell>
-                  <TableCell>{component.quantity}</TableCell>
-                  <TableCell>{currency.format(component.unitPrice)}</TableCell>
-                  <TableCell className="font-medium">
-                    {currency.format(component.quantity * component.unitPrice)}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {requirementLabel(component.requirementId)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => startEdit(component)}
-                        aria-label="Editar componente"
-                      >
-                        <PencilIcon className="size-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => deleteComponent(component.id)}
-                        aria-label="Excluir componente"
-                      >
-                        <Trash2Icon className="size-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )
-            )}
-
-            {editingId === NEW_ROW_ID && <TableRow>{draftRowFields}</TableRow>}
-          </TableBody>
-        </Table>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Button className="gap-1.5 sm:flex-1" onClick={() => setSearchOpen(true)}>
+          <SearchIcon className="size-4" />
+          Buscar componentes
+        </Button>
+        <Button
+          variant="outline"
+          className="gap-1.5 sm:w-auto"
+          onClick={() => {
+            setEditingComponent(null)
+            setAddOpen(true)
+          }}
+        >
+          <PlusIcon className="size-4" />
+          Adicionar manualmente
+        </Button>
       </div>
 
-      {components.length > 0 && (
+      <div className="flex flex-col gap-1 border-t border-border pt-4">
+        <h3 className="text-sm font-medium text-foreground">Componentes adicionados ao projeto</h3>
         <p className="text-xs text-muted-foreground">
-          Veja o custo total consolidado na aba <strong>Custos</strong>.
+          Itens confirmados para este projeto — distintos das sugestões da IA acima.
+        </p>
+      </div>
+
+      {isLoading && (
+        <p className="py-6 text-center text-sm text-muted-foreground">
+          Carregando componentes...
         </p>
       )}
 
-      {editingId !== NEW_ROW_ID && (
-        <Button variant="outline" size="sm" className="w-fit gap-1.5" onClick={startCreate}>
-          <PlusIcon className="size-4" />
-          Adicionar componente
-        </Button>
+      {!isLoading && components.length === 0 && (
+        <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center">
+          <p className="text-sm font-medium text-foreground">
+            Nenhum componente adicionado ao projeto.
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Busque componentes ou escolha uma sugestão da IA.
+          </p>
+        </div>
       )}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {components.map((component) => {
+          const req = requirementInfo(component.requirementId)
+          const subtotal = component.quantity * component.unitPrice
+          const origin = origins[component.id]
+
+          return (
+            <Card key={component.id} className="flex flex-col bg-card/95">
+              <CardHeader className="pb-2">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40">
+                    <BotIcon className="size-4 text-primary/70" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CardTitle className="text-base leading-snug">{component.name}</CardTitle>
+                      {origin === "ia" && (
+                        <Badge variant="outline" className="gap-0.5 border-primary/30 text-primary">
+                          <SparklesIcon className="size-3" />
+                          IA
+                        </Badge>
+                      )}
+                    </div>
+                    {component.description && (
+                      <p className="mt-1 text-sm text-muted-foreground">{component.description}</p>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="flex flex-1 flex-col gap-3 pt-0">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-xs text-muted-foreground">Quantidade</span>
+                    <p className="font-medium">{component.quantity}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Preço unit.</span>
+                    <p className="font-medium">{currency.format(component.unitPrice)}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-xs text-muted-foreground">Subtotal</span>
+                    <p className="font-semibold">{currency.format(subtotal)}</p>
+                  </div>
+                </div>
+                {req && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Requisito relacionado
+                    </span>
+                    <p className="text-sm leading-relaxed">{req.description}</p>
+                    <span className="font-mono text-xs text-muted-foreground">{req.code}</span>
+                  </div>
+                )}
+              </CardContent>
+              <CardFooter className="justify-end gap-1 pt-0">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setEditingComponent(component)
+                    setAddOpen(true)
+                  }}
+                >
+                  <PencilIcon className="size-4" />
+                  Editar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => deleteComponent(component.id)}
+                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Trash2Icon className="size-4" />
+                  Excluir
+                </Button>
+              </CardFooter>
+            </Card>
+          )
+        })}
+      </div>
+
+      <ComponentAddDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        projectId={projectId}
+        requirements={requirements}
+        editingId={editingComponent?.id}
+        initialValues={
+          editingComponent
+            ? {
+                name: editingComponent.name,
+                description: editingComponent.description ?? "",
+                quantity: String(editingComponent.quantity),
+                unitPrice: String(editingComponent.unitPrice),
+                requirementId: editingComponent.requirementId ?? "__none__",
+              }
+            : undefined
+        }
+        onSaved={reloadComponents}
+      />
+
+      <ComponentSearchSheet
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        projectId={projectId}
+        existingNames={existingNames}
+        onAdded={reloadComponents}
+      />
     </div>
   )
 }
