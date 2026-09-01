@@ -47,13 +47,40 @@ export const PROJECT_STEPS = [
 
 export type ProjectStep = (typeof PROJECT_STEPS)[number]["key"]
 
-export type StepStatus = "completed" | "current" | "upcoming"
+export type StepStatus = "completed" | "current" | "upcoming" | "skipped"
+
+export interface StepRailContext {
+  requirementsCount?: number
+  requirementsSkipped?: boolean
+}
 
 export function getStepStatus(
   stepIndex: number,
-  currentIndex: number
+  currentIndex: number,
+  context?: StepRailContext
 ): StepStatus {
-  if (stepIndex < currentIndex) return "completed"
+  const step = PROJECT_STEPS[stepIndex]
+  const isRequisitos = step.key === "requisitos"
+
+  if (
+    isRequisitos &&
+    context?.requirementsSkipped &&
+    (context.requirementsCount ?? 0) === 0 &&
+    stepIndex < currentIndex
+  ) {
+    return "skipped"
+  }
+
+  if (stepIndex < currentIndex) {
+    if (
+      isRequisitos &&
+      (context?.requirementsCount ?? 0) === 0 &&
+      context?.requirementsSkipped
+    ) {
+      return "skipped"
+    }
+    return "completed"
+  }
   if (stepIndex === currentIndex) return "current"
   return "upcoming"
 }

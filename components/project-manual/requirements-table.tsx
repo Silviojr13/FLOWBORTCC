@@ -21,6 +21,13 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { PencilIcon, PlusIcon, Trash2Icon, XIcon, CheckIcon } from "lucide-react"
+import {
+  CategoryIndicator,
+  PriorityIndicator,
+  PrioritySelectItem,
+  StatusIndicator,
+  StatusSelectItem,
+} from "@/components/project-manual/requirement-indicators"
 
 export interface Requirement {
   id: string
@@ -51,18 +58,15 @@ const EMPTY_DRAFT: DraftFields = {
   status: "Em Aberto",
 }
 
-function statusVariant(status: Requirement["status"]) {
-  if (status === "Validado") return "default"
-  if (status === "Descartado") return "destructive"
-  return "outline"
-}
 
 export function RequirementsTable({
   projectId,
   initialRequirements,
+  onCountChange,
 }: {
   projectId: string
   initialRequirements?: { description: string; category: Requirement["category"] }[]
+  onCountChange?: (count: number) => void
 }) {
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -79,7 +83,10 @@ export function RequirementsTable({
         const res = await fetch(`/api/projects/${projectId}/requirements`)
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || "Erro ao carregar requisitos")
-        if (!cancelled) setRequirements(data.requirements)
+        if (!cancelled) {
+          setRequirements(data.requirements)
+          onCountChange?.(data.requirements.length)
+        }
       } catch (error) {
         console.error(error)
         toast.error("Não foi possível carregar os requisitos.")
@@ -167,7 +174,11 @@ export function RequirementsTable({
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || "Erro ao criar requisito")
-        setRequirements((prev) => [...prev, data.requirement])
+        setRequirements((prev) => {
+          const next = [...prev, data.requirement]
+          onCountChange?.(next.length)
+          return next
+        })
         toast.success(`${data.requirement.code} criado.`)
       } else if (editingId) {
         const res = await fetch(`/api/projects/${projectId}/requirements/${editingId}`, {
@@ -201,7 +212,11 @@ export function RequirementsTable({
         const data = await res.json()
         throw new Error(data.error || "Erro ao excluir requisito")
       }
-      setRequirements((prev) => prev.filter((r) => r.id !== id))
+      setRequirements((prev) => {
+        const next = prev.filter((r) => r.id !== id)
+        onCountChange?.(next.length)
+        return next
+      })
     } catch (error) {
       console.error(error)
       toast.error(error instanceof Error ? error.message : "Erro ao excluir requisito.")
@@ -210,16 +225,28 @@ export function RequirementsTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="overflow-x-auto rounded-xl border border-border bg-card/95 shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-20">Código</TableHead>
-              <TableHead>Descrição</TableHead>
-              <TableHead className="w-40">Categoria</TableHead>
-              <TableHead className="w-28">Prioridade</TableHead>
-              <TableHead className="w-32">Status</TableHead>
-              <TableHead className="w-20 text-right">Ações</TableHead>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-24 bg-muted/40 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Código
+              </TableHead>
+              <TableHead className="bg-muted/40 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Descrição
+              </TableHead>
+              <TableHead className="w-40 bg-muted/40 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Categoria
+              </TableHead>
+              <TableHead className="w-28 bg-muted/40 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Prioridade
+              </TableHead>
+              <TableHead className="w-32 bg-muted/40 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Status
+              </TableHead>
+              <TableHead className="w-20 bg-muted/40 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Ações
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -233,8 +260,11 @@ export function RequirementsTable({
 
             {!isLoading && requirements.length === 0 && editingId !== NEW_ROW_ID && (
               <TableRow>
-                <TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
-                  Nenhum requisito cadastrado ainda.
+                <TableCell colSpan={6} className="py-8 text-center">
+                  <p className="text-sm font-medium text-foreground">Nenhum requisito adicionado ainda.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Comece descrevendo o que seu projeto precisa atender.
+                  </p>
                 </TableCell>
               </TableRow>
             )}
@@ -242,8 +272,10 @@ export function RequirementsTable({
             {requirements.map((requirement) =>
               editingId === requirement.id ? (
                 <TableRow key={requirement.id}>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {requirement.code}
+                  <TableCell className="font-mono text-xs">
+                    <Badge variant="secondary" className="font-mono text-[11px]">
+                      {requirement.code}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <Input
@@ -277,7 +309,9 @@ export function RequirementsTable({
                       <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {PRIORITIES.map((p) => (
-                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                          <SelectItem key={p} value={p}>
+                            <PrioritySelectItem value={p} />
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -290,7 +324,9 @@ export function RequirementsTable({
                       <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {STATUSES.map((s) => (
-                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                          <SelectItem key={s} value={s}>
+                            <StatusSelectItem value={s} />
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -308,15 +344,15 @@ export function RequirementsTable({
                 </TableRow>
               ) : (
                 <TableRow key={requirement.id}>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {requirement.code}
+                  <TableCell className="font-mono text-xs">
+                    <Badge variant="secondary" className="font-mono text-[11px]">
+                      {requirement.code}
+                    </Badge>
                   </TableCell>
                   <TableCell>{requirement.description}</TableCell>
-                  <TableCell>{requirement.category}</TableCell>
-                  <TableCell>{requirement.priority}</TableCell>
-                  <TableCell>
-                    <Badge variant={statusVariant(requirement.status)}>{requirement.status}</Badge>
-                  </TableCell>
+                  <TableCell><CategoryIndicator value={requirement.category} /></TableCell>
+                  <TableCell><PriorityIndicator value={requirement.priority} /></TableCell>
+                  <TableCell><StatusIndicator value={requirement.status} /></TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button
@@ -332,6 +368,7 @@ export function RequirementsTable({
                         variant="ghost"
                         onClick={() => deleteRequirement(requirement.id)}
                         aria-label="Excluir requisito"
+                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       >
                         <Trash2Icon className="size-4" />
                       </Button>
@@ -377,7 +414,9 @@ export function RequirementsTable({
                     <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {PRIORITIES.map((p) => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                        <SelectItem key={p} value={p}>
+                          <PrioritySelectItem value={p} />
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -390,7 +429,9 @@ export function RequirementsTable({
                     <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                        <SelectItem key={s} value={s}>
+                          <StatusSelectItem value={s} />
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -412,7 +453,7 @@ export function RequirementsTable({
       </div>
 
       {editingId !== NEW_ROW_ID && (
-        <Button variant="outline" size="sm" className="w-fit gap-1.5" onClick={startCreate}>
+        <Button size="sm" className="w-fit gap-1.5" onClick={startCreate}>
           <PlusIcon className="size-4" />
           Adicionar requisito
         </Button>

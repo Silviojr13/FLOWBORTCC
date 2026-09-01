@@ -43,7 +43,7 @@ export default function ProjectsPage() {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 sm:px-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-medium tracking-tight text-foreground sm:text-2xl">
+          <h1 className="text-2xl font-semibold tracking-tight text-navy dark:text-foreground sm:text-3xl">
             Projetos
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -82,7 +82,7 @@ export default function ProjectsPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {projects.map((project) => (
           <Link key={project.id} href={`/dashboard/projects/${project.id}`}>
-            <Card className="h-full transition-colors hover:border-primary/40">
+            <Card className="h-full border-border shadow-sm transition-colors hover:border-primary/30 hover:shadow-md">
               <CardHeader>
                 <CardTitle className="text-base">{project.name}</CardTitle>
                 {project.description && (

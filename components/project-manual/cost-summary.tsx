@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+import { TrendingDownIcon } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   Table,
@@ -22,7 +23,13 @@ interface ComponentCost {
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
 
-export function CostSummary({ projectId }: { projectId: string }) {
+export function CostSummary({
+  projectId,
+  refreshToken = 0,
+}: {
+  projectId: string
+  refreshToken?: number
+}) {
   const [components, setComponents] = useState<ComponentCost[]>([])
   const [totalCost, setTotalCost] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -50,7 +57,7 @@ export function CostSummary({ projectId }: { projectId: string }) {
     return () => {
       cancelled = true
     }
-  }, [projectId])
+  }, [projectId, refreshToken])
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Calculando custo do projeto...</p>
@@ -60,7 +67,7 @@ export function CostSummary({ projectId }: { projectId: string }) {
     return (
       <Card>
         <CardContent className="py-8 text-center text-sm text-muted-foreground">
-          Nenhum componente cadastrado ainda — volte para a aba Componentes para adicionar peças
+          Nenhum componente cadastrado ainda — volte para a etapa Componentes para adicionar peças
           e ver o custo estimado aqui.
         </CardContent>
       </Card>
@@ -81,7 +88,24 @@ export function CostSummary({ projectId }: { projectId: string }) {
         </CardContent>
       </Card>
 
-      <div className="overflow-x-auto rounded-lg border">
+      <Card className="border-emerald-200/60 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/25">
+        <CardContent className="flex gap-3 py-4">
+          <TrendingDownIcon className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+              Economia potencial
+            </p>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Compare alternativas e identifique oportunidades para reduzir custos.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Análise de economia será aprimorada conforme o projeto evoluir.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>

@@ -23,7 +23,7 @@ export default async function DashboardLayout({
       <BackgroundAnimation />
 
       <AppSidebar variant="inset" user={session?.user ?? null} />
-      <SidebarInset>
+      <SidebarInset className="bg-background/75 backdrop-blur-[2px]">
         <SiteHeader />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">

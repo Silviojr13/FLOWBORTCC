@@ -17,12 +17,17 @@ interface Node {
 
 /* ── Config per layer ── */
 const LAYER_CONFIG = [
-  { count: 0.40, minR: 0.5, maxR: 1.2, speed: 0.08, alpha: 0.25, parallax: 0.01, connectionDist: 0 },
-  { count: 0.35, minR: 0.8, maxR: 1.8, speed: 0.14, alpha: 0.40, parallax: 0.025, connectionDist: 140 },
-  { count: 0.25, minR: 1.0, maxR: 2.5, speed: 0.22, alpha: 0.55, parallax: 0.045, connectionDist: 180 },
+  { count: 0.40, minR: 0.5, maxR: 1.2, speed: 0.08, alpha: 0.16, parallax: 0.01, connectionDist: 0 },
+  { count: 0.35, minR: 0.8, maxR: 1.8, speed: 0.14, alpha: 0.24, parallax: 0.025, connectionDist: 140 },
+  { count: 0.25, minR: 1.0, maxR: 2.5, speed: 0.22, alpha: 0.34, parallax: 0.045, connectionDist: 180 },
 ] as const;
 
-const CONNECTION_ALPHA = 0.08;
+const CONNECTION_ALPHA_LIGHT = 0.06;
+const CONNECTION_ALPHA_DARK = 0.09;
+
+function isDarkTheme() {
+  return document.documentElement.classList.contains("dark");
+}
 const PULSE_MIN = 0.003;
 const PULSE_MAX = 0.008;
 
@@ -76,6 +81,10 @@ export default function BackgroundAnimation() {
     const mx = mouseRef.current.x;
     const my = mouseRef.current.y;
 
+    const dark = isDarkTheme();
+    const connectionAlpha = dark ? CONNECTION_ALPHA_DARK : CONNECTION_ALPHA_LIGHT;
+    const alphaScale = dark ? 1.4 : 1.25;
+
     ctx.clearRect(0, 0, w, h);
 
     const nodes = nodesRef.current;
@@ -119,11 +128,11 @@ export default function BackgroundAnimation() {
         const maxDist = Math.max(cfg.connectionDist, LAYER_CONFIG[b.layer].connectionDist);
 
         if (dist < maxDist) {
-          const alpha = CONNECTION_ALPHA * (1 - dist / maxDist);
+          const alpha = connectionAlpha * alphaScale * (1 - dist / maxDist);
           ctx.beginPath();
           ctx.moveTo(ax, ay);
           ctx.lineTo(bx, by);
-          ctx.strokeStyle = `oklch(0.6 0.12 250 / ${alpha})`;
+          ctx.strokeStyle = `oklch(0.55 0.1 258 / ${alpha})`;
           ctx.lineWidth = 0.5;
           ctx.stroke();
         }
@@ -136,26 +145,26 @@ export default function BackgroundAnimation() {
       const px = n.x + mx * cfg.parallax;
       const py = n.y + my * cfg.parallax;
 
-      let alpha = n.baseAlpha;
+      let alpha = n.baseAlpha * alphaScale;
 
       // Pulse effect
       if (n.pulseSpeed > PULSE_MIN * 0.9) {
         const pulse = Math.sin(time * n.pulseSpeed + n.pulsePhase);
-        alpha = n.baseAlpha + pulse * 0.2;
+        alpha = n.baseAlpha * alphaScale + pulse * 0.2;
       }
 
       // Glow
-      if (alpha > 0.35) {
+      if (alpha > 0.2) {
         ctx.beginPath();
         ctx.arc(px, py, n.radius * 3.5, 0, Math.PI * 2);
-        ctx.fillStyle = `oklch(0.55 0.15 250 / ${alpha * 0.12})`;
+        ctx.fillStyle = `oklch(0.55 0.12 258 / ${alpha * (dark ? 0.12 : 0.08)})`;
         ctx.fill();
       }
 
       // Core dot
       ctx.beginPath();
       ctx.arc(px, py, n.radius, 0, Math.PI * 2);
-      ctx.fillStyle = `oklch(0.7 0.1 250 / ${alpha})`;
+      ctx.fillStyle = `oklch(0.55 0.12 258 / ${alpha * (dark ? 0.85 : 0.7)})`;
       ctx.fill();
     }
   }, []);

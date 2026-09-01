@@ -1,24 +1,15 @@
 "use client"
 
-import { useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ProjectShell } from "@/components/project/project-shell"
-import {
-  ProjectOverviewContent,
-  ProjectWizardPage,
-} from "@/components/project/project-wizard-page"
+import { FeaturesPanel } from "@/components/project-manual/features-panel"
 import { useProject } from "@/lib/use-project"
 
-export default function ProjectDetailPage() {
+export default function ProjectFeaturesPage() {
   const { id } = useParams<{ id: string }>()
-  const searchParams = useSearchParams()
-  const stepParam = searchParams.get("step")
   const { project, notFound, isLoading } = useProject(id)
-
-  if (stepParam) {
-    return <ProjectWizardPage projectId={id} stepParam={stepParam} />
-  }
 
   if (notFound) {
     return (
@@ -42,10 +33,10 @@ export default function ProjectDetailPage() {
   return (
     <ProjectShell
       project={project}
-      title="Visão geral"
-      description="Resumo do projeto e atalhos para os módulos de gestão."
+      title="Funcionalidades"
+      description="Gerencie as capacidades do projeto. Cada funcionalidade tem um status que aparece no Kanban."
     >
-      <ProjectOverviewContent projectId={id} />
+      <FeaturesPanel projectId={id} variant="management" />
     </ProjectShell>
   )
 }

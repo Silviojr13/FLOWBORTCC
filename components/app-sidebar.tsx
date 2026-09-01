@@ -1,8 +1,8 @@
 "use client"
 
 import * as React from "react"
-import Image from "next/image"
 import Link from "next/link"
+import { FlowbotBrandLogo } from "@/components/flowbot-brand-logo"
 import { useRouter } from "next/navigation"
 
 import { NavUser, type SidebarUser } from "@/components/nav-user"
@@ -14,6 +14,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import {
@@ -29,6 +30,7 @@ import {
   PlusIcon,
   SparklesIcon,
 } from "lucide-react"
+import { ProjectSidebarSection } from "@/components/project-sidebar-section"
 
 export function AppSidebar({
   user,
@@ -39,6 +41,7 @@ export function AppSidebar({
   isUserLoading?: boolean
 }) {
   const router = useRouter()
+  const { setOpen } = useSidebar()
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -51,14 +54,7 @@ export function AppSidebar({
               className="data-[slot=sidebar-menu-button]:p-0! hover:bg-transparent!"
             >
               <Link href="/dashboard" className="flex items-center">
-                <Image
-                  src="/flowbot-logo.svg"
-                  alt="FlowBot"
-                  width={180}
-                  height={60}
-                  priority
-                  className="h-auto w-auto max-w-[180px] object-contain"
-                />
+                <FlowbotBrandLogo variant="sidebar" priority />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -71,8 +67,7 @@ export function AppSidebar({
           <DropdownMenuTrigger asChild>
             <Button
               size="lg"
-              className="w-full gap-2 rounded-xl bg-primary text-primary-foreground shadow-[0_0_20px_-6px_oklch(0.65_0.2_250/40%)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_0_24px_-4px_oklch(0.65_0.2_250/55%)]"
-              style={{ height: "46px" }}
+              className="h-[46px] w-full gap-2 rounded-xl shadow-sm transition-colors duration-200 hover:bg-primary/90"
             >
               <PlusIcon className="size-5" />
               <span className="flex-1 text-left text-sm font-medium">
@@ -92,7 +87,10 @@ export function AppSidebar({
               Criar com IA
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => router.push("/dashboard/projects/new/manual")}
+              onClick={() => {
+                setOpen(false)
+                router.push("/dashboard/projects/new/manual")
+              }}
               className="gap-2 py-2 text-muted-foreground"
             >
               <ClipboardListIcon className="size-4" />
@@ -104,13 +102,15 @@ export function AppSidebar({
         <SidebarMenu className="mt-1">
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <Link href="/dashboard/projects" className="gap-2 text-muted-foreground">
+              <Link href="/dashboard/projects" className="gap-2 text-sidebar-foreground">
                 <FolderIcon className="size-4" />
                 Projetos
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+
+        <ProjectSidebarSection />
 
         {/* Flexible spacer — pushes auth + user to bottom */}
         <div className="flex-1" />
@@ -119,7 +119,7 @@ export function AppSidebar({
       {/* ── Footer: auth buttons + user ── */}
       <SidebarFooter className="gap-2 px-3 pb-3">
         {/* Separator */}
-        <div className="my-1 h-px bg-white/6" />
+        <div className="my-1 h-px bg-sidebar-border" />
 
         {/* User area */}
         <NavUser user={user} isLoading={isUserLoading} />
