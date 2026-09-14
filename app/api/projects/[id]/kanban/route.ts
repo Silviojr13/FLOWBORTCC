@@ -22,8 +22,8 @@ export async function GET(
   if (!project) return jsonError("Projeto não encontrado", 404);
 
   try {
-    const columns = await ensureKanbanColumns(projectId);
-    const [tasks, sprints] = await Promise.all([
+    const [columns, tasks, sprints] = await Promise.all([
+      ensureKanbanColumns(projectId),
       listTasks(projectId),
       listSprintsWithProgress(projectId),
     ]);
