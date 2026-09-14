@@ -104,6 +104,8 @@ model Project {
   features     Feature[]
   tasks        Task[]
   components   HardwareComponent[]
+  columns      KanbanColumn[]
+  sprints      Sprint[]
 
   @@map("projects")
 }
@@ -148,6 +150,7 @@ model Feature {
 
   project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   requirement Requirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  tasks       Task[]
 
   @@map("features")
 }
@@ -168,21 +171,84 @@ model RequirementHistory {
   @@map("requirement_history")
 }
 
-// Status possíveis (RF05): "Backlog" | "Em Progresso" | "Em Revisão" | "Concluído"
+// Coluna do quadro Kanban (RF05). Cada projeto tem suas próprias colunas, configuráveis
+// pelo usuário; as padrão são Backlog | Em Progresso | Em Revisão | Concluído.
+// `isDone` marca as colunas que contam como "tarefa concluída" para progresso/relatórios.
+// `wipLimit` é o limite de trabalho em progresso da coluna (opcional, prática central do Kanban).
+model KanbanColumn {
+  id        String   @id @default(cuid())
+  name      String
+  order     Int      @default(0)
+  isDone    Boolean  @default(false)
+  wipLimit  Int?
+  projectId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+
+  @@map("kanban_columns")
+}
+
+// Sprint (RF08): período de tempo ao qual um conjunto de tarefas é associado (UC07).
+model Sprint {
+  id        String   @id @default(cuid())
+  name      String
+  goal      String?
+  startDate DateTime
+  endDate   DateTime
+  projectId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+
+  @@map("sprints")
+}
+
+// Tarefa do Kanban (RF06): título, descrição, responsável, prazo, prioridade e vínculo
+// a um requisito (rastreabilidade, RF02). A coluna em que está representa seu status.
+// Prioridade: "Alta" | "Média" | "Baixa"
 model Task {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   title         String
   description   String?
-  status        String   @default("Backlog")
+  priority      String    @default("Média")
+  assignee      String?
+  dueDate       DateTime?
+  order         Int       @default(0)
+  columnId      String
   projectId     String
   requirementId String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  featureId     String?
+  sprintId      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  requirement Requirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  column      KanbanColumn  @relation(fields: [columnId], references: [id], onDelete: Restrict)
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requirement Requirement?  @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  feature     Feature?      @relation(fields: [featureId], references: [id], onDelete: SetNull)
+  sprint      Sprint?       @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  history     TaskHistory[]
 
   @@map("tasks")
+}
+
+// Histórico de movimentação da tarefa entre colunas (RF09). Guarda o nome das colunas
+// (snapshot) para o registro sobreviver a renomeações/exclusões de coluna.
+model TaskHistory {
+  id         String   @id @default(cuid())
+  taskId     String
+  fromColumn String?
+  toColumn   String
+  changedAt  DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("task_history")
 }
 
 model HardwareComponent {

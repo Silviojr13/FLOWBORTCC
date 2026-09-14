@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
+  CalendarRangeIcon,
   LayoutGridIcon,
   KanbanIcon,
   PackageIcon,
@@ -29,6 +30,7 @@ import {
   type ProjectStep,
 } from "@/lib/project-steps"
 import { useProject } from "@/lib/use-project"
+import { isTaskOverdue, type KanbanColumn, type Task } from "@/lib/kanban"
 import {
   isRequirementsSkipped,
   setRequirementsSkipped,
@@ -215,8 +217,13 @@ export function ProjectWizardPage({
 export function ProjectOverviewContent({ projectId }: { projectId: string }) {
   const [stats, setStats] = useState<{
     requirementsCount: number
+    requirementsUncovered: string[]
     featuresTotal: number
     featuresByStatus: Record<string, number>
+    tasksTotal: number
+    tasksDone: number
+    tasksOverdue: number
+    tasksByColumn: { name: string; count: number }[]
     componentsCount: number
     totalCost: number
     requirementsSkipped: boolean
@@ -229,18 +236,38 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
     async function load() {
       setIsLoading(true)
       try {
-        const [reqRes, featRes, compRes] = await Promise.all([
+        const [reqRes, featRes, compRes, kanbanRes] = await Promise.all([
           fetch(`/api/projects/${projectId}/requirements`),
           fetch(`/api/projects/${projectId}/features`),
           fetch(`/api/projects/${projectId}/components`),
+          fetch(`/api/projects/${projectId}/kanban`),
         ])
-        const [reqData, featData, compData] = await Promise.all([
+        const [reqData, featData, compData, kanbanData] = await Promise.all([
           reqRes.json(),
           featRes.json(),
           compRes.json(),
+          kanbanRes.json(),
         ])
 
         if (cancelled) return
+
+        // Indicadores de saúde do projeto (RF14): tarefas concluídas/atrasadas e requisitos sem cobertura.
+        const columns: KanbanColumn[] = kanbanRes.ok ? kanbanData.columns : []
+        const tasks: Task[] = kanbanRes.ok ? kanbanData.tasks : []
+        const doneColumnIds = new Set(columns.filter((c) => c.isDone).map((c) => c.id))
+        const tasksDone = tasks.filter((t) => doneColumnIds.has(t.columnId)).length
+        const tasksOverdue = tasks.filter((t) => isTaskOverdue(t, doneColumnIds.has(t.columnId))).length
+        const tasksByColumn = columns.map((c) => ({
+          name: c.name,
+          count: tasks.filter((t) => t.columnId === c.id).length,
+        }))
+        const coveredRequirementIds = new Set(
+          tasks.map((t) => t.requirementId).filter((id): id is string => !!id)
+        )
+        const requirementsList: { id: string; code: string }[] = reqRes.ok ? reqData.requirements : []
+        const requirementsUncovered = requirementsList
+          .filter((r) => !coveredRequirementIds.has(r.id))
+          .map((r) => r.code)
 
         const features = featRes.ok ? featData.features : []
         const byStatus: Record<string, number> = {
@@ -260,9 +287,14 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
         )
 
         setStats({
-          requirementsCount: reqRes.ok ? reqData.requirements.length : 0,
+          requirementsCount: requirementsList.length,
+          requirementsUncovered,
           featuresTotal: features.length,
           featuresByStatus: byStatus,
+          tasksTotal: tasks.length,
+          tasksDone,
+          tasksOverdue,
+          tasksByColumn,
           componentsCount: components.length,
           totalCost,
           requirementsSkipped: isRequirementsSkipped(projectId),
@@ -282,8 +314,8 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
   }, [projectId])
 
   const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
-  const completed = stats?.featuresByStatus["Concluída"] ?? 0
-  const total = stats?.featuresTotal ?? 0
+  const completed = stats?.tasksDone ?? 0
+  const total = stats?.tasksTotal ?? 0
   const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0
 
   const shortcuts = [
@@ -297,7 +329,13 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
       href: `/dashboard/projects/${projectId}/kanban`,
       label: "Kanban",
       icon: KanbanIcon,
-      description: "Acompanhar progresso por status",
+      description: "Tarefas por estado, com drag-and-drop",
+    },
+    {
+      href: `/dashboard/projects/${projectId}/sprints`,
+      label: "Sprints",
+      icon: CalendarRangeIcon,
+      description: "Planejar ciclos e acompanhar progresso",
     },
     {
       href: `/dashboard/projects/${projectId}/components-costs`,
@@ -317,15 +355,35 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-xl border border-border bg-card/95 px-4 py-3">
-              <p className="text-xs text-muted-foreground">Funcionalidades</p>
-              <p className="mt-1 text-2xl font-semibold">{stats.featuresTotal}</p>
+              <p className="text-xs text-muted-foreground">Tarefas</p>
+              <p className="mt-1 text-2xl font-semibold">{stats.tasksTotal}</p>
+              <p className="text-xs text-muted-foreground">
+                {stats.featuresTotal} funcionalidade(s)
+              </p>
             </div>
             <div className="rounded-xl border border-border bg-card/95 px-4 py-3">
               <p className="text-xs text-muted-foreground">Progresso</p>
               <p className="mt-1 text-2xl font-semibold">{progressPct}%</p>
               <p className="text-xs text-muted-foreground">
-                {completed} de {total} concluída(s)
+                {completed} de {total} tarefa(s) concluída(s)
               </p>
+            </div>
+            <div className="rounded-xl border border-border bg-card/95 px-4 py-3">
+              <p className="text-xs text-muted-foreground">Tarefas em atraso</p>
+              <p className={`mt-1 text-2xl font-semibold ${stats.tasksOverdue > 0 ? "text-destructive" : ""}`}>
+                {stats.tasksOverdue}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-card/95 px-4 py-3">
+              <p className="text-xs text-muted-foreground">Requisitos sem cobertura</p>
+              <p className={`mt-1 text-2xl font-semibold ${stats.requirementsUncovered.length > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
+                {stats.requirementsUncovered.length}
+              </p>
+              {stats.requirementsUncovered.length > 0 && (
+                <p className="truncate font-mono text-xs text-muted-foreground" title={stats.requirementsUncovered.join(", ")}>
+                  {stats.requirementsUncovered.join(", ")}
+                </p>
+              )}
             </div>
             <div className="rounded-xl border border-border bg-card/95 px-4 py-3">
               <p className="text-xs text-muted-foreground">Componentes</p>
@@ -336,6 +394,19 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
               <p className="mt-1 text-2xl font-semibold">{currency.format(stats.totalCost)}</p>
             </div>
           </div>
+
+          {stats.tasksByColumn.length > 0 && (
+            <div className="rounded-xl border border-border bg-card/95 px-4 py-4">
+              <p className="text-sm font-medium">Tarefas por coluna do Kanban</p>
+              <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                {stats.tasksByColumn.map((c) => (
+                  <span key={c.name}>
+                    <span className="text-muted-foreground">{c.name}:</span> {c.count}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="rounded-xl border border-border bg-card/95 px-4 py-4">
             <p className="text-sm font-medium">Status das funcionalidades</p>
@@ -373,7 +444,7 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
 
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium">Atalhos</p>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {shortcuts.map(({ href, label, icon: Icon, description }) => (
                 <Link
                   key={href}

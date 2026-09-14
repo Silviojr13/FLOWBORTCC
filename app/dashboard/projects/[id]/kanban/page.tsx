@@ -34,7 +34,7 @@ export default function ProjectKanbanPage() {
     <ProjectShell
       project={project}
       title="Kanban"
-      description="Acompanhe o desenvolvimento das funcionalidades do projeto. Arraste os cards ou altere o status pelo select."
+      description="Organize as tarefas do projeto por estado. Arraste os cards entre colunas ou mova pelo select; cada tarefa pode ser vinculada a um requisito e a uma sprint."
     >
       <KanbanBoard projectId={id} />
     </ProjectShell>

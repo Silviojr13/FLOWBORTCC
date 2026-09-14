@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import {
   BotIcon,
+  CalendarRangeIcon,
   KanbanIcon,
   LayoutGridIcon,
   PackageIcon,
@@ -120,6 +121,11 @@ export function ProjectSidebarSection() {
           href: `/dashboard/projects/${activeProjectId}/kanban`,
           label: "Kanban",
           icon: KanbanIcon,
+        },
+        {
+          href: `/dashboard/projects/${activeProjectId}/sprints`,
+          label: "Sprints",
+          icon: CalendarRangeIcon,
         },
       ]
     : []

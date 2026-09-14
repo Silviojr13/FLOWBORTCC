@@ -17,7 +17,8 @@
     "script:test-prisma": "dotenv -e .env -- tsx scripts/test-prisma-direct.ts",
     "script:test-turso-url": "dotenv -e .env -- tsx scripts/test-turso-url.ts",
     "script:test-db-final": "dotenv -e .env -- tsx scripts/test-db-final.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "script:create-kanban-tables": "dotenv -e .env -- tsx scripts/create-kanban-tables.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
