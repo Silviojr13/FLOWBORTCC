@@ -4,10 +4,10 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ProjectShell } from "@/components/project/project-shell"
-import { FeaturesPanel } from "@/components/project-manual/features-panel"
+import { SprintsPanel } from "@/components/project/sprints-panel"
 import { useProject } from "@/lib/use-project"
 
-export default function ProjectFeaturesPage() {
+export default function ProjectSprintsPage() {
   const { id } = useParams<{ id: string }>()
   const { project, notFound, isLoading } = useProject(id)
 
@@ -33,10 +33,10 @@ export default function ProjectFeaturesPage() {
   return (
     <ProjectShell
       project={project}
-      title="Funcionalidades"
-      description="Gerencie as capacidades do projeto. As tarefas do Kanban podem ser vinculadas a cada funcionalidade."
+      title="Sprints"
+      description="Planeje ciclos de desenvolvimento com período e objetivo, associe tarefas do Kanban e acompanhe o progresso."
     >
-      <FeaturesPanel projectId={id} variant="management" />
+      <SprintsPanel projectId={id} />
     </ProjectShell>
   )
 }
