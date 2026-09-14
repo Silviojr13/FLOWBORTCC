@@ -9,6 +9,8 @@ import {
   PointerSensor,
   TouchSensor,
   closestCorners,
+  pointerWithin,
+  rectIntersection,
   useDraggable,
   useDroppable,
   useSensor,
@@ -16,6 +18,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
   type DraggableSyntheticListeners,
+  type CollisionDetection,
 } from "@dnd-kit/core"
 import { CSS } from "@dnd-kit/utilities"
 import {
@@ -68,6 +71,18 @@ import { cn } from "@/lib/utils"
 
 const ALL = "__all__"
 const NO_ASSIGNEE = "__none__"
+
+// Onde soltar: primeiro o card sob o ponteiro (inserir naquela posição), senão a coluna sob o
+// ponteiro; se o ponteiro estiver fora de tudo, cai nas heurísticas geométricas do dnd-kit.
+const kanbanCollision: CollisionDetection = (args) => {
+  const underPointer = pointerWithin(args)
+  if (underPointer.length > 0) {
+    const card = underPointer.find((c) => c.data?.droppableContainer?.data?.current?.type === "task")
+    return card ? [card] : [underPointer[0]]
+  }
+  const intersecting = rectIntersection(args)
+  return intersecting.length > 0 ? intersecting : closestCorners(args)
+}
 
 interface Filters {
   assignee: string
@@ -703,7 +718,7 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={kanbanCollision}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragCancel={() => setActiveTask(null)}
