@@ -251,14 +251,14 @@ export function FeaturesPanel({
   const emptyMessage =
     variant === "wizard"
       ? "Transforme seus requisitos nas capacidades principais do projeto."
-      : "Adicione funcionalidades para organizar o desenvolvimento e o Kanban."
+      : "Adicione funcionalidades para organizar o desenvolvimento; as tarefas do Kanban podem ser vinculadas a elas."
 
   return (
     <div className="flex flex-col gap-4">
       {variant === "wizard" && (
         <p className="text-sm text-muted-foreground">
-          Cada funcionalidade terá um status (Planejada, Em desenvolvimento ou Concluída) que
-          aparecerá no Kanban do projeto.
+          Cada funcionalidade tem um status de planejamento (Planejada, Em desenvolvimento ou
+          Concluída). A execução é detalhada em tarefas no Kanban do projeto.
         </p>
       )}
 
