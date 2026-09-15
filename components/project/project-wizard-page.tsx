@@ -8,6 +8,7 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   CalendarRangeIcon,
+  FileTextIcon,
   LayoutGridIcon,
   KanbanIcon,
   PackageIcon,
@@ -343,6 +344,12 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
       icon: PackageIcon,
       description: "Lista de peças e orçamento",
     },
+    {
+      href: `/dashboard/projects/${projectId}/report`,
+      label: "Relatórios",
+      icon: FileTextIcon,
+      description: "Consolidado com export PDF/CSV/MD",
+    },
   ]
 
   return (
@@ -444,7 +451,7 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
 
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium">Atalhos</p>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {shortcuts.map(({ href, label, icon: Icon, description }) => (
                 <Link
                   key={href}

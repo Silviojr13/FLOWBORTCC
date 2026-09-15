@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation"
 import {
   BotIcon,
   CalendarRangeIcon,
+  FileTextIcon,
   KanbanIcon,
   LayoutGridIcon,
   PackageIcon,
@@ -126,6 +127,11 @@ export function ProjectSidebarSection() {
           href: `/dashboard/projects/${activeProjectId}/sprints`,
           label: "Sprints",
           icon: CalendarRangeIcon,
+        },
+        {
+          href: `/dashboard/projects/${activeProjectId}/report`,
+          label: "Relatórios",
+          icon: FileTextIcon,
         },
       ]
     : []
