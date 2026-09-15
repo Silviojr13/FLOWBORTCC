@@ -251,3 +251,32 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+/* Impressão do relatório (RF15 — PDF pelo navegador) */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .report-root {
+    color: #000;
+  }
+  .report-section {
+    break-inside: avoid;
+  }
+  .report-table {
+    font-size: 10.5px;
+  }
+  .report-table th,
+  .report-table td {
+    padding: 4px 6px;
+  }
+  .report-table thead {
+    display: table-header-group;
+  }
+  .report-table tr {
+    break-inside: avoid;
+  }
+  @page {
+    margin: 14mm 12mm;
+  }
+}
