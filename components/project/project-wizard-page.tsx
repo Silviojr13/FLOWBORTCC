@@ -100,7 +100,7 @@ export function ProjectWizardPage({
 
   if (notFound) {
     return (
-      <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-4 px-4 py-12 text-center sm:px-6">
+      <div className="flex w-full flex-col items-center gap-4 px-4 py-12 text-center sm:px-6 lg:px-8">
         <p className="text-sm text-muted-foreground">Projeto não encontrado.</p>
         <Button variant="outline" onClick={() => router.push("/dashboard/projects")}>
           Voltar para projetos
@@ -111,7 +111,7 @@ export function ProjectWizardPage({
 
   if (isLoading || !project) {
     return (
-      <div className="mx-auto flex w-full max-w-4xl px-4 py-12 text-sm text-muted-foreground sm:px-6">
+      <div className="flex w-full px-4 py-12 text-sm text-muted-foreground sm:px-6 lg:px-8">
         Carregando...
       </div>
     )
@@ -124,7 +124,7 @@ export function ProjectWizardPage({
 
   return (
     <ProjectCreationLayout currentStep={step} railContext={railContext}>
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+      <div className="flex w-full flex-col gap-6">
         <Button
           variant="ghost"
           size="sm"

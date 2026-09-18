@@ -40,7 +40,7 @@ export default function ProjectsPage() {
   }, [])
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 sm:px-6">
+    <div className="flex w-full flex-col gap-6 px-4 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-navy dark:text-foreground sm:text-3xl">
@@ -79,7 +79,7 @@ export default function ProjectsPage() {
         </Card>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {projects.map((project) => (
           <Link key={project.id} href={`/dashboard/projects/${project.id}`}>
             <Card className="h-full border-border shadow-sm transition-colors hover:border-primary/30 hover:shadow-md">

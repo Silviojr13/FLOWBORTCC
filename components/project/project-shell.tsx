@@ -20,7 +20,7 @@ export function ProjectShell({
   headerAction?: React.ReactNode
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 sm:px-6">
+    <div className="flex w-full flex-col gap-6 px-4 sm:px-6 lg:px-8">
       <Button
         variant="ghost"
         size="sm"
