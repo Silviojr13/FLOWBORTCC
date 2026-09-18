@@ -205,7 +205,7 @@ export function FeaturesPanel({
 
   function renderDraftForm() {
     return (
-      <Card className="border-primary/30 lg:col-span-2">
+      <Card className="border-primary/30 lg:col-span-2 2xl:col-span-3">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
             {editingId === NEW_ROW_ID ? "Nova funcionalidade" : "Editar funcionalidade"}
@@ -275,11 +275,11 @@ export function FeaturesPanel({
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
         {features.map((feature) => {
           if (editingId === feature.id) {
             return (
-              <div key={feature.id} className="lg:col-span-2">
+              <div key={feature.id} className="lg:col-span-2 2xl:col-span-3">
                 {renderDraftForm()}
               </div>
             )

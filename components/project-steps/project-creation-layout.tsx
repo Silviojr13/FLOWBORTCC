@@ -11,7 +11,7 @@ export function ProjectCreationLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 px-4 sm:gap-6 sm:px-6">
+    <div className="flex w-full flex-1 flex-col gap-4 px-4 sm:gap-6 sm:px-6 lg:px-8">
       <ProjectStepRail
         currentStep={currentStep}
         variant="compact"
