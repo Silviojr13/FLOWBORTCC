@@ -109,7 +109,10 @@ export function NavUser({
 
     setIsSigningOut(true)
     try {
-      await signOut({ callbackUrl: "/login" })
+      // redirect: false evita que o NextAuth monte a URL de retorno a partir de NEXTAUTH_URL
+      // (que apontava para localhost em produção). O destino fica relativo à origem atual.
+      await signOut({ redirect: false })
+      window.location.assign("/login")
     } catch (error) {
       console.error("Erro ao sair:", error)
       setIsSigningOut(false)
