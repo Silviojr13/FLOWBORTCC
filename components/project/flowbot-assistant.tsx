@@ -2,7 +2,8 @@
 
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
+import { createPortal } from "react-dom"
 import { toast } from "sonner"
 import {
   ArrowUpIcon,
@@ -33,6 +34,18 @@ import {
   type FlowbotAction,
 } from "@/lib/flowbot-actions"
 import { cn } from "@/lib/utils"
+
+// O <main> do dashboard usa backdrop-filter, o que cria um containing block e faria
+// `position: fixed` se ancorar nele (o robô subiria junto com o scroll). Renderizar em um
+// portal no <body> mantém o assistente preso à viewport sem mexer no visual do layout.
+const emptySubscribe = () => () => {}
+function useIsClient() {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  )
+}
 
 interface ConversationSummary {
   id: string
@@ -69,6 +82,7 @@ export function FlowbotAssistant({
 
   const router = useRouter()
 
+  const isClient = useIsClient()
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -189,6 +203,23 @@ export function FlowbotAssistant({
         toast.warning(`${failed.length} de ${results.length} alteração(ões) falharam.`)
       }
 
+      // Registra o resultado na conversa: vira histórico e impede que a mesma proposta
+      // volte a aparecer como pendente depois de recarregar a página.
+      const summary = [
+        `**Alterações aplicadas** (${results.filter((r) => r.ok).length}/${results.length})`,
+        ...results.map((r) => `- ${r.ok ? "✅" : "❌"} ${r.message}`),
+      ].join("\n")
+
+      if (activeChatId) {
+        await fetch(`/api/conversations/${activeChatId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: summary }),
+        }).catch((error) => console.error(error))
+      }
+      setMessages((prev) => [...prev, { role: "assistant", content: summary }])
+      setAppliedResults(null)
+
       if (results.some((r) => r.ok)) router.refresh()
     } catch (error) {
       console.error(error)
@@ -276,7 +307,9 @@ export function FlowbotAssistant({
 
   /* ---- render ---- */
 
-  return (
+  if (!isClient) return null
+
+  return createPortal(
     <>
       {isOpen && (
         <div
@@ -471,6 +504,7 @@ export function FlowbotAssistant({
           />
         </span>
       </button>
-    </>
+    </>,
+    document.body
   )
 }
