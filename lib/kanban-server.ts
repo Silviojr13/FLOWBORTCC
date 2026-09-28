@@ -49,7 +49,7 @@ export async function ensureKanbanColumns(projectId: string) {
 
 // Campos relacionados que a UI precisa para renderizar um card sem consultas extras.
 export const taskInclude = {
-  requirement: { select: { id: true, code: true, description: true } },
+  requirement: { select: { id: true, code: true, description: true, status: true } },
   feature: { select: { id: true, name: true } },
   sprint: { select: { id: true, name: true } },
 } as const;

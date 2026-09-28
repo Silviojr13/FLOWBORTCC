@@ -67,6 +67,7 @@ import {
   type TaskPriority,
   type TaskRequirementRef,
 } from "@/lib/kanban"
+import { showProjectEffects } from "@/lib/project-effects"
 import { cn } from "@/lib/utils"
 
 const ALL = "__all__"
@@ -128,15 +129,24 @@ function TaskCardContent({
   onDelete: (task: Task) => void
 }) {
   const overdue = isTaskOverdue(task, isDone)
+  // Integração Requisitos → Kanban: o requisito desta tarefa foi descartado.
+  const requirementDiscarded = task.requirement?.status === "Descartado"
 
   return (
     <div
       className={cn(
         "rounded-lg border border-border bg-card p-3 shadow-sm transition-shadow",
         isDragging && "opacity-40",
-        overdue && "border-destructive/50"
+        overdue && "border-destructive/50",
+        requirementDiscarded && "border-amber-400/70 bg-amber-50/40 dark:bg-amber-950/20"
       )}
     >
+      {requirementDiscarded && (
+        <p className="mb-2 flex items-center gap-1.5 rounded-md bg-amber-100/70 px-2 py-1 text-[11px] font-medium text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+          <AlertTriangleIcon className="size-3.5 shrink-0" aria-hidden />
+          Requisito {task.requirement?.code} foi descartado
+        </p>
+      )}
       <div className="flex items-start gap-2">
         <button
           type="button"
@@ -507,11 +517,30 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Erro ao mover tarefa")
       upsertTask(data.task)
+      showProjectEffects(data.effects, { onValidateRequirement: validateRequirement })
       load()
     } catch (error) {
       console.error(error)
       setTasks((prev) => prev.map((t) => (t.id === taskId ? previous : t)))
       toast.error(error instanceof Error ? error.message : "Erro ao mover tarefa.")
+    }
+  }
+
+  // Ação oferecida no aviso "todas as tarefas do requisito concluídas" (Kanban → Requisitos).
+  async function validateRequirement(requirementId: string, code: string) {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/requirements/${requirementId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "Validado" }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Erro ao validar requisito")
+      toast.success(`${code} marcado como Validado.`)
+      load()
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : "Erro ao validar requisito.")
     }
   }
 
@@ -579,10 +608,11 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ columnId: targetColumnId, taskIds: targetIds }),
       })
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const data = await res.json()
         throw new Error(data.error || "Erro ao mover tarefa")
       }
+      showProjectEffects(data.effects, { onValidateRequirement: validateRequirement })
       load()
     } catch (error) {
       console.error(error)

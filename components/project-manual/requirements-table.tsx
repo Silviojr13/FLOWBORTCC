@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+import { showProjectEffects } from "@/lib/project-effects"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -27,6 +28,7 @@ import {
   PrioritySelectItem,
   StatusIndicator,
   StatusSelectItem,
+  CoverageIndicator,
 } from "@/components/project-manual/requirement-indicators"
 
 export interface Requirement {
@@ -36,7 +38,15 @@ export interface Requirement {
   category: "Funcional" | "Não Funcional"
   priority: "Alta" | "Média" | "Baixa"
   status: "Em Aberto" | "Validado" | "Descartado"
+  // Repercussão dos demais módulos, devolvida pela API (integração entre módulos).
+  tasksTotal?: number
+  tasksDone?: number
+  featuresTotal?: number
+  componentsTotal?: number
+  estimatedCost?: number
 }
+
+const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
 
 const CATEGORIES: Requirement["category"][] = ["Funcional", "Não Funcional"]
 const PRIORITIES: Requirement["priority"][] = ["Alta", "Média", "Baixa"]
@@ -189,9 +199,13 @@ export function RequirementsTable({
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || "Erro ao atualizar requisito")
         setRequirements((prev) =>
-          prev.map((r) => (r.id === editingId ? data.requirement : r))
+          prev.map((r) =>
+            // A resposta do PATCH não recalcula cobertura/custo: preserva o que já temos.
+            r.id === editingId ? { ...r, ...data.requirement } : r
+          )
         )
         toast.success(`${data.requirement.code} atualizado.`)
+        showProjectEffects(data.effects)
       }
       setEditingId(null)
       setDraft(EMPTY_DRAFT)
@@ -204,12 +218,28 @@ export function RequirementsTable({
   }
 
   async function deleteRequirement(id: string) {
+    const requirement = requirements.find((r) => r.id === id)
+
+    // Excluir desvincula tarefas, funcionalidades e componentes em cascata (SetNull).
+    // Avisa o que será afetado antes, em vez de fazer isso em silêncio.
+    const impact = [
+      requirement?.tasksTotal ? `${requirement.tasksTotal} tarefa(s)` : null,
+      requirement?.featuresTotal ? `${requirement.featuresTotal} funcionalidade(s)` : null,
+      requirement?.componentsTotal ? `${requirement.componentsTotal} componente(s)` : null,
+    ].filter(Boolean)
+
+    const confirmation = impact.length
+      ? `Excluir ${requirement?.code}? ${impact.join(", ")} ficarão sem requisito vinculado.`
+      : `Excluir ${requirement?.code ?? "este requisito"}?`
+
+    if (!window.confirm(confirmation)) return
+
     try {
       const res = await fetch(`/api/projects/${projectId}/requirements/${id}`, {
         method: "DELETE",
       })
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const data = await res.json()
         throw new Error(data.error || "Erro ao excluir requisito")
       }
       setRequirements((prev) => {
@@ -217,6 +247,7 @@ export function RequirementsTable({
         onCountChange?.(next.length)
         return next
       })
+      showProjectEffects(data.effects)
     } catch (error) {
       console.error(error)
       toast.error(error instanceof Error ? error.message : "Erro ao excluir requisito.")
@@ -244,6 +275,12 @@ export function RequirementsTable({
               <TableHead className="w-32 bg-muted/40 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Status
               </TableHead>
+              <TableHead className="w-28 bg-muted/40 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Cobertura
+              </TableHead>
+              <TableHead className="w-28 bg-muted/40 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Custo
+              </TableHead>
               <TableHead className="w-20 bg-muted/40 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Ações
               </TableHead>
@@ -252,7 +289,7 @@ export function RequirementsTable({
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={8} className="py-6 text-center text-sm text-muted-foreground">
                   Carregando requisitos...
                 </TableCell>
               </TableRow>
@@ -260,7 +297,7 @@ export function RequirementsTable({
 
             {!isLoading && requirements.length === 0 && editingId !== NEW_ROW_ID && (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center">
+                <TableCell colSpan={8} className="py-8 text-center">
                   <p className="text-sm font-medium text-foreground">Nenhum requisito adicionado ainda.</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Comece descrevendo o que seu projeto precisa atender.
@@ -331,7 +368,7 @@ export function RequirementsTable({
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell colSpan={3} className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button size="icon" variant="ghost" disabled={isSaving} onClick={confirmEdit} aria-label="Salvar">
                         <CheckIcon className="size-4" />
@@ -353,6 +390,21 @@ export function RequirementsTable({
                   <TableCell><CategoryIndicator value={requirement.category} /></TableCell>
                   <TableCell><PriorityIndicator value={requirement.priority} /></TableCell>
                   <TableCell><StatusIndicator value={requirement.status} /></TableCell>
+                  <TableCell>
+                    <CoverageIndicator
+                      total={requirement.tasksTotal ?? 0}
+                      done={requirement.tasksDone ?? 0}
+                    />
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {requirement.componentsTotal ? (
+                      <span title={`${requirement.componentsTotal} componente(s) vinculado(s)`}>
+                        {currency.format(requirement.estimatedCost ?? 0)}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button

@@ -32,6 +32,8 @@ export interface TaskRequirementRef {
   id: string
   code: string
   description: string
+  /** Presente nas tarefas; permite sinalizar no card um requisito descartado. */
+  status?: string
 }
 
 export interface Task {

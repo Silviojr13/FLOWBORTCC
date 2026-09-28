@@ -53,10 +53,26 @@ export async function GET(
   }
 
   try {
-    const requirements = await tursoDb.requirement.findMany({
+    const rows = await tursoDb.requirement.findMany({
       where: { projectId },
       orderBy: { code: "asc" },
+      include: {
+        tasks: { select: { column: { select: { isDone: true } } } },
+        components: { select: { quantity: true, unitPrice: true } },
+        _count: { select: { features: true } },
+      },
     });
+
+    // Cada requisito carrega a repercussão dos outros módulos: quantas tarefas o cobrem,
+    // quantas já foram concluídas e quanto custa o hardware associado a ele.
+    const requirements = rows.map(({ tasks, components, _count, ...requirement }) => ({
+      ...requirement,
+      tasksTotal: tasks.length,
+      tasksDone: tasks.filter((t) => t.column.isDone).length,
+      featuresTotal: _count.features,
+      componentsTotal: components.length,
+      estimatedCost: components.reduce((sum, c) => sum + c.quantity * c.unitPrice, 0),
+    }));
 
     return new Response(JSON.stringify({ requirements }), {
       status: 200,
