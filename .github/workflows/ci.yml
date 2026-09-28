@@ -1,0 +1,58 @@
+name: CI
+
+# Garantia de qualidade da ferramenta (Sprint 2): lint, verificação de tipos, build e
+# análise estática no Sonar a cada push e Pull Request.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  qualidade:
+    name: Lint, tipos e build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # O postinstall roda "prisma generate", que não precisa de conexão com o banco.
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint
+        run: npx eslint app components lib scripts
+
+      - name: Verificação de tipos
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npx next build
+        env:
+          # Valores de placeholder: o build não acessa o banco nem o provedor de IA.
+          DATABASE_URL: file:./build.db
+          NEXTAUTH_SECRET: build-only-secret
+          NEXTAUTH_URL: http://localhost:3000
+
+  sonar:
+    name: Análise estática (SonarCloud)
+    runs-on: ubuntu-latest
+    needs: qualidade
+    # O scan só roda quando o token está configurado no repositório.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # O Sonar usa o histórico para atribuir os problemas aos autores corretos.
+          fetch-depth: 0
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -1,0 +1,4 @@
+# Dependências dos testes de integração (Selenium + pytest).
+# Instalação:  pip install -r requirements-test.txt
+selenium>=4.20
+pytest>=8.0
