@@ -180,6 +180,12 @@
   40% { opacity: 1; transform: scale(1); }
 }
 
+/* Flutuação suave do assistente FlowBot */
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
 @keyframes subtle-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
@@ -187,6 +193,10 @@
 
 .animate-fade-in-up {
   animation: fade-in-up 0.25s ease-out both;
+}
+
+.animate-float-soft {
+  animation: float-soft 3.6s ease-in-out infinite;
 }
 
 .typing-dot {
@@ -202,6 +212,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in-up {
+    animation: none;
+  }
+  .animate-float-soft {
     animation: none;
   }
   .typing-dot {

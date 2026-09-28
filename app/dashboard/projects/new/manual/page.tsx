@@ -7,6 +7,7 @@ import { ProjectCreationLayout } from "@/components/project-steps/project-creati
 import { ProjectIdentityCard } from "@/components/project-manual/project-identity-card"
 import { RequirementsTable } from "@/components/project-manual/requirements-table"
 import { AiChatAssistButton } from "@/components/project-manual/ai-assist-button"
+import { FlowbotAssistant } from "@/components/project/flowbot-assistant"
 import { MANUAL_STEP_CONTENT } from "@/lib/manual-step-content"
 import { saveProjectLocalMeta } from "@/lib/project-local-meta"
 import { Button } from "@/components/ui/button"
@@ -24,6 +25,8 @@ interface CreatedProject {
 interface ChatImport {
   projectName: string
   requirements: { description: string; category: "Funcional" | "Não Funcional" }[]
+  // Conversa que originou os requisitos: fica vinculada ao projeto criado.
+  chatId?: string | null
 }
 
 const CHAT_IMPORT_KEY = "flowbot:chat-requirements"
@@ -62,6 +65,7 @@ export default function ManualProjectPage() {
           name: trimmed,
           description: description.trim() || undefined,
           origin: chatImport ? "ia" : "manual",
+          chatId: chatImport?.chatId ?? undefined,
         }),
       })
       const data = await res.json()
@@ -163,6 +167,8 @@ export default function ManualProjectPage() {
           </>
         )}
       </div>
+
+      {project && <FlowbotAssistant projectId={project.id} projectName={project.name} />}
     </ProjectCreationLayout>
   )
 }

@@ -2,17 +2,17 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import ReactMarkdown from "react-markdown";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { ChatInput } from "@/components/chat-input";
 import { ProjectCreationLayout } from "@/components/project-steps/project-creation-layout";
-import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
-import { BotIcon, SaveIcon, UserIcon } from "lucide-react";
+import { BotIcon } from "lucide-react";
 import {
-  messageHasGeneratedRequirements,
-  parseRequirementsFromMessage,
-} from "@/lib/parse-requirements";
+  MessageBubble,
+  TypingIndicator,
+  type ChatMessage as Message,
+} from "@/components/chat/message-bubble";
+import { parseRequirementsFromMessage } from "@/lib/parse-requirements";
 
 const CHAT_IMPORT_KEY = "flowbot:chat-requirements";
 
@@ -20,134 +20,11 @@ const CHAT_IMPORT_KEY = "flowbot:chat-requirements";
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
-
 interface Conversation {
   id: string;
   title: string;
   date: string;
   messages: Message[];
-}
-
-/* ------------------------------------------------------------------ */
-/*  Typing Indicator                                                   */
-/* ------------------------------------------------------------------ */
-
-function TypingIndicator() {
-  return (
-    <div className="flex items-center gap-1 px-1 py-2">
-      <span className="typing-dot" />
-      <span className="typing-dot" />
-      <span className="typing-dot" />
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Message Bubble                                                     */
-/* ------------------------------------------------------------------ */
-
-function MessageBubble({
-  msg,
-  onSaveRequirements,
-}: {
-  msg: Message;
-  onSaveRequirements: (content: string) => void;
-}) {
-  const isUser = msg.role === "user";
-  const hasRequirements = !isUser && messageHasGeneratedRequirements(msg.content);
-
-  return (
-    <div
-      className={`animate-fade-in-up flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
-    >
-      {/* Avatar */}
-      <div
-        className={`flex size-8 shrink-0 items-center justify-center rounded-full transition-colors duration-150 ${
-          isUser
-            ? "bg-primary/10 text-primary"
-            : "border border-border bg-muted text-muted-foreground"
-        }`}
-      >
-        {isUser ? (
-          <UserIcon className="size-3.5" />
-        ) : (
-          <BotIcon className="size-3.5" />
-        )}
-      </div>
-
-      {/* Bubble */}
-      <div
-        className={`max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed transition-shadow duration-150 sm:max-w-[75%] ${
-          isUser
-            ? "rounded-tr-md bg-blue-light text-navy dark:bg-accent dark:text-accent-foreground"
-            : "rounded-tl-md border border-border bg-card text-foreground shadow-sm"
-        }`}
-      >
-        {isUser ? (
-          <span className="whitespace-pre-wrap">{msg.content}</span>
-        ) : (
-          <ReactMarkdown
-            components={{
-              h1: ({ children }) => (
-                <h1 className="mt-3 mb-1.5 text-lg font-semibold">
-                  {children}
-                </h1>
-              ),
-              h2: ({ children }) => (
-                <h2 className="mt-2.5 mb-1 text-base font-semibold">
-                  {children}
-                </h2>
-              ),
-              h3: ({ children }) => (
-                <h3 className="mt-2 mb-1 text-sm font-semibold">{children}</h3>
-              ),
-              p: ({ children }) => <p className="my-1">{children}</p>,
-              strong: ({ children }) => (
-                <strong className="font-semibold">{children}</strong>
-              ),
-              code: ({ children }) => (
-                <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
-                  {children}
-                </code>
-              ),
-              pre: ({ children }) => (
-                <pre className="my-2 overflow-x-auto rounded-lg border border-border bg-muted/60 p-3 font-mono text-xs">
-                  {children}
-                </pre>
-              ),
-              ul: ({ children }) => (
-                <ul className="my-1 list-inside list-disc pl-3">{children}</ul>
-              ),
-              ol: ({ children }) => (
-                <ol className="my-1 list-inside list-decimal pl-3">
-                  {children}
-                </ol>
-              ),
-              li: ({ children }) => <li className="my-0.5">{children}</li>,
-            }}
-          >
-            {msg.content}
-          </ReactMarkdown>
-        )}
-
-        {hasRequirements && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="mt-2 gap-1.5"
-            onClick={() => onSaveRequirements(msg.content)}
-          >
-            <SaveIcon className="size-3.5" />
-            Salvar requisitos em um projeto
-          </Button>
-        )}
-      </div>
-    </div>
-  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -269,10 +146,10 @@ export default function ChatPage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          messages: newMessages, 
+        body: JSON.stringify({
+          messages: newMessages,
           model,
-          chatId: currentChatId // Enviar o chatId atual
+          chatId: currentChatId,
         }),
         signal: controller.signal,
       });
@@ -292,8 +169,8 @@ export default function ChatPage() {
 
       // Ler o chatId do header da resposta
       const newChatId = res.headers.get("X-Chat-Id");
-      if (newChatId && !currentChatId) {
-        setCurrentChatId(newChatId); // Armazenar o novo chatId se não tínhamos um
+      if (newChatId && newChatId !== currentChatId) {
+        setCurrentChatId(newChatId);
       }
 
       const reader = res.body!.getReader();
@@ -354,11 +231,11 @@ export default function ChatPage() {
 
       sessionStorage.setItem(
         CHAT_IMPORT_KEY,
-        JSON.stringify({ projectName, requirements })
+        JSON.stringify({ projectName, requirements, chatId: currentChatId })
       );
       router.push("/dashboard/projects/new/manual");
     },
-    [messages, router]
+    [messages, router, currentChatId]
   );
 
   /* ---------------------------------------------------------------- */

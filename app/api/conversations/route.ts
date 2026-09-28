@@ -1,10 +1,12 @@
+import { NextRequest } from "next/server";
 import { getCurrentUser } from "../../../lib/auth";
 import { tursoDb } from "../../../lib/turso-db";
 
-export async function GET() {
-  // Verificar se o usuário está autenticado
+// Lista as conversas do usuário. `?projectId=<id>` restringe às conversas de um projeto
+// (usado pelo assistente flutuante); `?projectId=none` traz apenas as conversas avulsas.
+export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
-  
+
   if (!user) {
     return new Response(
       JSON.stringify({ error: "Usuário não autenticado" }),
@@ -12,34 +14,33 @@ export async function GET() {
     );
   }
 
+  const projectId = req.nextUrl.searchParams.get("projectId");
+
   try {
-    // Buscar todas as conversas do usuário
     const userChats = await tursoDb.chat.findMany({
       where: {
         userId: user.id,
+        ...(projectId === "none"
+          ? { projectId: null }
+          : projectId
+            ? { projectId }
+            : {}),
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { updatedAt: "desc" },
       include: {
-        messages: {
-          orderBy: {
-            createdAt: 'asc',
-          },
-          take: 1, // Pegar apenas a primeira mensagem para exibir no preview
-        },
+        messages: { orderBy: { createdAt: "asc" }, take: 1 },
+        _count: { select: { messages: true } },
       },
     });
 
-    // Transformar os dados para o formato esperado pelo componente
-    const conversations = userChats.map((chat: typeof userChats[number]) => ({
+    const conversations = userChats.map((chat: (typeof userChats)[number]) => ({
       id: chat.id,
       title: chat.title,
-      date: chat.createdAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }),
-      messages: chat.messages.map((msg: typeof chat.messages[number]) => ({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
-      })),
+      projectId: chat.projectId,
+      messageCount: chat._count.messages,
+      date: chat.updatedAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }),
+      updatedAt: chat.updatedAt,
+      preview: chat.messages[0]?.content ?? "",
     }));
 
     return new Response(JSON.stringify({ conversations }), {
