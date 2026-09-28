@@ -4,6 +4,7 @@ import Link from "next/link"
 import { ArrowLeftIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ProjectIdentityCard } from "@/components/project-manual/project-identity-card"
+import { FlowbotAssistant } from "@/components/project/flowbot-assistant"
 import type { ProjectDetail } from "@/lib/use-project"
 
 export function ProjectShell({
@@ -46,6 +47,8 @@ export function ProjectShell({
       </div>
 
       {children}
+
+      <FlowbotAssistant projectId={project.id} projectName={project.name} />
     </div>
   )
 }

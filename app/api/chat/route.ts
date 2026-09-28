@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getCurrentUser } from "../../../lib/auth";
 import { tursoDb } from "../../../lib/turso-db";
+import { buildProjectContext } from "../../../lib/project-context";
 
 export const runtime = "nodejs";
 
@@ -20,8 +21,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { messages, chatId: providedChatId } = await req.json();
-  const chatId = providedChatId || crypto.randomUUID();
+  const { messages, chatId: providedChatId, projectId } = await req.json();
+
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return new Response(
+      JSON.stringify({ error: "Nenhuma mensagem enviada" }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   const apiKey = process.env.GROQ_API_KEY;
   // O projeto no Groq só libera um modelo por vez (ver console.groq.com) — respeita essa
   // configuração em vez de aceitar um model vindo do cliente, que falharia contra o allowlist.
@@ -34,7 +42,53 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const lastUserMsg = messages[messages.length - 1];
+  const lastUserMsg: Message = messages[messages.length - 1];
+
+  // Persistência da conversa: cria o chat na primeira mensagem e guarda a fala do usuário
+  // antes de chamar o provedor de IA, para nada se perder se o streaming falhar.
+  let chatId: string;
+  let resolvedProjectId: string | null =
+    typeof projectId === "string" && projectId ? projectId : null;
+  try {
+    const existing = providedChatId
+      ? await tursoDb.chat.findUnique({
+          where: { id: providedChatId as string, userId: user.id },
+          select: { id: true, projectId: true },
+        })
+      : null;
+
+    if (existing) {
+      chatId = existing.id;
+      resolvedProjectId = existing.projectId ?? resolvedProjectId;
+    } else {
+      const title = lastUserMsg.content.slice(0, 60).trim() || "Nova conversa";
+      // Vincula a conversa ao projeto quando ela é aberta de dentro dele (assistente flutuante).
+      const linkedProject =
+        typeof projectId === "string" && projectId
+          ? await tursoDb.project.findUnique({
+              where: { id: projectId, userId: user.id },
+              select: { id: true },
+            })
+          : null;
+
+      const chat = await tursoDb.chat.create({
+        data: { title, userId: user.id, projectId: linkedProject?.id ?? null },
+      });
+      chatId = chat.id;
+      resolvedProjectId = linkedProject?.id ?? null;
+    }
+
+    await tursoDb.message.create({
+      data: { chatId, role: "user", content: lastUserMsg.content },
+    });
+  } catch (error) {
+    console.error("Erro ao registrar a conversa:", error);
+    return new Response(
+      JSON.stringify({ error: "Erro ao registrar a conversa" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   console.log("\n─────────────────────────────────────");
   console.log(`[${new Date().toLocaleTimeString("pt-BR")}] USUÁRIO → ${lastUserMsg.content}`);
   console.log(`Modelo: ${model}`);
@@ -122,12 +176,56 @@ RNF01 – ...
 
 --- FIM DAS INSTRUCOES ---`;
 
+  // MODO C: dentro de um projeto, o assistente recebe o estado atual e pode propor
+  // alterações. Quem executa é a interface, e só depois da confirmação do usuário.
+  let systemContent = SYSTEM_INSTRUCTION;
+  if (resolvedProjectId) {
+    const context = await buildProjectContext(resolvedProjectId, user.id);
+    if (context) {
+      systemContent += `
+
+--- CONTEXTO DO PROJETO ATUAL ---
+Voce esta atendendo dentro de um projeto especifico. Use SEMPRE os dados abaixo como verdade
+sobre este projeto; nunca invente requisitos, tarefas, componentes ou sprints que nao estejam
+listados. Quando o usuario disser "o projeto", "os requisitos", "o kanban", e a este projeto
+que ele se refere.
+
+${context}
+--- FIM DO CONTEXTO ---
+
+MODO C — Alteracoes no projeto:
+Quando o usuario pedir para criar, alterar, excluir ou mover algo neste projeto, escreva uma
+frase curta explicando o que voce vai fazer e, ao final da mensagem, inclua UM bloco de codigo
+no formato abaixo com as alteracoes propostas:
+
+\`\`\`flowbot-actions
+{"actions": [ { "type": "...", ... } ]}
+\`\`\`
+
+Tipos de acao disponiveis (use exatamente estes nomes de campo):
+- {"type":"create_requirement","description":"...","category":"Funcional"|"Nao Funcional","priority":"Alta"|"Media"|"Baixa","status":"Em Aberto"|"Validado"|"Descartado","level":"Sistema"|"Subsistema"|"Componente"}
+- {"type":"update_requirement","code":"RF01","description":"...","priority":"...","status":"...","level":"..."}
+- {"type":"delete_requirement","code":"RF01"}
+- {"type":"create_feature","name":"...","description":"...","status":"Planejada"|"Em desenvolvimento"|"Concluida","requirementCode":"RF01"}
+- {"type":"create_component","name":"...","description":"...","quantity":1,"unitPrice":0,"requirementCode":"RF01"}
+- {"type":"create_task","title":"...","description":"...","priority":"Alta"|"Media"|"Baixa","assignee":"...","dueDate":"AAAA-MM-DD","requirementCode":"RF01","featureName":"...","columnName":"Backlog"}
+- {"type":"move_task","title":"titulo exato da tarefa","columnName":"Em Progresso"}
+
+REGRAS DO MODO C:
+- Use "category" com os valores exatos "Funcional" ou "Nao Funcional" (a interface corrige a acentuacao).
+- Referencie requisitos pelo codigo (RF01, RNF02), funcionalidades pelo nome e colunas pelo nome exato listado no contexto.
+- NUNCA diga que a alteracao ja foi feita, salva ou aplicada. Voce apenas PROPOE; o usuario revisa e confirma na interface.
+- Se o pedido for ambiguo (falta descricao, prioridade, coluna), pergunte antes de propor.
+- Se o usuario so fizer uma pergunta, responda normalmente e NAO inclua o bloco.`;
+    }
+  }
+
   const body = {
     model,
     stream: true,
     max_tokens: 1024,
     messages: [
-      { role: "system", content: SYSTEM_INSTRUCTION },
+      { role: "system", content: systemContent },
       ...messages.map((m: Message) => ({ role: m.role, content: m.content })),
     ],
   };
@@ -236,9 +334,14 @@ RNF01 – ...
           await tursoDb.message.create({
             data: {
               chatId: chatId,
-              role: 'assistant',
+              role: "assistant",
               content: fullResponse,
             },
+          });
+          // Toca o chat para que a lista de conversas venha ordenada pela atividade.
+          await tursoDb.chat.update({
+            where: { id: chatId },
+            data: { updatedAt: new Date() },
           });
         }
 

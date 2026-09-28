@@ -23,6 +23,7 @@ import { ComponentSuggestions } from "@/components/project-manual/component-sugg
 import { CostSummary } from "@/components/project-manual/cost-summary"
 import { ProjectCreationSummary } from "@/components/project-manual/project-creation-summary"
 import { ProjectCreationLayout } from "@/components/project-steps/project-creation-layout"
+import { FlowbotAssistant } from "@/components/project/flowbot-assistant"
 import { Button } from "@/components/ui/button"
 import { MANUAL_STEP_CONTENT } from "@/lib/manual-step-content"
 import {
@@ -211,6 +212,8 @@ export function ProjectWizardPage({
           )}
         </div>
       </div>
+
+      <FlowbotAssistant projectId={project.id} projectName={project.name} />
     </ProjectCreationLayout>
   )
 }

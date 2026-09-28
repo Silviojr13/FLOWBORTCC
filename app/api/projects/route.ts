@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { name, description, origin } = await req.json();
+  const { name, description, origin, chatId } = await req.json();
 
   if (!name || typeof name !== "string" || !name.trim()) {
     return new Response(
@@ -64,6 +64,15 @@ export async function POST(req: NextRequest) {
         userId: user.id,
       },
     });
+
+    // Vincula ao projeto a conversa que originou os requisitos (Modo A do assistente),
+    // para que o histórico fique acessível pelo assistente flutuante dentro do projeto.
+    if (typeof chatId === "string" && chatId) {
+      await tursoDb.chat.updateMany({
+        where: { id: chatId, userId: user.id },
+        data: { projectId: project.id },
+      });
+    }
 
     return new Response(JSON.stringify({ project }), {
       status: 201,
