@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getCurrentUser } from "../../../../../../lib/auth";
 import { tursoDb } from "../../../../../../lib/turso-db";
+import { emitProjectEvent } from "../../../../../../lib/project-events";
 import { isTaskPriority } from "../../../../../../lib/kanban";
 import {
   findOwnedProject,
@@ -133,7 +134,24 @@ export async function PATCH(
       include: taskInclude,
     });
 
-    return json({ task });
+    // Mover para uma coluna concluída pode fechar a cobertura de um requisito.
+    let effects: Awaited<ReturnType<typeof emitProjectEvent>> = [];
+    if (targetColumn) {
+      const column = await tursoDb.kanbanColumn.findUnique({
+        where: { id: targetColumn.id },
+        select: { isDone: true },
+      });
+      effects = await emitProjectEvent({
+        type: "task.moved",
+        projectId,
+        taskId: task.id,
+        taskTitle: task.title,
+        requirementId: task.requirementId,
+        toColumnIsDone: column?.isDone ?? false,
+      });
+    }
+
+    return json({ task, effects });
   } catch (error) {
     console.error("Erro ao atualizar tarefa:", error);
     return jsonError("Erro ao atualizar tarefa", 500);

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getCurrentUser } from "../../../../../../lib/auth";
 import { tursoDb } from "../../../../../../lib/turso-db";
+import { emitProjectEvent } from "../../../../../../lib/project-events";
 
 const VALID_CATEGORIES = ["Funcional", "Não Funcional"];
 const VALID_PRIORITIES = ["Alta", "Média", "Baixa"];
@@ -92,7 +93,20 @@ export async function PATCH(
       },
     });
 
-    return new Response(JSON.stringify({ requirement }), {
+    // Publica a mudança de status para os demais módulos reagirem (Kanban, cobertura).
+    const effects =
+      status !== undefined && status !== existing.status
+        ? await emitProjectEvent({
+            type: "requirement.status_changed",
+            projectId,
+            requirementId: requirement.id,
+            code: requirement.code,
+            from: existing.status,
+            to: requirement.status,
+          })
+        : [];
+
+    return new Response(JSON.stringify({ requirement, effects }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
@@ -130,7 +144,14 @@ export async function DELETE(
   try {
     await tursoDb.requirement.delete({ where: { id: reqId } });
 
-    return new Response(JSON.stringify({ message: "Requisito excluído com sucesso" }), {
+    const effects = await emitProjectEvent({
+      type: "requirement.deleted",
+      projectId,
+      requirementId: existing.id,
+      code: existing.code,
+    });
+
+    return new Response(JSON.stringify({ message: "Requisito excluído com sucesso", effects }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

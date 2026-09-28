@@ -98,3 +98,34 @@ export function StatusSelectItem({ value }: { value: Status }) {
 }
 
 export { PRIORITY_CONFIG, STATUS_CONFIG }
+
+/**
+ * Cobertura do requisito pelas tarefas do Kanban (integração Kanban → Requisitos).
+ * Sem tarefa vinculada, sinaliza que o requisito está descoberto (RF02/RF14).
+ */
+export function CoverageIndicator({ total, done }: { total: number; done: number }) {
+  if (total === 0) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-sm text-amber-600 dark:text-amber-400">
+        <AlertCircleIcon className="size-3.5 shrink-0" aria-hidden />
+        Sem tarefa
+      </span>
+    )
+  }
+
+  const pct = Math.round((done / total) * 100)
+
+  return (
+    <span className="inline-flex items-center gap-2 text-sm" title={`${done} de ${total} tarefa(s) concluída(s)`}>
+      <span className="h-1.5 w-10 overflow-hidden rounded-full bg-muted">
+        <span
+          className={cn("block h-full rounded-full", pct === 100 ? "bg-emerald-500" : "bg-primary")}
+          style={{ width: `${pct}%` }}
+        />
+      </span>
+      <span className="tabular-nums text-muted-foreground">
+        {done}/{total}
+      </span>
+    </span>
+  )
+}

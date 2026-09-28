@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getCurrentUser } from "../../../../../../lib/auth";
 import { tursoDb } from "../../../../../../lib/turso-db";
 import { findOwnedProject, json, jsonError } from "../../../../../../lib/kanban-server";
+import { emitProjectEvent, type ProjectEffect } from "../../../../../../lib/project-events";
 
 // Drag-and-drop (RF07): body { columnId, taskIds } define a ordem final das tarefas dessa
 // coluna. Tarefas vindas de outra coluna são movidas e ganham registro no histórico (RF09).
@@ -28,7 +29,7 @@ export async function POST(
 
   const column = await tursoDb.kanbanColumn.findUnique({
     where: { id: columnId, projectId },
-    select: { id: true, name: true },
+    select: { id: true, name: true, isDone: true },
   });
   if (!column) return jsonError("Coluna não encontrada neste projeto", 400);
 
@@ -60,7 +61,24 @@ export async function POST(
       }
     });
 
-    return json({ message: "Ordem atualizada" });
+    // Publica as tarefas que realmente trocaram de coluna, para os outros módulos reagirem.
+    const moved = (taskIds as string[]).filter((id) => byId.get(id)!.columnId !== column.id);
+    const effects: ProjectEffect[] = [];
+    for (const id of moved) {
+      const task = byId.get(id)!;
+      effects.push(
+        ...(await emitProjectEvent({
+          type: "task.moved",
+          projectId,
+          taskId: task.id,
+          taskTitle: task.title,
+          requirementId: task.requirementId,
+          toColumnIsDone: column.isDone,
+        }))
+      );
+    }
+
+    return json({ message: "Ordem atualizada", effects });
   } catch (error) {
     console.error("Erro ao reordenar tarefas:", error);
     return jsonError("Erro ao reordenar tarefas", 500);
