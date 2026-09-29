@@ -19,7 +19,8 @@
     "script:test-db-final": "dotenv -e .env -- tsx scripts/test-db-final.ts",
     "postinstall": "prisma generate",
     "script:create-kanban-tables": "dotenv -e .env -- tsx scripts/create-kanban-tables.ts",
-    "script:alter-chats-project": "dotenv -e .env -- tsx scripts/alter-chats-project.ts"
+    "script:alter-chats-project": "dotenv -e .env -- tsx scripts/alter-chats-project.ts",
+    "test:e2e": "pytest"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

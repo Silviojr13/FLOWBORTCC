@@ -41,3 +41,9 @@ yarn-error.log*
 next-env.d.ts
 
 /lib/generated/prisma
+build.db
+
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
