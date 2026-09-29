@@ -7,6 +7,13 @@ import { compare } from "bcrypt";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(tursoDb),
+  // Sem trustHost, o NextAuth monta as URLs absolutas (callback do OAuth e redirecionamento
+  // pós-login) a partir de NEXTAUTH_URL. Como essa variável apontava para localhost na
+  // Vercel, o login com Google devolvia o usuário para http://localhost:3000.
+  // Com trustHost, a origem vem do próprio pedido (host / x-forwarded-host), então a
+  // aplicação funciona em produção, nas prévias e em desenvolvimento sem depender da
+  // variável — a Vercel garante esses cabeçalhos.
+  trustHost: true,
   session: { strategy: "jwt" },
   providers: [
     Google({
