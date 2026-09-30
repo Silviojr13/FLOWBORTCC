@@ -91,7 +91,7 @@ export default function ManualProjectPage() {
     <ProjectCreationLayout currentStep="requisitos">
       <div className="flex w-full flex-col gap-10">
         {!project ? (
-          <div className="flex max-w-xl flex-col gap-8">
+          <div className="flex w-full flex-col gap-8">
             <div className="flex flex-col gap-2">
               <h1 className="text-2xl font-semibold tracking-tight text-navy dark:text-foreground sm:text-3xl">
                 Dê um nome ao seu projeto

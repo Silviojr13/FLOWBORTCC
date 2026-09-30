@@ -60,7 +60,7 @@ export function ProjectContextNav({
         </Link>
       </Button>
 
-      <Breadcrumb className="hidden sm:block">
+      <Breadcrumb>
         <BreadcrumbList>
           {crumbs.map((crumb, index) => {
             const isLast = index === crumbs.length - 1

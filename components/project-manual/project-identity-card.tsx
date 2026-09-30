@@ -26,9 +26,11 @@ export interface ProjectIdentity {
 export function ProjectIdentityCard({
   project,
   className,
+  variant = "card",
 }: {
   project: ProjectIdentity
   className?: string
+  variant?: "card" | "action"
 }) {
   const [editOpen, setEditOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -76,46 +78,53 @@ export function ProjectIdentityCard({
 
   return (
     <>
-      <div
-        className={cn(
-          "flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 shadow-sm dark:shadow-none",
-          className
-        )}
-      >
-        <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/50">
-          {imageUrl ? (
-            <Image
-              src={imageUrl}
-              alt=""
-              width={44}
-              height={44}
-              className="size-full object-cover"
-              unoptimized
-            />
-          ) : (
-            <BotIcon className="size-5 text-primary/70" aria-hidden />
+      {variant === "card" ? (
+        <div
+          className={cn(
+            "flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 shadow-sm dark:shadow-none",
+            className
           )}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
-          {displayDescription && (
-            <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-              {displayDescription}
-            </p>
-          )}
-        </div>
-
-        <Button
-          variant="ghost"
-          size="sm"
-          className="shrink-0 text-muted-foreground"
-          onClick={openEdit}
         >
+          <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/50">
+            {imageUrl ? (
+              <Image
+                src={imageUrl}
+                alt=""
+                width={44}
+                height={44}
+                className="size-full object-cover"
+                unoptimized
+              />
+            ) : (
+              <BotIcon className="size-5 text-primary/70" aria-hidden />
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
+            {displayDescription && (
+              <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                {displayDescription}
+              </p>
+            )}
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-muted-foreground"
+            onClick={openEdit}
+          >
+            <PencilIcon className="size-3.5" />
+            <span className="sr-only sm:not-sr-only sm:ml-1">Editar</span>
+          </Button>
+        </div>
+      ) : (
+        <Button variant="outline" size="sm" className="shrink-0" onClick={openEdit}>
           <PencilIcon className="size-3.5" />
-          <span className="sr-only sm:not-sr-only sm:ml-1">Editar</span>
+          Editar projeto
         </Button>
-      </div>
+      )}
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-md">

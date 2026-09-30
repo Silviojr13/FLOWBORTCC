@@ -4,6 +4,7 @@ import { useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ProjectShell } from "@/components/project/project-shell"
+import { ProjectIdentityCard } from "@/components/project-manual/project-identity-card"
 import {
   ProjectOverviewContent,
   ProjectWizardPage,
@@ -44,6 +45,7 @@ export default function ProjectDetailPage() {
     <ProjectShell
       project={project}
       title="Visão geral"
+      headerAction={<ProjectIdentityCard project={project} variant="action" />}
     >
       <ProjectOverviewContent projectId={id} />
     </ProjectShell>

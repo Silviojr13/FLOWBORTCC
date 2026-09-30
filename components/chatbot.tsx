@@ -4,11 +4,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { ChatInput } from "@/components/chat-input";
-import { workspaceGutter } from "@/components/layout/workspace";
 import { ProjectCreationLayout } from "@/components/project-steps/project-creation-layout";
 import { useSidebar } from "@/components/ui/sidebar";
 import { BotIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 import {
   MessageBubble,
   TypingIndicator,
@@ -245,15 +243,14 @@ export default function ChatPage() {
   /* ---------------------------------------------------------------- */
 
   const hasMessages = messages.length > 0;
-  const hasStartedChat = messages.some((message) => message.role === "user");
 
   const chatContent = (
-    <div className={cn("flex min-h-0 flex-1 flex-col", !hasStartedChat && workspaceGutter)}>
+    <div className="flex min-h-0 w-full flex-1 flex-col">
       {/* Message area */}
       <div className="flex-1 overflow-y-auto">
         {hasMessages ? (
           /* ---- Conversation view ---- */
-          <div className="flex w-full max-w-3xl flex-col gap-5 py-6 sm:py-8">
+          <div className="flex w-full flex-col gap-5 py-6 sm:py-8">
             {messages.map((msg, i) => {
               const isStreamingPlaceholder =
                 isStreaming &&
@@ -293,7 +290,7 @@ export default function ChatPage() {
 
       {/* Sticky input */}
       <ChatInput
-        embedded={hasStartedChat}
+        embedded
         input={input}
         onInputChange={setInput}
         onSend={sendMessage}
@@ -305,10 +302,6 @@ export default function ChatPage() {
       />
     </div>
   );
-
-  if (!hasStartedChat) {
-    return chatContent;
-  }
 
   return (
     <ProjectCreationLayout currentStep="requisitos">

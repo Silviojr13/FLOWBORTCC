@@ -10,7 +10,6 @@ import { workspaceGutter } from "@/components/layout/workspace"
 import { ProjectContextNav } from "@/components/project/project-context-nav"
 import { RequirementsTable } from "@/components/project-manual/requirements-table"
 import { AiChatAssistButton } from "@/components/project-manual/ai-assist-button"
-import { ProjectIdentityCard } from "@/components/project-manual/project-identity-card"
 import { FeaturesPanel } from "@/components/project-manual/features-panel"
 import { ComponentsTable } from "@/components/project-manual/components-table"
 import { ComponentSuggestions } from "@/components/project-manual/component-suggestions"
@@ -126,8 +125,6 @@ export function ProjectWizardPage({
       <div className="flex w-full flex-col gap-10">
         <div className="flex flex-col gap-6">
           <ProjectContextNav projectId={project.id} projectName={project.name} />
-
-          <ProjectIdentityCard project={project} />
 
           {step !== "finalizar" && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">

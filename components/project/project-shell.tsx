@@ -3,7 +3,6 @@
 import { HelpTooltip } from "@/components/help-tooltip"
 import { Workspace, type WorkspaceWidth } from "@/components/layout/workspace"
 import { ProjectContextNav } from "@/components/project/project-context-nav"
-import { ProjectIdentityCard } from "@/components/project-manual/project-identity-card"
 import { FlowbotAssistant } from "@/components/project/flowbot-assistant"
 import type { ProjectDetail } from "@/lib/use-project"
 
@@ -30,9 +29,7 @@ export function ProjectShell({
         <div className="flex flex-col gap-6">
           <ProjectContextNav projectId={project.id} projectName={project.name} />
 
-          <ProjectIdentityCard project={project} />
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col gap-1">
               <h1 className="flex items-center gap-1 text-lg font-semibold text-foreground">
                 {title}

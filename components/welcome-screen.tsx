@@ -17,7 +17,7 @@ export function WelcomeScreen({
   onSuggestionClick: (text: string) => void;
 }) {
   return (
-    <div className="animate-fade-in-up flex flex-1 flex-col items-center justify-center py-10 text-center sm:py-12">
+    <div className="animate-fade-in-up flex flex-col items-center py-6 text-center sm:py-8">
       {/* Image placeholder — replace with your own image later */}
       <div className="mb-6 sm:mb-8">
         <Image

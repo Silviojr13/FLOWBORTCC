@@ -8,8 +8,8 @@ const workspaceWidth = {
   focused: "max-w-6xl",
   /** Dashboards, reports and wider tables. */
   wide: "max-w-7xl",
-  /** Manual creation: content column plus the step rail. */
-  creation: "max-w-[90rem]",
+  /** Manual and AI creation: content column plus the step rail, centered. */
+  creation: "max-w-6xl",
   /** Kanban keeps room for columns, then stops on ultrawide screens. */
   kanban: "max-w-[100rem]",
 } as const

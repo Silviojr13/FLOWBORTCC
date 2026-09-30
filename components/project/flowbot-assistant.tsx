@@ -314,34 +314,44 @@ export function FlowbotAssistant({
       {isOpen && (
         <div
           className={cn(
-            "animate-fade-in-up fixed bottom-24 right-4 z-50 flex max-h-[min(34rem,calc(100vh-9rem))] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl",
-            "left-4 sm:left-auto sm:w-[26rem]"
+            "animate-fade-in-up fixed z-50 flex flex-col overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-xl dark:shadow-lg",
+            "inset-x-4 bottom-[6.75rem] h-[min(44rem,calc(100svh-8.75rem))]",
+            "sm:inset-x-auto sm:right-7 sm:bottom-[7.5rem] sm:w-[30rem]"
           )}
           role="dialog"
           aria-label="Assistente FlowBot"
         >
-          {/* Cabeçalho */}
-          <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-2">
+          <div className="flex items-center gap-3 border-b border-border bg-muted px-4 py-3">
             <Image
               src="/images/robo-flowbot.png"
               alt=""
-              width={28}
-              height={28}
-              className="shrink-0"
+              width={36}
+              height={36}
+              className="size-9 shrink-0 object-contain"
             />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">FlowBot</p>
-              <p className="truncate text-[11px] text-muted-foreground">
+              <p className="truncate text-sm font-semibold text-foreground">FlowBot</p>
+              <p className="truncate text-xs text-muted-foreground">
                 {projectName ?? "Assistente do projeto"}
               </p>
             </div>
+
+            <Button
+              size="icon"
+              variant="ghost"
+              className="hidden size-8 shrink-0 text-muted-foreground sm:inline-flex"
+              aria-label="Nova conversa"
+              onClick={startNewConversation}
+            >
+              <MessageSquarePlusIcon className="size-4" />
+            </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="max-w-[9rem] gap-1 px-2 text-xs text-muted-foreground"
+                  className="max-w-[6.5rem] gap-1 px-2 text-xs text-muted-foreground sm:max-w-[10rem]"
                 >
                   <span className="truncate">{activeTitle}</span>
                   <ChevronDownIcon className="size-3.5 shrink-0 opacity-60" />
@@ -376,7 +386,7 @@ export function FlowbotAssistant({
             <Button
               size="icon"
               variant="ghost"
-              className="size-7 shrink-0 text-muted-foreground"
+              className="size-8 shrink-0 text-muted-foreground"
               aria-label="Fechar assistente"
               onClick={() => setIsOpen(false)}
             >
@@ -384,19 +394,18 @@ export function FlowbotAssistant({
             </Button>
           </div>
 
-          {/* Mensagens */}
-          <div className="flex min-h-[12rem] flex-1 flex-col gap-3 overflow-y-auto px-3 py-3">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4">
             {isLoading && messages.length === 0 && (
-              <p className="py-6 text-center text-xs text-muted-foreground">
+              <p className="py-8 text-center text-sm text-muted-foreground">
                 Carregando conversa...
               </p>
             )}
 
             {!isLoading && messages.length === 0 && (
-              <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
-                <Image src="/images/robo-flowbot.png" alt="" width={56} height={56} />
-                <p className="text-sm font-medium">Como posso ajudar neste projeto?</p>
-                <p className="text-xs text-muted-foreground">
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-8 text-center">
+                <Image src="/images/robo-flowbot.png" alt="" width={72} height={72} />
+                <p className="text-sm font-medium text-foreground">Como posso ajudar neste projeto?</p>
+                <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
                   Tire dúvidas técnicas sobre sensores, atuadores e microcontroladores ou peça
                   ajuda para refinar os requisitos.
                 </p>
@@ -413,10 +422,10 @@ export function FlowbotAssistant({
               if (isPlaceholder) {
                 return (
                   <div key={i} className="flex gap-2">
-                    <div className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-muted">
-                      <Image src="/images/robo-flowbot.png" alt="" width={16} height={16} />
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-muted">
+                      <Image src="/images/robo-flowbot.png" alt="" width={18} height={18} />
                     </div>
-                    <div className="rounded-xl rounded-tl-md border border-border bg-card px-3 py-1.5 shadow-sm">
+                    <div className="rounded-xl rounded-tl-md border border-border bg-card px-3 py-2 shadow-sm">
                       <TypingIndicator />
                     </div>
                   </div>
@@ -439,9 +448,8 @@ export function FlowbotAssistant({
             <div ref={bottomRef} />
           </div>
 
-          {/* Entrada */}
-          <div className="border-t border-border p-2">
-            <div className="flex items-end gap-2 rounded-xl border border-border bg-background p-1.5 focus-within:border-primary/40">
+          <div className="border-t border-border p-3">
+            <div className="flex items-end gap-2 rounded-xl border border-border bg-muted p-2 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/40">
               <textarea
                 ref={textareaRef}
                 value={input}
@@ -454,13 +462,13 @@ export function FlowbotAssistant({
                 }}
                 placeholder="Pergunte ao FlowBot..."
                 rows={1}
-                className="max-h-24 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
+                className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
               />
               {isStreaming ? (
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="size-8 shrink-0"
+                  className="size-9 shrink-0"
                   aria-label="Parar resposta"
                   onClick={() => {
                     abortRef.current?.abort()
@@ -472,7 +480,7 @@ export function FlowbotAssistant({
               ) : (
                 <Button
                   size="icon"
-                  className="size-8 shrink-0"
+                  className="size-9 shrink-0"
                   aria-label="Enviar mensagem"
                   disabled={!input.trim()}
                   onClick={() => void sendMessage()}
@@ -485,21 +493,20 @@ export function FlowbotAssistant({
         </div>
       )}
 
-      {/* Robô flutuante */}
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         aria-label={isOpen ? "Fechar assistente FlowBot" : "Abrir assistente FlowBot"}
         aria-expanded={isOpen}
-        className="fixed bottom-6 right-6 z-50 flex size-16 items-center justify-center rounded-full border border-border bg-card shadow-lg transition-transform duration-200 hover:scale-105 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        className="fixed right-4 bottom-5 z-50 flex size-[4.75rem] items-center justify-center rounded-full border-2 border-primary/40 bg-card shadow-xl ring-4 ring-primary/15 transition-transform duration-200 hover:scale-105 hover:border-primary/60 focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none sm:right-7 sm:bottom-7 sm:size-20"
       >
         <span className={cn(!isOpen && "animate-float-soft")}>
           <Image
             src="/images/robo-flowbot.png"
             alt=""
-            width={48}
-            height={48}
-            className="pointer-events-none select-none"
+            width={64}
+            height={64}
+            className="pointer-events-none size-14 select-none object-contain sm:size-16"
             priority
           />
         </span>
