@@ -14,29 +14,58 @@ import { cn } from "@/lib/utils"
 
 const GOOGLE_CALLBACK_URL = "/dashboard"
 
+function AuthThemeToggle() {
+  return (
+    <div className="pointer-events-none fixed top-4 right-4 z-20">
+      <div className="pointer-events-auto rounded-lg border border-border bg-card shadow-sm">
+        <ThemeToggle />
+      </div>
+    </div>
+  )
+}
+
 export function AuthPageShell({
   children,
   className,
+  presentation,
+  ...rest
 }: {
   children: React.ReactNode
   className?: string
-}) {
+  presentation?: React.ReactNode
+} & Omit<React.ComponentProps<"div">, "children">) {
   return (
     <>
       <BackgroundAnimation />
-      <div className="pointer-events-none fixed right-4 top-4 z-20">
-        <div className="pointer-events-auto">
-          <ThemeToggle />
+      <AuthThemeToggle />
+      {presentation ? (
+        <div
+          className={cn(
+            "relative z-10 min-h-svh overflow-x-hidden p-4 sm:p-6 lg:p-8",
+            className
+          )}
+          {...rest}
+        >
+          <div className="mx-auto flex min-h-[calc(100svh-2rem)] w-full max-w-md items-center sm:min-h-[calc(100svh-3rem)] lg:max-w-[70rem] lg:min-h-[calc(100svh-4rem)]">
+            <div className="grid w-full overflow-hidden rounded-2xl border border-border bg-card shadow-md lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+              <div className="flex flex-col justify-center bg-card px-6 py-8 sm:px-10 lg:px-12">
+                <div className="mx-auto w-full max-w-[24rem]">{children}</div>
+              </div>
+              {presentation}
+            </div>
+          </div>
         </div>
-      </div>
-      <div
-        className={cn(
-          "relative z-10 flex min-h-svh flex-col items-center justify-center p-4 sm:p-6 md:p-10",
-          className
-        )}
-      >
-        <div className="w-full max-w-md">{children}</div>
-      </div>
+      ) : (
+        <div
+          className={cn(
+            "relative z-10 flex min-h-svh flex-col items-center justify-center p-4 sm:p-6 md:p-10",
+            className
+          )}
+          {...rest}
+        >
+          <div className="w-full max-w-md">{children}</div>
+        </div>
+      )}
     </>
   )
 }
@@ -49,9 +78,18 @@ export function AuthCard({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function AuthLogo() {
+export function AuthLogo({
+  align = "center",
+}: {
+  align?: "center" | "start"
+}) {
   return (
-    <div className="mb-6 flex justify-center px-2">
+    <div
+      className={cn(
+        "mb-6 flex px-0 sm:px-2",
+        align === "center" ? "justify-center" : "justify-start"
+      )}
+    >
       <FlowbotBrandLogo variant="auth" priority />
     </div>
   )
@@ -60,25 +98,45 @@ export function AuthLogo() {
 export function AuthHeader({
   title,
   description,
+  align = "center",
 }: {
   title: string
-  description: string
+  description?: string
+  align?: "center" | "start"
 }) {
   return (
-    <div className="mb-6 flex flex-col gap-2 text-center">
+    <div
+      className={cn(
+        "flex flex-col gap-2",
+        description ? "mb-6" : "mb-5",
+        align === "center" ? "text-center" : "text-left"
+      )}
+    >
       <h1 className="text-2xl font-semibold tracking-tight text-navy dark:text-foreground">
         {title}
       </h1>
-      <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-        {description}
-      </p>
+      {description ? (
+        <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
+          {description}
+        </p>
+      ) : null}
     </div>
   )
 }
 
-export function AuthDivider() {
+export function AuthDivider({
+  surface = "card",
+}: {
+  surface?: "card" | "page"
+}) {
   return (
-    <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
+    <FieldSeparator
+      className={
+        surface === "page"
+          ? "*:data-[slot=field-separator-content]:bg-background"
+          : "*:data-[slot=field-separator-content]:bg-card"
+      }
+    >
       ou
     </FieldSeparator>
   )

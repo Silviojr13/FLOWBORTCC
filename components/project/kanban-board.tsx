@@ -313,7 +313,7 @@ function KanbanColumnView({
   return (
     <div
       className={cn(
-        "flex min-h-[240px] w-[280px] shrink-0 snap-center flex-col rounded-xl border border-border bg-muted/15 lg:w-auto lg:min-w-[280px] lg:flex-1",
+        "flex min-h-[240px] w-[280px] shrink-0 snap-center flex-col rounded-xl border border-border bg-muted lg:w-auto lg:min-w-[280px] lg:max-w-md lg:flex-1",
         column.isDone ? "border-t-2 border-t-emerald-500/60" : "border-t-2 border-t-primary/40",
         isOver && "ring-2 ring-primary/25 ring-offset-1 ring-offset-background"
       )}
@@ -740,9 +740,6 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
       {tasks.length === 0 && (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-4 py-8 text-center">
           <p className="text-sm font-medium">Nenhuma tarefa ainda.</p>
-          <p className="text-sm text-muted-foreground">
-            Crie tarefas vinculadas aos requisitos para acompanhar a execução do projeto.
-          </p>
         </div>
       )}
 
@@ -753,7 +750,7 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
         onDragEnd={handleDragEnd}
         onDragCancel={() => setActiveTask(null)}
       >
-        <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="flex snap-x gap-4 overflow-x-auto pb-2">
           {columns.map((column) => (
             <KanbanColumnView
               key={column.id}

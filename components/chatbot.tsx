@@ -4,9 +4,11 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { ChatInput } from "@/components/chat-input";
+import { workspaceGutter } from "@/components/layout/workspace";
 import { ProjectCreationLayout } from "@/components/project-steps/project-creation-layout";
 import { useSidebar } from "@/components/ui/sidebar";
 import { BotIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   MessageBubble,
   TypingIndicator,
@@ -246,12 +248,12 @@ export default function ChatPage() {
   const hasStartedChat = messages.some((message) => message.role === "user");
 
   const chatContent = (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className={cn("flex min-h-0 flex-1 flex-col", !hasStartedChat && workspaceGutter)}>
       {/* Message area */}
       <div className="flex-1 overflow-y-auto">
         {hasMessages ? (
           /* ---- Conversation view ---- */
-          <div className="mx-auto flex max-w-215 flex-col gap-5 px-4 py-6 sm:py-8 sm:px-6">
+          <div className="flex w-full max-w-3xl flex-col gap-5 py-6 sm:py-8">
             {messages.map((msg, i) => {
               const isStreamingPlaceholder =
                 isStreaming &&
@@ -291,6 +293,7 @@ export default function ChatPage() {
 
       {/* Sticky input */}
       <ChatInput
+        embedded={hasStartedChat}
         input={input}
         onInputChange={setInput}
         onSend={sendMessage}

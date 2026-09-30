@@ -20,6 +20,7 @@
     "postinstall": "prisma generate",
     "script:create-kanban-tables": "dotenv -e .env -- tsx scripts/create-kanban-tables.ts",
     "script:alter-chats-project": "dotenv -e .env -- tsx scripts/alter-chats-project.ts",
+    "script:alter-users-onboarding": "dotenv -e .env -- tsx scripts/alter-users-onboarding.ts",
     "test:e2e": "pytest"
   },
   "dependencies": {

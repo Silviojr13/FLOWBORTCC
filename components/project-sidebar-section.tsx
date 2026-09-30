@@ -1,73 +1,135 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import {
-  BotIcon,
-  CalendarRangeIcon,
-  FileTextIcon,
-  KanbanIcon,
-  LayoutGridIcon,
-  PackageIcon,
-  SparklesIcon,
-} from "lucide-react"
+import { ArrowLeftIcon } from "lucide-react"
+import { ProjectCover } from "@/components/project/project-cover"
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
-import { loadProjectLocalMeta } from "@/lib/project-local-meta"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+  PROJECT_MODULE_GROUPS,
+  PROJECT_MODULES,
+  extractActiveProjectId,
+  getProjectModuleKey,
+  type ProjectModuleKey,
+} from "@/lib/project-nav"
+import { useProjectLocalMeta } from "@/lib/use-project-local-meta"
 import { cn } from "@/lib/utils"
 
 interface ProjectListItem {
   id: string
   name: string
+  description: string | null
   updatedAt: string
 }
 
 const RECENT_LIMIT = 5
 
-function ProjectThumbnail({ projectId }: { projectId: string }) {
-  const imageUrl = useMemo(() => {
-    if (typeof window === "undefined") return null
-    return loadProjectLocalMeta(projectId).imageDataUrl ?? null
-  }, [projectId])
+const navItemClass =
+  "h-10 rounded-lg px-2.5 text-sm hover:bg-primary/10! [&_svg]:size-[18px]"
 
-  if (imageUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={imageUrl}
-        alt=""
-        className="size-5 shrink-0 rounded object-cover"
-      />
-    )
-  }
+const navItemActiveClass =
+  "bg-primary/20! font-medium text-primary! hover:bg-primary/25! hover:text-primary! data-active:bg-primary/20! data-active:font-medium data-active:text-primary! data-active:hover:bg-primary/25! data-active:hover:text-primary!"
 
-  return <BotIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+function useDismissMobileSidebar() {
+  const { isMobile, setOpenMobile } = useSidebar()
+  return useCallback(() => {
+    if (isMobile) setOpenMobile(false)
+  }, [isMobile, setOpenMobile])
 }
 
-function extractActiveProjectId(pathname: string): string | null {
-  const match = pathname.match(/^\/dashboard\/projects\/([^/?]+)/)
-  if (!match || match[1] === "new") return null
-  return match[1]
+function RecentProjectLink({ project }: { project: ProjectListItem }) {
+  const dismissMobile = useDismissMobileSidebar()
+  const meta = useProjectLocalMeta(project.id)
+  const name = meta.name?.trim() || project.name
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild tooltip={name} className={navItemClass}>
+        <Link
+          href={`/dashboard/projects/${project.id}`}
+          onClick={dismissMobile}
+          className="gap-2.5"
+        >
+          <span className="flex size-7 shrink-0 overflow-hidden rounded-md">
+            <ProjectCover imageUrl={meta.imageDataUrl} iconClassName="size-3.5" />
+          </span>
+          <span className="truncate">{name}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  )
+}
+
+function ProjectIdentity({
+  projectId,
+  project,
+  isLoading,
+}: {
+  projectId: string
+  project: ProjectListItem | null
+  isLoading: boolean
+}) {
+  const { state, isMobile } = useSidebar()
+  const meta = useProjectLocalMeta(projectId)
+  const name = meta.name?.trim() || project?.name || "Projeto"
+  const description = (meta.description ?? project?.description ?? "").trim()
+  const showSkeleton = isLoading && !project && !meta.name
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center gap-2.5 rounded-xl border border-sidebar-border bg-sidebar-accent/50 px-2.5 py-2.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-transparent group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0">
+          <span className="flex size-10 shrink-0 overflow-hidden rounded-lg group-data-[collapsible=icon]:size-8">
+            <ProjectCover imageUrl={meta.imageDataUrl} iconClassName="size-4" />
+          </span>
+          <div className="min-w-0 flex-1 group-data-[collapsible=icon]:sr-only">
+            {showSkeleton ? (
+              <div className="flex flex-col gap-1.5">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-3 w-36" />
+              </div>
+            ) : (
+              <>
+                <p className="truncate text-sm font-medium text-sidebar-foreground">{name}</p>
+                {description ? (
+                  <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                    {description}
+                  </p>
+                ) : null}
+              </>
+            )}
+          </div>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="right" hidden={state !== "collapsed" || isMobile}>
+        {name}
+      </TooltipContent>
+    </Tooltip>
+  )
 }
 
 export function ProjectSidebarSection() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const dismissMobile = useDismissMobileSidebar()
   const [projects, setProjects] = useState<ProjectListItem[]>([])
+  const [activeFallback, setActiveFallback] = useState<ProjectListItem | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   const activeProjectId = useMemo(() => extractActiveProjectId(pathname), [pathname])
-  const showModules =
-    activeProjectId !== null &&
-    !searchParams.get("step") &&
-    pathname.startsWith(`/dashboard/projects/${activeProjectId}`)
+  const step = searchParams.get("step")
 
   useEffect(() => {
     let cancelled = false
@@ -80,7 +142,7 @@ export function ProjectSidebarSection() {
           (a: ProjectListItem, b: ProjectListItem) =>
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         )
-        setProjects(sorted.slice(0, RECENT_LIMIT))
+        setProjects(sorted)
       })
       .catch(console.error)
       .finally(() => {
@@ -92,111 +154,151 @@ export function ProjectSidebarSection() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!activeProjectId || isLoading) return
+    if (projects.some((item) => item.id === activeProjectId)) return
+
+    let cancelled = false
+    fetch(`/api/projects/${activeProjectId}`)
+      .then(async (res) => {
+        const data = await res.json()
+        if (!res.ok || cancelled || !data.project) return
+        setActiveFallback({
+          id: data.project.id,
+          name: data.project.name,
+          description: data.project.description ?? null,
+          updatedAt: data.project.updatedAt,
+        })
+      })
+      .catch(console.error)
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeProjectId, isLoading, projects])
+
+  if (activeProjectId) {
+    const project =
+      projects.find((item) => item.id === activeProjectId) ??
+      (activeFallback?.id === activeProjectId ? activeFallback : null)
+    const activeKey = getProjectModuleKey(pathname, activeProjectId, step)
+
+    return (
+      <div className="flex flex-col gap-4">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Todos os projetos" className={navItemClass}>
+              <Link href="/dashboard/projects" onClick={dismissMobile}>
+                <ArrowLeftIcon />
+                <span>Todos os projetos</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+
+        <ProjectIdentity
+          projectId={activeProjectId}
+          project={project}
+          isLoading={isLoading}
+        />
+
+        {PROJECT_MODULE_GROUPS.map((group) => (
+          <div key={group.id} className="flex flex-col gap-1.5">
+            <p className="px-2.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase group-data-[collapsible=icon]:sr-only">
+              {group.label}
+            </p>
+            <SidebarMenu className="gap-1">
+              {group.keys.map((key) => {
+                const navItem = PROJECT_MODULES.find((item) => item.key === key)
+                if (!navItem) return null
+                return (
+                  <ModuleLink
+                    key={navItem.key}
+                    projectId={activeProjectId}
+                    moduleKey={navItem.key}
+                    activeKey={activeKey}
+                    onNavigate={dismissMobile}
+                  />
+                )
+              })}
+            </SidebarMenu>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   if (isLoading) {
     return (
-      <div className="px-2 py-2 text-xs text-muted-foreground">Carregando projetos...</div>
+      <div className="flex flex-col gap-2 px-1 group-data-[collapsible=icon]:hidden">
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
     )
   }
 
   if (projects.length === 0) return null
 
-  const modules = activeProjectId
-    ? [
-        {
-          href: `/dashboard/projects/${activeProjectId}`,
-          label: "Visão geral",
-          icon: LayoutGridIcon,
-          exact: true,
-        },
-        {
-          href: `/dashboard/projects/${activeProjectId}/features`,
-          label: "Funcionalidades",
-          icon: SparklesIcon,
-        },
-        {
-          href: `/dashboard/projects/${activeProjectId}/components-costs`,
-          label: "Componentes e Custos",
-          icon: PackageIcon,
-        },
-        {
-          href: `/dashboard/projects/${activeProjectId}/kanban`,
-          label: "Kanban",
-          icon: KanbanIcon,
-        },
-        {
-          href: `/dashboard/projects/${activeProjectId}/sprints`,
-          label: "Sprints",
-          icon: CalendarRangeIcon,
-        },
-        {
-          href: `/dashboard/projects/${activeProjectId}/report`,
-          label: "Relatórios",
-          icon: FileTextIcon,
-        },
-      ]
-    : []
+  const recent = projects.slice(0, RECENT_LIMIT)
 
   return (
-    <div className="mt-4 flex flex-col gap-1">
-      <p className="px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+    <div className="flex flex-col gap-2 group-data-[collapsible=icon]:hidden">
+      <p className="px-2.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
         Projetos recentes
       </p>
-      <SidebarMenu>
-        {projects.map((project) => {
-          const isActive = project.id === activeProjectId
-          const overviewHref = `/dashboard/projects/${project.id}`
-
-          return (
-            <SidebarMenuItem key={project.id}>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive && !showModules}
-                className={cn(isActive && "bg-primary/10 text-primary")}
-              >
-                <Link href={overviewHref} className="gap-2">
-                  <ProjectThumbnail projectId={project.id} />
-                  <span className="truncate">{project.name}</span>
-                </Link>
-              </SidebarMenuButton>
-
-              {isActive && showModules && (
-                <SidebarMenuSub>
-                  {modules.map(({ href, label, icon: Icon, exact }) => {
-                    const isModuleActive = exact
-                      ? pathname === href
-                      : pathname.startsWith(href)
-
-                    return (
-                      <SidebarMenuSubItem key={href}>
-                        <SidebarMenuSubButton
-                          asChild
-                          isActive={isModuleActive}
-                          className={cn(
-                            isModuleActive && "bg-primary/10 text-primary"
-                          )}
-                        >
-                          <Link href={href}>
-                            <Icon className="size-4" />
-                            <span>{label}</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    )
-                  })}
-                </SidebarMenuSub>
-              )}
-            </SidebarMenuItem>
-          )
-        })}
+      <SidebarMenu className="gap-1">
+        {recent.map((project) => (
+          <RecentProjectLink key={project.id} project={project} />
+        ))}
       </SidebarMenu>
-
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton asChild className="text-xs text-muted-foreground">
-            <Link href="/dashboard/projects">Ver todos</Link>
+          <SidebarMenuButton asChild className={cn(navItemClass, "text-muted-foreground")}>
+            <Link href="/dashboard/projects" onClick={dismissMobile}>
+              <span>Ver todos</span>
+            </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
     </div>
+  )
+}
+
+function ModuleLink({
+  projectId,
+  moduleKey,
+  activeKey,
+  onNavigate,
+}: {
+  projectId: string
+  moduleKey: ProjectModuleKey
+  activeKey: ProjectModuleKey | null
+  onNavigate: () => void
+}) {
+  const navItem = PROJECT_MODULES.find((item) => item.key === moduleKey)
+  if (!navItem) return null
+
+  const Icon = navItem.icon
+  const isActive = activeKey === navItem.key
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        asChild
+        isActive={isActive}
+        tooltip={navItem.label}
+        className={cn(navItemClass, isActive && navItemActiveClass)}
+      >
+        <Link
+          href={navItem.href(projectId)}
+          onClick={onNavigate}
+          aria-current={isActive ? "page" : undefined}
+        >
+          <Icon />
+          <span>{navItem.label}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   )
 }

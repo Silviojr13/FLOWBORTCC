@@ -9,6 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { HELP, HelpLabel } from "@/components/help-tooltip"
 import { cn } from "@/lib/utils"
 
 interface RequirementOption {
@@ -45,7 +46,13 @@ export function RequirementMultiSelect({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-medium text-muted-foreground">Requisitos relacionados</span>
+      <HelpLabel
+        label="Requisitos relacionados"
+        content={HELP.relatedRequirement}
+        className="text-xs font-medium text-muted-foreground"
+      >
+        Requisitos relacionados
+      </HelpLabel>
 
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-2">

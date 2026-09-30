@@ -6,16 +6,15 @@ import { useState } from "react"
 import { signIn } from "next-auth/react"
 
 import {
-  AuthCard,
   AuthDivider,
   AuthHeader,
-  AuthLegalNotice,
   AuthLogo,
   AuthPageShell,
   AuthSwitchLink,
   AuthUnavailableNotice,
   GoogleSignInButton,
 } from "@/components/auth/auth-layout"
+import { AuthPresentation } from "@/components/auth/auth-presentation"
 import { Button } from "@/components/ui/button"
 import {
   Field,
@@ -100,101 +99,100 @@ export function LoginForm({
   }
 
   return (
-    <AuthPageShell className={cn(className)} {...props}>
-      <AuthCard>
-        <AuthLogo />
-        <AuthHeader
-          title="Bem-vindo de volta"
-          description="Entre na sua conta para continuar no Flowbot."
-        />
+    <AuthPageShell
+      className={cn(className)}
+      presentation={<AuthPresentation />}
+      {...props}
+    >
+      <AuthLogo align="start" />
+      <AuthHeader align="start" title="Bem-vindo de volta" />
 
-        <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
-          <FieldGroup>
-            {formNotice ? <AuthUnavailableNotice message={formNotice} /> : null}
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
+        <FieldGroup>
+          {formNotice ? <AuthUnavailableNotice message={formNotice} /> : null}
 
-            <Field data-invalid={!!fieldErrors.email}>
-              <FieldLabel htmlFor="login-email" className="text-foreground">
-                E-mail
-              </FieldLabel>
-              <Input
-                id="login-email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="seu@email.com"
-                value={values.email}
-                onChange={(event) => updateField("email", event.target.value)}
-                aria-invalid={!!fieldErrors.email}
-                aria-describedby={
-                  fieldErrors.email ? "login-email-error" : undefined
-                }
-              />
-              {fieldErrors.email ? (
-                <FieldError id="login-email-error">{fieldErrors.email}</FieldError>
-              ) : null}
-            </Field>
-
-            <Field data-invalid={!!fieldErrors.password}>
-              <div className="flex items-center">
-                <FieldLabel htmlFor="login-password" className="text-foreground">
-                  Senha
-                </FieldLabel>
-                <Link
-                  href="#"
-                  onClick={handleForgotPassword}
-                  className="ml-auto text-sm text-primary underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-none"
-                >
-                  Esqueceu sua senha?
-                </Link>
-              </div>
-              <Input
-                id="login-password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                value={values.password}
-                onChange={(event) =>
-                  updateField("password", event.target.value)
-                }
-                aria-invalid={!!fieldErrors.password}
-                aria-describedby={
-                  fieldErrors.password ? "login-password-error" : undefined
-                }
-              />
-              {fieldErrors.password ? (
-                <FieldError id="login-password-error">
-                  {fieldErrors.password}
-                </FieldError>
-              ) : null}
-            </Field>
-
-            <Field>
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Entrando..." : "Entrar"}
-              </Button>
-            </Field>
-
-            <AuthDivider />
-
-            <Field>
-              <GoogleSignInButton />
-            </Field>
-
-            <AuthSwitchLink
-              prompt="Ainda não tem uma conta?"
-              linkText="Criar conta"
-              href="/register"
+          <Field data-invalid={!!fieldErrors.email}>
+            <FieldLabel htmlFor="login-email" className="text-foreground">
+              E-mail
+            </FieldLabel>
+            <Input
+              id="login-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="seu@email.com"
+              value={values.email}
+              onChange={(event) => updateField("email", event.target.value)}
+              aria-invalid={!!fieldErrors.email}
+              aria-describedby={
+                fieldErrors.email ? "login-email-error" : undefined
+              }
+              className="h-10"
             />
-          </FieldGroup>
-        </form>
-      </AuthCard>
+            {fieldErrors.email ? (
+              <FieldError id="login-email-error">{fieldErrors.email}</FieldError>
+            ) : null}
+          </Field>
 
-      <AuthLegalNotice />
+          <Field data-invalid={!!fieldErrors.password}>
+            <div className="flex items-center">
+              <FieldLabel htmlFor="login-password" className="text-foreground">
+                Senha
+              </FieldLabel>
+              <Link
+                href="#"
+                onClick={handleForgotPassword}
+                className="ml-auto text-sm text-primary underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-none"
+              >
+                Esqueceu sua senha?
+              </Link>
+            </div>
+            <Input
+              id="login-password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              value={values.password}
+              onChange={(event) =>
+                updateField("password", event.target.value)
+              }
+              aria-invalid={!!fieldErrors.password}
+              aria-describedby={
+                fieldErrors.password ? "login-password-error" : undefined
+              }
+              className="h-10"
+            />
+            {fieldErrors.password ? (
+              <FieldError id="login-password-error">
+                {fieldErrors.password}
+              </FieldError>
+            ) : null}
+          </Field>
+
+          <Field>
+            <Button
+              type="submit"
+              size="lg"
+              className="h-10 w-full"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Entrando..." : "Entrar"}
+            </Button>
+          </Field>
+
+          <AuthDivider surface="page" />
+
+          <Field>
+            <GoogleSignInButton />
+          </Field>
+
+          <AuthSwitchLink
+            prompt="Ainda não tem uma conta?"
+            linkText="Criar conta"
+            href="/register"
+          />
+        </FieldGroup>
+      </form>
     </AuthPageShell>
   )
 }

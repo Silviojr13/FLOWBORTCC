@@ -2,10 +2,12 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { FlowbotBrandLogo } from "@/components/flowbot-brand-logo"
-import { useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
+import { FolderIcon, PlusIcon } from "lucide-react"
 
+import { FlowbotBrandLogo, FlowbotMark } from "@/components/flowbot-brand-logo"
 import { NavUser, type SidebarUser } from "@/components/nav-user"
+import { ProjectSidebarSection } from "@/components/project-sidebar-section"
 import {
   Sidebar,
   SidebarContent,
@@ -16,21 +18,21 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  ChevronDownIcon,
-  ClipboardListIcon,
-  FolderIcon,
-  PlusIcon,
-  SparklesIcon,
-} from "lucide-react"
-import { ProjectSidebarSection } from "@/components/project-sidebar-section"
+import { extractActiveProjectId } from "@/lib/project-nav"
+import { cn } from "@/lib/utils"
+
+const navItemClass =
+  "h-10 rounded-lg px-2.5 text-sm hover:bg-primary/10! [&_svg]:size-[18px]"
+
+const navItemActiveClass =
+  "bg-primary/20! font-medium text-primary! hover:bg-primary/25! hover:text-primary! data-active:bg-primary/20! data-active:font-medium data-active:text-primary! data-active:hover:bg-primary/25! data-active:hover:text-primary!"
+
+function useDismissMobileSidebar() {
+  const { isMobile, setOpenMobile } = useSidebar()
+  return React.useCallback(() => {
+    if (isMobile) setOpenMobile(false)
+  }, [isMobile, setOpenMobile])
+}
 
 export function AppSidebar({
   user,
@@ -40,88 +42,85 @@ export function AppSidebar({
   user?: SidebarUser | null
   isUserLoading?: boolean
 }) {
-  const router = useRouter()
-  const { setOpen } = useSidebar()
+  const pathname = usePathname()
+  const dismissMobile = useDismissMobileSidebar()
+  const inProject = extractActiveProjectId(pathname) !== null
+  const projectsActive =
+    pathname === "/dashboard/projects" || pathname.startsWith("/dashboard/projects/new")
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
-      {/* ── Logo ── */}
-      <SidebarHeader className="px-3 pt-4 pb-2">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:p-0! hover:bg-transparent!"
-            >
-              <Link href="/dashboard" className="flex items-center">
-                <FlowbotBrandLogo variant="sidebar" priority />
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+    <Sidebar collapsible="icon" {...props}>
+      <SidebarHeader className="px-3 pt-4 pb-2 group-data-[collapsible=icon]:px-1.5">
+        <Link
+          href="/dashboard"
+          aria-label="Flowbot"
+          onClick={dismissMobile}
+          className="flex h-10 items-center rounded-lg px-1 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+        >
+          <span className="group-data-[collapsible=icon]:hidden">
+            <FlowbotBrandLogo
+              variant="sidebar"
+              priority
+              className={inProject ? "max-w-[140px]" : undefined}
+            />
+          </span>
+          <FlowbotMark className="hidden size-8 group-data-[collapsible=icon]:block" />
+        </Link>
       </SidebarHeader>
 
-      {/* ── Main content ── */}
-      <SidebarContent className="px-3 pt-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="lg"
-              className="h-[46px] w-full gap-2 rounded-xl shadow-sm transition-colors duration-200 hover:bg-primary/90"
-            >
-              <PlusIcon className="size-5" />
-              <span className="flex-1 text-left text-sm font-medium">
-                Criar novo projeto
-              </span>
-              <ChevronDownIcon className="size-4 opacity-70" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-(--radix-dropdown-menu-trigger-width)">
-            <DropdownMenuItem
-              onClick={() =>
-                router.push(`/dashboard?new=ai&t=${Date.now()}`)
-              }
-              className="gap-2 rounded-md py-2.5 font-medium text-primary focus:bg-primary/10 focus:text-primary"
-            >
-              <SparklesIcon className="size-4" />
-              Criar com IA
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                setOpen(false)
-                router.push("/dashboard/projects/new/manual")
-              }}
-              className="gap-2 py-2 text-muted-foreground"
-            >
-              <ClipboardListIcon className="size-4" />
-              Manual
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <SidebarContent className="gap-4 px-3 pt-2 group-data-[collapsible=icon]:px-1.5">
+        {!inProject && (
+          <>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  tooltip="Criar novo projeto"
+                  className="h-11 bg-primary! px-3 text-primary-foreground! shadow-sm hover:bg-primary/90! hover:text-primary-foreground! active:bg-primary/90! active:text-primary-foreground! [&_svg]:size-[18px]"
+                >
+                  <Link
+                    href="/dashboard/projects/new"
+                    aria-label="Criar novo projeto"
+                    onClick={dismissMobile}
+                  >
+                    <PlusIcon />
+                    <span className="font-medium group-data-[collapsible=icon]:hidden">
+                      Criar novo projeto
+                    </span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
 
-        <SidebarMenu className="mt-1">
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link href="/dashboard/projects" className="gap-2 text-sidebar-foreground">
-                <FolderIcon className="size-4" />
-                Projetos
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+            <SidebarMenu className="gap-1">
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={projectsActive}
+                  tooltip="Projetos"
+                  className={cn(navItemClass, projectsActive && navItemActiveClass)}
+                >
+                  <Link
+                    href="/dashboard/projects"
+                    onClick={dismissMobile}
+                    aria-current={projectsActive ? "page" : undefined}
+                  >
+                    <FolderIcon />
+                    <span>Projetos</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </>
+        )}
 
         <ProjectSidebarSection />
 
-        {/* Flexible spacer — pushes auth + user to bottom */}
         <div className="flex-1" />
       </SidebarContent>
 
-      {/* ── Footer: auth buttons + user ── */}
-      <SidebarFooter className="gap-2 px-3 pb-3">
-        {/* Separator */}
+      <SidebarFooter className="gap-2 px-3 pb-3 group-data-[collapsible=icon]:px-1.5">
         <div className="my-1 h-px bg-sidebar-border" />
-
-        {/* User area */}
         <NavUser user={user} isLoading={isUserLoading} />
       </SidebarFooter>
     </Sidebar>

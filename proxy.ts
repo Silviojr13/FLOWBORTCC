@@ -9,8 +9,11 @@ export async function proxy(req: NextRequest) {
   const isRootPage = req.nextUrl.pathname === "/";
   const isDashboardPage = req.nextUrl.pathname === "/dashboard" || req.nextUrl.pathname.startsWith("/dashboard/");
   const isPrintPage = req.nextUrl.pathname.startsWith("/print/");
+  const isOnboardingPage =
+    req.nextUrl.pathname === "/onboarding" ||
+    req.nextUrl.pathname.startsWith("/onboarding/");
   const isAuthRoute = req.nextUrl.pathname.startsWith("/api/auth");
-  const isProtectedRoute = isRootPage || isDashboardPage || isPrintPage;
+  const isProtectedRoute = isRootPage || isDashboardPage || isPrintPage || isOnboardingPage;
 
   if (isAuthRoute) return NextResponse.next();
 
@@ -34,6 +37,6 @@ export async function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico|flowbot_bot.svg).*)",
   ],
 };

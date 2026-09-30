@@ -7,25 +7,22 @@ export const MANUAL_STEP_CONTENT: Record<
   requisitos: {
     title: "Defina os requisitos",
     description:
-      "Registre o que o projeto precisa atender. Requisitos ajudam a estruturar e rastrear as decisões do projeto, mas você pode defini-los depois.",
+      "Opcionais nesta etapa. Ajudam a rastrear decisões e dão mais contexto para a IA.",
   },
   funcionalidades: {
     title: "Organize as funcionalidades",
-    description:
-      "Defina as principais capacidades que serão desenvolvidas no projeto. Elas também formarão o seu quadro Kanban.",
+    description: "",
   },
   componentes: {
     title: "Escolha os componentes",
-    description:
-      "Defina os componentes físicos necessários para implementar as funcionalidades do projeto.",
+    description: "Peças físicas usadas para implementar as funcionalidades.",
   },
   custos: {
     title: "Revise os custos",
-    description:
-      "Visualize o investimento estimado e identifique oportunidades para otimizar o orçamento.",
+    description: "",
   },
   finalizar: {
     title: "Finalizar projeto",
-    description: "Revise o que foi definido e conclua a criação do projeto.",
+    description: "",
   },
 }

@@ -3,10 +3,10 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { HELP, HelpLabel } from "@/components/help-tooltip"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -147,9 +147,6 @@ function TaskDialogForm({
     <>
         <DialogHeader>
           <DialogTitle>{isEditing ? "Editar tarefa" : "Nova tarefa"}</DialogTitle>
-          <DialogDescription>
-            Título é obrigatório. Vincule a tarefa a um requisito para manter a rastreabilidade.
-          </DialogDescription>
         </DialogHeader>
 
         <FieldGroup className="gap-4">
@@ -183,7 +180,9 @@ function TaskDialogForm({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
-              <FieldLabel>Prioridade</FieldLabel>
+              <HelpLabel label="Prioridade" content={HELP.priority}>
+                <FieldLabel>Prioridade</FieldLabel>
+              </HelpLabel>
               <Select
                 value={draft.priority}
                 onValueChange={(v) => setDraft((d) => ({ ...d, priority: v as TaskPriority }))}
@@ -242,7 +241,9 @@ function TaskDialogForm({
           </div>
 
           <Field>
-            <FieldLabel>Requisito</FieldLabel>
+            <HelpLabel label="Requisito" content={HELP.traceability}>
+              <FieldLabel>Requisito</FieldLabel>
+            </HelpLabel>
             <Select
               value={draft.requirementId}
               onValueChange={(v) => setDraft((d) => ({ ...d, requirementId: v }))}
@@ -264,7 +265,9 @@ function TaskDialogForm({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
-              <FieldLabel>Funcionalidade</FieldLabel>
+              <HelpLabel label="Funcionalidade" content={HELP.feature}>
+                <FieldLabel>Funcionalidade</FieldLabel>
+              </HelpLabel>
               <Select
                 value={draft.featureId}
                 onValueChange={(v) => setDraft((d) => ({ ...d, featureId: v }))}
@@ -284,7 +287,9 @@ function TaskDialogForm({
             </Field>
 
             <Field>
-              <FieldLabel>Sprint</FieldLabel>
+              <HelpLabel label="Sprint" content={HELP.sprint}>
+                <FieldLabel>Sprint</FieldLabel>
+              </HelpLabel>
               <Select
                 value={draft.sprintId}
                 onValueChange={(v) => setDraft((d) => ({ ...d, sprintId: v }))}

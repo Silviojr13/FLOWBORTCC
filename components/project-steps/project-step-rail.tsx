@@ -21,24 +21,24 @@ function StepStatusIcon({ status }: { status: StepStatus }) {
   if (status === "completed") {
     return (
       <CheckCircle2Icon
-        className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+        className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
         aria-hidden
       />
     )
   }
 
   if (status === "current") {
-    return <CircleDotIcon className="size-3.5 shrink-0 text-primary" aria-hidden />
+    return <CircleDotIcon className="size-4 shrink-0 text-primary" aria-hidden />
   }
 
   if (status === "skipped") {
     return (
-      <MinusCircleIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+      <MinusCircleIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
     )
   }
 
   return (
-    <CircleIcon className="size-3.5 shrink-0 text-muted-foreground/45" aria-hidden />
+    <CircleIcon className="size-4 shrink-0 text-muted-foreground/45" aria-hidden />
   )
 }
 
@@ -61,12 +61,12 @@ function StepItem({
   const hint = statusHint(status)
 
   return (
-    <li className="relative flex gap-2">
+    <li className="relative flex gap-2.5">
       {!isLast && (
         <span
           aria-hidden
           className={cn(
-            "absolute left-[0.6875rem] top-6 bottom-0 w-px -translate-x-1/2",
+            "absolute top-7 bottom-0 left-2 w-px -translate-x-1/2",
             status === "completed"
               ? "bg-emerald-200/80 dark:bg-emerald-800/60"
               : "bg-border/80"
@@ -74,39 +74,39 @@ function StepItem({
         />
       )}
 
-      <div className="relative z-10 flex w-3.5 shrink-0 justify-center pt-0.5">
+      <div className="relative z-10 flex w-4 shrink-0 justify-center pt-1">
         <StepStatusIcon status={status} />
       </div>
 
       <div
         aria-current={status === "current" ? "step" : undefined}
         className={cn(
-          "mb-2 min-w-0 flex-1 rounded-md border px-2 py-1.5",
-          status === "current" && "border-primary/30 bg-primary/5 dark:bg-primary/10",
+          "mb-3 min-w-0 flex-1 rounded-md border px-3 py-2",
+          status === "current" && "border-primary/40 bg-primary/10",
           status === "completed" &&
-            "border-emerald-200/70 bg-emerald-50/40 dark:border-emerald-900/40 dark:bg-emerald-950/20",
-          status === "skipped" && "border-border/70 bg-muted/20",
-          status === "upcoming" && "border-transparent bg-transparent"
+            "border-emerald-300/80 bg-emerald-50 dark:border-emerald-800/60 dark:bg-emerald-950/40",
+          status === "skipped" && "border-border bg-muted/40",
+          status === "upcoming" && "border-transparent bg-transparent px-3 py-2"
         )}
       >
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <step.icon
             className={cn(
-              "size-3 shrink-0",
+              "size-3.5 shrink-0",
               status === "current" && "text-primary",
               status === "completed" && "text-emerald-600 dark:text-emerald-400",
               status === "skipped" && "text-muted-foreground",
-              status === "upcoming" && "text-muted-foreground/50"
+              status === "upcoming" && "text-muted-foreground"
             )}
             aria-hidden
           />
           <p
             className={cn(
-              "text-xs font-medium leading-tight",
+              "text-sm font-medium leading-tight",
               status === "current" && "text-primary",
               status === "completed" && "text-emerald-700 dark:text-emerald-300",
               status === "skipped" && "text-muted-foreground",
-              status === "upcoming" && "text-muted-foreground/70"
+              status === "upcoming" && "text-muted-foreground"
             )}
           >
             {step.label}
@@ -115,7 +115,7 @@ function StepItem({
         {hint && (
           <p
             className={cn(
-              "mt-0.5 pl-[1.125rem] text-[10px] leading-tight",
+              "mt-1 pl-6 text-xs leading-tight",
               status === "current" && "text-foreground/70",
               status === "completed" && "text-emerald-600/80 dark:text-emerald-400/80",
               status === "skipped" && "text-muted-foreground/80"
@@ -167,14 +167,14 @@ function ProjectStepRailCompact({
   return (
     <nav
       aria-label="Progresso do projeto"
-      className="rounded-lg border border-border bg-card/80 px-3 py-2.5"
+      className="rounded-lg border border-border bg-card px-3.5 py-3 shadow-sm dark:shadow-none"
     >
-      <p className="text-[10px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         Etapa {currentIndex + 1} de {PROJECT_STEPS.length}
       </p>
       <p className="mt-0.5 text-sm font-medium text-primary">{current.label}</p>
 
-      <div className="mt-2 flex gap-1" aria-hidden>
+      <div className="mt-2.5 flex gap-1.5" aria-hidden>
         {PROJECT_STEPS.map((step, index) => {
           const status = getStepStatus(index, currentIndex, railContext)
 
@@ -182,7 +182,7 @@ function ProjectStepRailCompact({
             <div
               key={step.key}
               className={cn(
-                "h-0.5 flex-1 rounded-full transition-colors",
+                "h-1 flex-1 rounded-full transition-colors",
                 status === "completed" && "bg-emerald-500 dark:bg-emerald-600",
                 status === "current" && "bg-primary",
                 status === "skipped" && "bg-muted-foreground/30",

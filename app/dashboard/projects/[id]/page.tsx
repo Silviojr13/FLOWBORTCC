@@ -8,6 +8,7 @@ import {
   ProjectOverviewContent,
   ProjectWizardPage,
 } from "@/components/project/project-wizard-page"
+import { workspaceGutter } from "@/components/layout/workspace"
 import { useProject } from "@/lib/use-project"
 
 export default function ProjectDetailPage() {
@@ -22,7 +23,7 @@ export default function ProjectDetailPage() {
 
   if (notFound) {
     return (
-      <div className="flex w-full flex-col items-center gap-4 px-4 py-12 text-center sm:px-6 lg:px-8">
+      <div className={`flex w-full flex-col items-center gap-4 py-12 text-center ${workspaceGutter}`}>
         <p className="text-sm text-muted-foreground">Projeto não encontrado.</p>
         <Button variant="outline" asChild>
           <Link href="/dashboard/projects">Voltar para projetos</Link>
@@ -33,7 +34,7 @@ export default function ProjectDetailPage() {
 
   if (isLoading || !project) {
     return (
-      <div className="flex w-full px-4 py-12 text-sm text-muted-foreground sm:px-6 lg:px-8">
+      <div className={`flex w-full py-12 text-sm text-muted-foreground ${workspaceGutter}`}>
         Carregando...
       </div>
     )
@@ -43,7 +44,6 @@ export default function ProjectDetailPage() {
     <ProjectShell
       project={project}
       title="Visão geral"
-      description="Resumo do projeto e atalhos para os módulos de gestão."
     >
       <ProjectOverviewContent projectId={id} />
     </ProjectShell>

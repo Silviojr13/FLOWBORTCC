@@ -78,7 +78,7 @@ export function ProjectIdentityCard({
     <>
       <div
         className={cn(
-          "flex items-center gap-3 rounded-xl border border-border/80 bg-card/80 px-3 py-2.5 shadow-sm",
+          "flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 shadow-sm dark:shadow-none",
           className
         )}
       >

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { TrendingDownIcon } from "lucide-react"
+import { HELP, HelpLabel } from "@/components/help-tooltip"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   Table,
@@ -65,10 +66,9 @@ export function CostSummary({
 
   if (components.length === 0) {
     return (
-      <Card>
+      <Card className="max-w-2xl">
         <CardContent className="py-8 text-center text-sm text-muted-foreground">
-          Nenhum componente cadastrado ainda — volte para a etapa Componentes para adicionar peças
-          e ver o custo estimado aqui.
+          Nenhum componente ainda.
         </CardContent>
       </Card>
     )
@@ -76,9 +76,15 @@ export function CostSummary({
 
   return (
     <div className="flex flex-col gap-4">
-      <Card>
+      <Card className="max-w-2xl">
         <CardContent className="flex flex-col gap-1 py-6">
-          <span className="text-sm text-muted-foreground">Custo total estimado do projeto</span>
+          <HelpLabel
+            label="Custo estimado"
+            content={HELP.estimatedCost}
+            className="text-sm text-muted-foreground"
+          >
+            Custo total estimado do projeto
+          </HelpLabel>
           <span className="text-3xl font-semibold tracking-tight text-foreground">
             {currency.format(totalCost)}
           </span>
@@ -88,7 +94,7 @@ export function CostSummary({
         </CardContent>
       </Card>
 
-      <Card className="border-emerald-200/60 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/25">
+      <Card className="max-w-2xl border-emerald-200/60 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/25">
         <CardContent className="flex gap-3 py-4">
           <TrendingDownIcon className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <div className="flex flex-col gap-1">
@@ -96,10 +102,7 @@ export function CostSummary({
               Economia potencial
             </p>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Compare alternativas e identifique oportunidades para reduzir custos.
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Análise de economia será aprimorada conforme o projeto evoluir.
+              A comparação de alternativas ainda será ampliada. O total usa os preços informados.
             </p>
           </div>
         </CardContent>

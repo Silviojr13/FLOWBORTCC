@@ -170,8 +170,8 @@ export function ComponentSearchSheet({
         <SheetHeader className="shrink-0 border-b border-border px-4 pb-4 pt-2 sm:px-6">
           <SheetTitle>Buscar componentes</SheetTitle>
           <SheetDescription>
-            Catálogo de referência para prototipagem. Valores são estimativas — confirme antes de
-            comprar.
+            Catálogo para prototipagem. O preço de referência é uma faixa aproximada — confirme
+            antes de comprar.
           </SheetDescription>
         </SheetHeader>
 
@@ -269,7 +269,7 @@ export function ComponentSearchSheet({
                 const isAdded = isItemAdded(item)
                 const isAdding = addingId === item.id
                 return (
-                  <Card key={item.id} className="bg-card/95">
+                  <Card key={item.id} className="bg-card">
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between gap-2">
                         <CardTitle className="text-sm leading-snug">{item.name}</CardTitle>

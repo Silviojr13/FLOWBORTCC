@@ -112,10 +112,7 @@ export function RegisterForm({
     <AuthPageShell className={cn(className)} {...props}>
       <AuthCard>
         <AuthLogo />
-        <AuthHeader
-          title="Crie sua conta"
-          description="Comece a organizar seu projeto de robótica com o Flowbot."
-        />
+        <AuthHeader title="Crie sua conta" />
 
         <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
           <FieldGroup>

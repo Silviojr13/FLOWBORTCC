@@ -17,7 +17,7 @@ export function WelcomeScreen({
   onSuggestionClick: (text: string) => void;
 }) {
   return (
-    <div className="animate-fade-in-up flex flex-1 flex-col items-center justify-center px-4 py-10 text-center sm:px-6 sm:py-12">
+    <div className="animate-fade-in-up flex flex-1 flex-col items-center justify-center py-10 text-center sm:py-12">
       {/* Image placeholder — replace with your own image later */}
       <div className="mb-6 sm:mb-8">
         <Image
@@ -37,7 +37,7 @@ export function WelcomeScreen({
 
       {/* Subtitle */}
       <p className="mb-8 max-w-md text-sm leading-relaxed text-muted-foreground sm:mb-10 sm:text-base">
-        Descreva sua ideia de projeto de sistema embarcado ou robótica e eu vou te ajudar a levantar os requisitos.
+        Descreva sua ideia de robótica ou sistema embarcado. Eu ajudo a definir o que o projeto precisa fazer.
       </p>
 
       {/* Suggestion chips */}

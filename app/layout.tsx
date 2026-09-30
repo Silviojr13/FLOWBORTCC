@@ -22,6 +22,13 @@ const robotoMono = Roboto_Mono({
 export const metadata: Metadata = {
   title: "FlowBot",
   description: "FLOWBOT — assistente inteligente para criação de projetos",
+  icons: {
+    icon: {
+      url: "/flowbot_bot.svg?v=2",
+      type: "image/svg+xml",
+      sizes: "any",
+    },
+  },
 };
 
 export default function RootLayout({

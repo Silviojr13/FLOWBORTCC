@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { PencilIcon, PlusIcon, Trash2Icon, XIcon, CheckIcon } from "lucide-react"
+import { HELP, HelpLabel } from "@/components/help-tooltip"
 import {
   CategoryIndicator,
   PriorityIndicator,
@@ -256,32 +257,42 @@ export function RequirementsTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="overflow-x-auto rounded-xl border border-border bg-card/95 shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-24 bg-muted/40 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <TableHead className="w-24 bg-muted text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Código
               </TableHead>
-              <TableHead className="bg-muted/40 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <TableHead className="bg-muted text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Descrição
               </TableHead>
-              <TableHead className="w-40 bg-muted/40 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Categoria
+              <TableHead className="w-44 bg-muted text-xs font-medium tracking-wide text-muted-foreground">
+                <HelpLabel label="Categoria" content={HELP.category}>
+                  <span className="uppercase">Categoria</span>
+                </HelpLabel>
               </TableHead>
-              <TableHead className="w-28 bg-muted/40 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Prioridade
+              <TableHead className="w-32 bg-muted text-xs font-medium tracking-wide text-muted-foreground">
+                <HelpLabel label="Prioridade" content={HELP.priority}>
+                  <span className="uppercase">Prioridade</span>
+                </HelpLabel>
               </TableHead>
-              <TableHead className="w-32 bg-muted/40 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <TableHead className="w-32 bg-muted text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Status
               </TableHead>
-              <TableHead className="w-28 bg-muted/40 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Cobertura
+              <TableHead className="w-32 bg-muted text-xs font-medium tracking-wide text-muted-foreground">
+                <HelpLabel label="Cobertura" content={HELP.coverage}>
+                  <span className="uppercase">Cobertura</span>
+                </HelpLabel>
               </TableHead>
-              <TableHead className="w-28 bg-muted/40 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Custo
+              <TableHead className="w-28 bg-muted text-xs font-medium tracking-wide text-muted-foreground">
+                <span className="flex justify-end">
+                  <HelpLabel label="Custo" content={HELP.requirementCost}>
+                    <span className="uppercase">Custo</span>
+                  </HelpLabel>
+                </span>
               </TableHead>
-              <TableHead className="w-20 bg-muted/40 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <TableHead className="w-20 bg-muted text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Ações
               </TableHead>
             </TableRow>
@@ -298,10 +309,7 @@ export function RequirementsTable({
             {!isLoading && requirements.length === 0 && editingId !== NEW_ROW_ID && (
               <TableRow>
                 <TableCell colSpan={8} className="py-8 text-center">
-                  <p className="text-sm font-medium text-foreground">Nenhum requisito adicionado ainda.</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Comece descrevendo o que seu projeto precisa atender.
-                  </p>
+                  <p className="text-sm font-medium text-foreground">Nenhum requisito ainda.</p>
                 </TableCell>
               </TableRow>
             )}

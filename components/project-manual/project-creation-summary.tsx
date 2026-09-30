@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+import { HELP, HelpLabel } from "@/components/help-tooltip"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { CircleCheckIcon } from "lucide-react"
@@ -95,7 +96,9 @@ export function ProjectCreationSummary({
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold text-foreground">{stepContent.title}</h2>
-        <p className="text-sm text-muted-foreground">{stepContent.description}</p>
+        {stepContent.description ? (
+          <p className="text-sm text-muted-foreground">{stepContent.description}</p>
+        ) : null}
       </div>
 
       <Card>
@@ -131,7 +134,11 @@ export function ProjectCreationSummary({
                 <dd className="text-lg font-semibold">{summary.componentsCount}</dd>
               </div>
               <div className="rounded-lg border border-border px-3 py-2">
-                <dt className="text-xs text-muted-foreground">Custo estimado</dt>
+                <dt className="text-xs text-muted-foreground">
+                  <HelpLabel label="Custo estimado" content={HELP.estimatedCost}>
+                    Custo estimado
+                  </HelpLabel>
+                </dt>
                 <dd className="text-lg font-semibold">{currency.format(summary.totalCost)}</dd>
               </div>
             </dl>
