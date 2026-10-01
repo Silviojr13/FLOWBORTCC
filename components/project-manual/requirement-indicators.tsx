@@ -18,7 +18,7 @@ const PRIORITY_CONFIG: Record<
 > = {
   Alta: { icon: AlertCircleIcon, className: "text-red-600 dark:text-red-400", label: "Alta" },
   Média: { icon: CircleDotIcon, className: "text-amber-600 dark:text-amber-400", label: "Média" },
-  Baixa: { icon: MinusIcon, className: "text-muted-foreground", label: "Baixa" },
+  Baixa: { icon: MinusIcon, className: "text-teal-700 dark:text-teal-300", label: "Baixa" },
 }
 
 const STATUS_CONFIG: Record<
@@ -27,7 +27,7 @@ const STATUS_CONFIG: Record<
 > = {
   "Em Aberto": {
     icon: CircleIcon,
-    className: "text-muted-foreground",
+    className: "text-primary",
     label: "Em Aberto",
   },
   Validado: {
@@ -44,7 +44,7 @@ const STATUS_CONFIG: Record<
 
 const CATEGORY_CONFIG: Record<Category, { className: string }> = {
   Funcional: { className: "text-primary" },
-  "Não Funcional": { className: "text-muted-foreground" },
+  "Não Funcional": { className: "text-teal-700 dark:text-teal-300" },
 }
 
 export function PriorityIndicator({ value }: { value: Priority }) {

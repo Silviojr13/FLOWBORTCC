@@ -61,13 +61,7 @@ const EMPTY_DRAFT: DraftFields = {
   requirementIds: [],
 }
 
-export function FeaturesPanel({
-  projectId,
-  variant = "wizard",
-}: {
-  projectId: string
-  variant?: "wizard" | "management"
-}) {
+export function FeaturesPanel({ projectId }: { projectId: string }) {
   const [features, setFeatures] = useState<Feature[]>([])
   const [requirements, setRequirements] = useState<RequirementOption[]>([])
   const [reqMap, setReqMap] = useState<Record<string, string[]>>({})
@@ -205,7 +199,7 @@ export function FeaturesPanel({
 
   function renderDraftForm() {
     return (
-      <Card className="border-primary/30 lg:col-span-2 2xl:col-span-3">
+      <Card className="max-w-3xl border-primary/30">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
             {editingId === NEW_ROW_ID ? "Nova funcionalidade" : "Editar funcionalidade"}
@@ -248,20 +242,8 @@ export function FeaturesPanel({
     )
   }
 
-  const emptyMessage =
-    variant === "wizard"
-      ? "Transforme seus requisitos nas capacidades principais do projeto."
-      : "Adicione funcionalidades para organizar o desenvolvimento; as tarefas do Kanban podem ser vinculadas a elas."
-
   return (
     <div className="flex flex-col gap-4">
-      {variant === "wizard" && (
-        <p className="text-sm text-muted-foreground">
-          Cada funcionalidade tem um status de planejamento (Planejada, Em desenvolvimento ou
-          Concluída). A execução é detalhada em tarefas no Kanban do projeto.
-        </p>
-      )}
-
       {isLoading && (
         <p className="py-6 text-center text-sm text-muted-foreground">
           Carregando funcionalidades...
@@ -270,16 +252,16 @@ export function FeaturesPanel({
 
       {!isLoading && features.length === 0 && editingId !== NEW_ROW_ID && (
         <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center">
-          <p className="text-sm font-medium text-foreground">Nenhuma funcionalidade definida.</p>
-          <p className="mt-1 text-sm text-muted-foreground">{emptyMessage}</p>
+          <p className="text-sm font-medium text-foreground">Nenhuma funcionalidade ainda.</p>
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+      <div className="@container">
+      <div className="grid gap-4 @xl:grid-cols-2 @5xl:grid-cols-3">
         {features.map((feature) => {
           if (editingId === feature.id) {
             return (
-              <div key={feature.id} className="lg:col-span-2 2xl:col-span-3">
+              <div key={feature.id} className="@xl:col-span-2 @5xl:col-span-3">
                 {renderDraftForm()}
               </div>
             )
@@ -292,7 +274,7 @@ export function FeaturesPanel({
           const linkedReqs = requirements.filter((r) => linkedIds.includes(r.id))
 
           return (
-            <Card key={feature.id} className={cn("flex flex-col bg-card/95", display.cardClass)}>
+            <Card key={feature.id} className={cn("flex flex-col bg-card", display.cardClass)}>
               <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-2">
                 <CardTitle className="text-base leading-snug">{feature.name}</CardTitle>
                 <FeatureStatusBadge status={feature.status} />
@@ -339,6 +321,7 @@ export function FeaturesPanel({
             </Card>
           )
         })}
+      </div>
       </div>
 
       {editingId === NEW_ROW_ID && renderDraftForm()}

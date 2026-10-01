@@ -1,3 +1,4 @@
+import { Workspace } from "@/components/layout/workspace"
 import { ProjectStepRail } from "@/components/project-steps/project-step-rail"
 import type { ProjectStep, StepRailContext } from "@/lib/project-steps"
 
@@ -11,7 +12,7 @@ export function ProjectCreationLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex w-full flex-1 flex-col gap-4 px-4 sm:gap-6 sm:px-6 lg:px-8">
+    <Workspace width="creation" className="mx-auto flex w-full flex-1 flex-col gap-8 pt-4 lg:pt-8">
       <ProjectStepRail
         currentStep={currentStep}
         variant="compact"
@@ -19,16 +20,16 @@ export function ProjectCreationLayout({
         className="xl:hidden"
       />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-6 xl:flex-row xl:items-start xl:gap-10 2xl:gap-12">
+      <div className="flex min-h-0 w-full flex-1 flex-col gap-8 xl:flex-row xl:items-start xl:gap-10">
         <div className="min-w-0 flex-1">{children}</div>
 
         <ProjectStepRail
           currentStep={currentStep}
           variant="rail"
           railContext={railContext}
-          className="hidden w-44 shrink-0 xl:sticky xl:top-[calc(var(--header-height)+1.5rem)] xl:block xl:w-48"
+          className="hidden w-60 shrink-0 xl:sticky xl:top-[calc(var(--header-height)+2rem)] xl:block"
         />
       </div>
-    </div>
+    </Workspace>
   )
 }

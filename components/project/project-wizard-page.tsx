@@ -4,19 +4,12 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  CalendarRangeIcon,
-  FileTextIcon,
-  LayoutGridIcon,
-  KanbanIcon,
-  PackageIcon,
-  SparklesIcon,
-} from "lucide-react"
+import { ArrowLeftIcon, ArrowRightIcon, LayoutGridIcon } from "lucide-react"
+import { HELP, HelpLabel } from "@/components/help-tooltip"
+import { workspaceGutter } from "@/components/layout/workspace"
+import { ProjectContextNav } from "@/components/project/project-context-nav"
 import { RequirementsTable } from "@/components/project-manual/requirements-table"
 import { AiChatAssistButton } from "@/components/project-manual/ai-assist-button"
-import { ProjectIdentityCard } from "@/components/project-manual/project-identity-card"
 import { FeaturesPanel } from "@/components/project-manual/features-panel"
 import { ComponentsTable } from "@/components/project-manual/components-table"
 import { ComponentSuggestions } from "@/components/project-manual/component-suggestions"
@@ -33,6 +26,10 @@ import {
 } from "@/lib/project-steps"
 import { useProject } from "@/lib/use-project"
 import { isTaskOverdue, type KanbanColumn, type Task } from "@/lib/kanban"
+import {
+  PROJECT_PRIMARY_SHORTCUTS,
+  PROJECT_SECONDARY_SHORTCUTS,
+} from "@/lib/project-nav"
 import {
   isRequirementsSkipped,
   setRequirementsSkipped,
@@ -101,7 +98,7 @@ export function ProjectWizardPage({
 
   if (notFound) {
     return (
-      <div className="flex w-full flex-col items-center gap-4 px-4 py-12 text-center sm:px-6 lg:px-8">
+      <div className={`flex w-full flex-col items-center gap-4 py-12 text-center ${workspaceGutter}`}>
         <p className="text-sm text-muted-foreground">Projeto não encontrado.</p>
         <Button variant="outline" onClick={() => router.push("/dashboard/projects")}>
           Voltar para projetos
@@ -112,7 +109,7 @@ export function ProjectWizardPage({
 
   if (isLoading || !project) {
     return (
-      <div className="flex w-full px-4 py-12 text-sm text-muted-foreground sm:px-6 lg:px-8">
+      <div className={`flex w-full py-12 text-sm text-muted-foreground ${workspaceGutter}`}>
         Carregando...
       </div>
     )
@@ -125,28 +122,30 @@ export function ProjectWizardPage({
 
   return (
     <ProjectCreationLayout currentStep={step} railContext={railContext}>
-      <div className="flex w-full flex-col gap-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-fit gap-1.5 px-2 text-muted-foreground"
-          onClick={() => router.push("/dashboard/projects")}
-        >
-          <ArrowLeftIcon className="size-4" />
-          Projetos
-        </Button>
+      <div className="flex w-full flex-col gap-10">
+        <div className="flex flex-col gap-6">
+          <ProjectContextNav projectId={project.id} projectName={project.name} />
 
-        <ProjectIdentityCard project={project} />
-
-        {step !== "finalizar" && (
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold text-foreground">{stepContent.title}</h2>
-              <p className="text-sm text-muted-foreground">{stepContent.description}</p>
+          {step !== "finalizar" && (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-semibold text-foreground">{stepContent.title}</h2>
+                {step === "funcionalidades" ? (
+                  <div className="text-sm text-muted-foreground">
+                    Capacidades principais do projeto. O trabalho concreto vira tarefas no{" "}
+                    <HelpLabel label="Kanban" content={HELP.kanban}>
+                      Kanban
+                    </HelpLabel>
+                    .
+                  </div>
+                ) : stepContent.description ? (
+                  <p className="text-sm text-muted-foreground">{stepContent.description}</p>
+                ) : null}
+              </div>
+              {step === "requisitos" && <AiChatAssistButton />}
             </div>
-            {step === "requisitos" && <AiChatAssistButton />}
-          </div>
-        )}
+          )}
+        </div>
 
         {step === "requisitos" && (
           <div className="flex flex-col gap-4">
@@ -171,7 +170,7 @@ export function ProjectWizardPage({
         )}
 
         {step === "funcionalidades" && (
-          <FeaturesPanel projectId={project.id} variant="wizard" />
+          <FeaturesPanel projectId={project.id} />
         )}
 
         {step === "componentes" && (
@@ -191,7 +190,7 @@ export function ProjectWizardPage({
           <ProjectCreationSummary projectId={project.id} requirementsSkipped={requirementsSkipped} />
         )}
 
-        <div className="flex items-center justify-between border-t pt-4">
+        <div className="flex items-center justify-between border-t pt-6">
           <Button
             variant="outline"
             className="gap-1.5"
@@ -322,70 +321,83 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
   const total = stats?.tasksTotal ?? 0
   const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0
 
-  const shortcuts = [
-    {
-      href: `/dashboard/projects/${projectId}/features`,
-      label: "Funcionalidades",
-      icon: SparklesIcon,
-      description: "Gerenciar capacidades do projeto",
-    },
-    {
-      href: `/dashboard/projects/${projectId}/kanban`,
-      label: "Kanban",
-      icon: KanbanIcon,
-      description: "Tarefas por estado, com drag-and-drop",
-    },
-    {
-      href: `/dashboard/projects/${projectId}/sprints`,
-      label: "Sprints",
-      icon: CalendarRangeIcon,
-      description: "Planejar ciclos e acompanhar progresso",
-    },
-    {
-      href: `/dashboard/projects/${projectId}/components-costs`,
-      label: "Componentes e Custos",
-      icon: PackageIcon,
-      description: "Lista de peças e orçamento",
-    },
-    {
-      href: `/dashboard/projects/${projectId}/report`,
-      label: "Relatórios",
-      icon: FileTextIcon,
-      description: "Consolidado com export PDF/CSV/MD",
-    },
-  ]
-
   return (
     <div className="flex flex-col gap-6">
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium text-foreground">Acessar projeto</h2>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          {PROJECT_PRIMARY_SHORTCUTS.map((shortcut) => {
+            const Icon = shortcut.icon
+            return (
+              <Link
+                key={shortcut.key}
+                href={shortcut.href(projectId)}
+                className="group flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-4 transition-colors hover:border-primary/45 hover:bg-primary/15 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Icon className="size-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-foreground">{shortcut.label}</span>
+                  <span className="block text-xs leading-relaxed text-muted-foreground">
+                    {shortcut.description}
+                  </span>
+                </span>
+                <ArrowRightIcon className="size-4 shrink-0 text-primary/80" />
+              </Link>
+            )
+          })}
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {PROJECT_SECONDARY_SHORTCUTS.map((shortcut) => {
+            const Icon = shortcut.icon
+            return (
+              <Link
+                key={shortcut.key}
+                href={shortcut.href(projectId)}
+                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:border-primary/30 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none dark:shadow-none"
+              >
+                <Icon className="size-4 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 truncate">{shortcut.label}</span>
+              </Link>
+            )
+          })}
+        </div>
+      </section>
+
       {isLoading && (
         <p className="text-sm text-muted-foreground">Carregando visão geral...</p>
       )}
 
       {!isLoading && stats && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-border bg-card/95 px-4 py-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="rounded-xl border border-border bg-card px-4 py-3">
               <p className="text-xs text-muted-foreground">Tarefas</p>
               <p className="mt-1 text-2xl font-semibold">{stats.tasksTotal}</p>
               <p className="text-xs text-muted-foreground">
                 {stats.featuresTotal} funcionalidade(s)
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-card/95 px-4 py-3">
+            <div className="rounded-xl border border-border bg-card px-4 py-3">
               <p className="text-xs text-muted-foreground">Progresso</p>
               <p className="mt-1 text-2xl font-semibold">{progressPct}%</p>
               <p className="text-xs text-muted-foreground">
                 {completed} de {total} tarefa(s) concluída(s)
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-card/95 px-4 py-3">
+            <div className="rounded-xl border border-border bg-card px-4 py-3">
               <p className="text-xs text-muted-foreground">Tarefas em atraso</p>
               <p className={`mt-1 text-2xl font-semibold ${stats.tasksOverdue > 0 ? "text-destructive" : ""}`}>
                 {stats.tasksOverdue}
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-card/95 px-4 py-3">
-              <p className="text-xs text-muted-foreground">Requisitos sem cobertura</p>
+            <div className="rounded-xl border border-border bg-card px-4 py-3">
+              <div className="text-xs text-muted-foreground">
+                <HelpLabel label="Requisitos sem cobertura" content={HELP.uncovered}>
+                  Requisitos sem cobertura
+                </HelpLabel>
+              </div>
               <p className={`mt-1 text-2xl font-semibold ${stats.requirementsUncovered.length > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
                 {stats.requirementsUncovered.length}
               </p>
@@ -395,18 +407,22 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
                 </p>
               )}
             </div>
-            <div className="rounded-xl border border-border bg-card/95 px-4 py-3">
+            <div className="rounded-xl border border-border bg-card px-4 py-3">
               <p className="text-xs text-muted-foreground">Componentes</p>
               <p className="mt-1 text-2xl font-semibold">{stats.componentsCount}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card/95 px-4 py-3">
-              <p className="text-xs text-muted-foreground">Custo estimado</p>
+            <div className="rounded-xl border border-border bg-card px-4 py-3">
+              <div className="text-xs text-muted-foreground">
+                <HelpLabel label="Custo estimado" content={HELP.estimatedCost}>
+                  Custo estimado
+                </HelpLabel>
+              </div>
               <p className="mt-1 text-2xl font-semibold">{currency.format(stats.totalCost)}</p>
             </div>
           </div>
 
           {stats.tasksByColumn.length > 0 && (
-            <div className="rounded-xl border border-border bg-card/95 px-4 py-4">
+            <div className="rounded-xl border border-border bg-card px-4 py-4">
               <p className="text-sm font-medium">Tarefas por coluna do Kanban</p>
               <div className="mt-3 flex flex-wrap gap-4 text-sm">
                 {stats.tasksByColumn.map((c) => (
@@ -418,7 +434,7 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
             </div>
           )}
 
-          <div className="rounded-xl border border-border bg-card/95 px-4 py-4">
+          <div className="rounded-xl border border-border bg-card px-4 py-4">
             <p className="text-sm font-medium">Status das funcionalidades</p>
             <div className="mt-3 flex flex-wrap gap-4 text-sm">
               <span>
@@ -437,7 +453,7 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
           </div>
 
           {stats.requirementsCount === 0 && (
-            <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3 text-sm">
+            <div className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-3 text-sm">
               <p className="text-muted-foreground">
                 {stats.requirementsSkipped
                   ? "Requisitos não foram definidos na criação."
@@ -452,30 +468,11 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
             </div>
           )}
 
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">Atalhos</p>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {shortcuts.map(({ href, label, icon: Icon, description }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex items-start gap-3 rounded-xl border border-border bg-card/95 px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary/5"
-                >
-                  <Icon className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <div>
-                    <p className="text-sm font-medium">{label}</p>
-                    <p className="text-xs text-muted-foreground">{description}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-
           <div className="flex gap-2">
             <Button variant="outline" size="sm" className="gap-1.5" asChild>
               <Link href={`/dashboard/projects/${projectId}?step=requisitos`}>
                 <LayoutGridIcon className="size-4" />
-                Retomar wizard
+                Revisar etapas
               </Link>
             </Button>
           </div>

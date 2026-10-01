@@ -3,26 +3,25 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
+import { PlusIcon } from "lucide-react"
+import { FlowbotMark } from "@/components/flowbot-brand-logo"
+import { ProjectCard, type ProjectCardData } from "@/components/project/project-card"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card"
-import { PlusIcon, FolderIcon } from "lucide-react"
+import { Workspace } from "@/components/layout/workspace"
+import { useProjectLocalMeta } from "@/lib/use-project-local-meta"
 
-interface ProjectSummary {
-  id: string
-  name: string
-  description: string | null
-  updatedAt: string
-  _count: { requirements: number; tasks: number; components: number }
+function ProjectCardWithImage({ project }: { project: ProjectCardData }) {
+  const meta = useProjectLocalMeta(project.id)
+  const displayProject = {
+    ...project,
+    name: meta.name?.trim() || project.name,
+    description: meta.description ?? project.description,
+  }
+  return <ProjectCard project={displayProject} imageUrl={meta.imageDataUrl} />
 }
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<ProjectSummary[]>([])
+  const [projects, setProjects] = useState<ProjectCardData[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -39,19 +38,18 @@ export default function ProjectsPage() {
       .finally(() => setIsLoading(false))
   }, [])
 
+  const hasProjects = projects.length > 0
+
   return (
-    <div className="flex w-full flex-col gap-6 px-4 sm:px-6 lg:px-8">
-      <div className="flex items-center justify-between gap-4">
+    <Workspace width="wide" className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-navy dark:text-foreground sm:text-3xl">
             Projetos
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Seus projetos de robótica e sistemas embarcados.
-          </p>
         </div>
-        <Button asChild className="gap-1.5">
-          <Link href="/dashboard/projects/new/manual">
+        <Button asChild className="h-10 w-full gap-1.5 sm:w-auto">
+          <Link href="/dashboard/projects/new">
             <PlusIcon className="size-4" />
             Novo projeto
           </Link>
@@ -62,43 +60,33 @@ export default function ProjectsPage() {
         <p className="text-sm text-muted-foreground">Carregando projetos...</p>
       )}
 
-      {!isLoading && projects.length === 0 && (
-        <Card className="items-center py-12 text-center">
-          <CardContent className="flex flex-col items-center gap-3">
-            <FolderIcon className="size-8 text-muted-foreground/60" />
-            <p className="text-sm text-muted-foreground">
-              Você ainda não tem nenhum projeto.
+      {!isLoading && !hasProjects && (
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border bg-card/70 px-6 py-14 text-center">
+          <FlowbotMark className="size-14" />
+          <div className="flex max-w-md flex-col gap-1">
+            <p className="text-base font-medium text-foreground">
+              Seu primeiro projeto começa aqui.
             </p>
-            <Button asChild size="sm" className="gap-1.5">
-              <Link href="/dashboard/projects/new/manual">
-                <PlusIcon className="size-4" />
-                Criar o primeiro projeto
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+            <p className="text-sm text-muted-foreground">
+              Crie um projeto com a ajuda da IA ou estruture manualmente.
+            </p>
+          </div>
+          <Button asChild className="gap-1.5">
+            <Link href="/dashboard/projects/new">
+              <PlusIcon className="size-4" />
+              Criar novo projeto
+            </Link>
+          </Button>
+        </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-        {projects.map((project) => (
-          <Link key={project.id} href={`/dashboard/projects/${project.id}`}>
-            <Card className="h-full border-border shadow-sm transition-colors hover:border-primary/30 hover:shadow-md">
-              <CardHeader>
-                <CardTitle className="text-base">{project.name}</CardTitle>
-                {project.description && (
-                  <CardDescription className="line-clamp-2">
-                    {project.description}
-                  </CardDescription>
-                )}
-              </CardHeader>
-              <CardContent className="text-xs text-muted-foreground">
-                {project._count.requirements} requisito(s) · {project._count.tasks} tarefa(s) ·{" "}
-                {project._count.components} componente(s)
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
-    </div>
+      {!isLoading && hasProjects && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {projects.map((project) => (
+            <ProjectCardWithImage key={project.id} project={project} />
+          ))}
+        </div>
+      )}
+    </Workspace>
   )
 }

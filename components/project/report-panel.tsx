@@ -63,7 +63,7 @@ export function ReportPanel({ projectId }: { projectId: string }) {
   return (
     <div className="flex flex-col gap-6">
       {/* Parâmetros (UC11 passo 2: tipo e período) */}
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card/95 p-4">
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
         <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
           <Field>
             <FieldLabel>Tipo de relatório</FieldLabel>

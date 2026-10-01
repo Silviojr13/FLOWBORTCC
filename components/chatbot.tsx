@@ -243,15 +243,14 @@ export default function ChatPage() {
   /* ---------------------------------------------------------------- */
 
   const hasMessages = messages.length > 0;
-  const hasStartedChat = messages.some((message) => message.role === "user");
 
   const chatContent = (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 w-full flex-1 flex-col">
       {/* Message area */}
       <div className="flex-1 overflow-y-auto">
         {hasMessages ? (
           /* ---- Conversation view ---- */
-          <div className="mx-auto flex max-w-215 flex-col gap-5 px-4 py-6 sm:py-8 sm:px-6">
+          <div className="flex w-full flex-col gap-5 py-6 sm:py-8">
             {messages.map((msg, i) => {
               const isStreamingPlaceholder =
                 isStreaming &&
@@ -291,6 +290,7 @@ export default function ChatPage() {
 
       {/* Sticky input */}
       <ChatInput
+        embedded
         input={input}
         onInputChange={setInput}
         onSend={sendMessage}
@@ -302,10 +302,6 @@ export default function ChatPage() {
       />
     </div>
   );
-
-  if (!hasStartedChat) {
-    return chatContent;
-  }
 
   return (
     <ProjectCreationLayout currentStep="requisitos">

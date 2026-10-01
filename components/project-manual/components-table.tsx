@@ -170,23 +170,19 @@ export function ComponentsTable({
 
       {!isLoading && components.length === 0 && (
         <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center">
-          <p className="text-sm font-medium text-foreground">
-            Nenhum componente adicionado ao projeto.
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Busque componentes ou escolha uma sugestão da IA.
-          </p>
+          <p className="text-sm font-medium text-foreground">Nenhum componente ainda.</p>
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="@container">
+      <div className="grid gap-4 @xl:grid-cols-2">
         {components.map((component) => {
           const req = requirementInfo(component.requirementId)
           const subtotal = component.quantity * component.unitPrice
           const origin = origins[component.id]
 
           return (
-            <Card key={component.id} className="flex flex-col bg-card/95">
+            <Card key={component.id} className="flex flex-col bg-card">
               <CardHeader className="pb-2">
                 <div className="flex items-start gap-3">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40">
@@ -258,6 +254,7 @@ export function ComponentsTable({
             </Card>
           )
         })}
+      </div>
       </div>
 
       <ComponentAddDialog

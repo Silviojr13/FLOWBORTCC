@@ -5,10 +5,10 @@ import { toast } from "sonner"
 import { ArrowDownWideNarrowIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { HELP, HelpLabel } from "@/components/help-tooltip"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -144,10 +144,11 @@ function SprintDialogForm({
   return (
     <>
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Editar sprint" : "Planejar sprint"}</DialogTitle>
-          <DialogDescription>
-            Defina o período, o objetivo e selecione as tarefas que serão executadas no ciclo.
-          </DialogDescription>
+          <DialogTitle>
+            <HelpLabel label="Sprint" content={HELP.sprint}>
+              {isEditing ? "Editar sprint" : "Planejar sprint"}
+            </HelpLabel>
+          </DialogTitle>
         </DialogHeader>
 
         <FieldGroup className="gap-4">

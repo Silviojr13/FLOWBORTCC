@@ -11,7 +11,7 @@ export function AiChatAssistButton({
   label?: string
 }) {
   const router = useRouter()
-  const { setOpen } = useSidebar()
+  const { setOpen, setOpenMobile } = useSidebar()
 
   return (
     <Button
@@ -20,6 +20,7 @@ export function AiChatAssistButton({
       className="shrink-0 gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
       onClick={() => {
         setOpen(false)
+        setOpenMobile(false)
         router.push(`/dashboard?new=ai&t=${Date.now()}`)
       }}
     >

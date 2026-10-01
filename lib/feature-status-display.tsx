@@ -21,7 +21,7 @@ export const FEATURE_STATUS_DISPLAY: Record<FeatureStatus, FeatureStatusDisplay>
     label: "Planejada",
     icon: CircleDashedIcon,
     badgeClass:
-      "border-primary/25 bg-primary/5 text-primary dark:border-primary/30 dark:bg-primary/10",
+      "border-primary/30 bg-primary/10 text-primary dark:border-primary/40 dark:bg-primary/15",
     textClass: "text-primary",
     columnAccent: "border-t-2 border-t-primary/50",
     selectAccent: "border-primary/20",

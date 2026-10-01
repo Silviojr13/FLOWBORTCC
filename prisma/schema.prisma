@@ -20,6 +20,12 @@ model User {
   password      String?   // Added for credentials authentication
   provider      String?
   providerId    String?
+  // Respostas opcionais do onboarding. Nulas quando a pergunta foi pulada.
+  profile               String?
+  discoverySource       String?
+  // Nulo só em contas criadas depois desta coluna que ainda não concluíram
+  // o onboarding. A migração preenche as contas anteriores com createdAt.
+  onboardingCompletedAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   accounts      Account[]

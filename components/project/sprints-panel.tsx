@@ -27,7 +27,7 @@ import {
 import { cn } from "@/lib/utils"
 
 const STATUS_BADGE: Record<SprintStatus, string> = {
-  Planejada: "border-primary/25 bg-primary/5 text-primary",
+  Planejada: "border-primary/30 bg-primary/10 text-primary dark:border-primary/40 dark:bg-primary/15",
   "Em andamento":
     "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
   Concluída:
@@ -104,7 +104,7 @@ export function SprintsPanel({ projectId }: { projectId: string }) {
   }
 
   async function deleteSprint(sprint: Sprint) {
-    if (!window.confirm(`Excluir a sprint "${sprint.name}"? As tarefas voltam para o backlog.`)) return
+    if (!window.confirm(`Excluir a sprint "${sprint.name}"? As tarefas ficam sem sprint.`)) return
     try {
       const res = await fetch(`/api/projects/${projectId}/sprints/${sprint.id}`, { method: "DELETE" })
       if (!res.ok) {
@@ -137,10 +137,7 @@ export function SprintsPanel({ projectId }: { projectId: string }) {
 
       {sprints.length === 0 && (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-4 py-8 text-center">
-          <p className="text-sm font-medium">Nenhuma sprint planejada.</p>
-          <p className="text-sm text-muted-foreground">
-            Defina um período, um objetivo e escolha as tarefas do Kanban que compõem o ciclo.
-          </p>
+          <p className="text-sm font-medium">Nenhuma sprint ainda.</p>
         </div>
       )}
 
@@ -160,7 +157,7 @@ export function SprintsPanel({ projectId }: { projectId: string }) {
           }
 
           return (
-            <Card key={sprint.id} className="bg-card/95">
+            <Card key={sprint.id} className="bg-card">
               <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-2">
                 <div className="flex min-w-0 flex-col gap-1">
                   <CardTitle className="flex flex-wrap items-center gap-2 text-base leading-snug">

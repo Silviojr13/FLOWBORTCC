@@ -12,6 +12,7 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card"
+import { HELP, HelpLabel } from "@/components/help-tooltip"
 import { setComponentOrigin } from "@/lib/component-origin-store"
 import {
   BatteryChargingIcon,
@@ -164,10 +165,16 @@ export function ComponentSuggestions({
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
             <SparklesIcon className="size-4 text-primary" />
-            <span className="text-sm font-medium text-foreground">Sugestões da IA</span>
+            <HelpLabel
+              label="Sugestões da IA"
+              content={HELP.aiSuggestion}
+              className="text-sm font-medium text-foreground"
+            >
+              Sugestões da IA
+            </HelpLabel>
           </div>
           <span className="text-xs text-muted-foreground">
-            Baseadas nos requisitos e funcionalidades do projeto. Preços são estimativas — confirme antes de comprar.
+            Os preços são estimativas. Confirme antes de comprar.
           </span>
         </div>
       </div>
@@ -197,11 +204,12 @@ export function ComponentSuggestions({
 
       {visibleSuggestions.length > 0 && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="@container">
+          <div className="grid gap-3 @xl:grid-cols-2 @5xl:grid-cols-3">
             {visibleSuggestions.map((suggestion) => {
               const isAdded = addedNames.has(suggestion.name)
               return (
-                <Card key={suggestion.name} className="justify-between border-primary/20 bg-card/95">
+                <Card key={suggestion.name} className="justify-between border-primary/20 bg-card">
                   <CardHeader className="pb-2">
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <Badge variant="outline" className="gap-1 border-primary/30 text-primary">
@@ -235,6 +243,7 @@ export function ComponentSuggestions({
                 </Card>
               )
             })}
+          </div>
           </div>
 
           {canLoadMore && !isGenerating && (

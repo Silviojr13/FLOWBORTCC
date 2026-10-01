@@ -1,5 +1,6 @@
 "use client"
 
+import { HELP, HelpLabel } from "@/components/help-tooltip"
 import {
   REPORT_SECTIONS,
   REPORT_TYPE_LABELS,
@@ -15,7 +16,7 @@ function Section({
   title,
   children,
 }: {
-  title: string
+  title: React.ReactNode
   children: React.ReactNode
 }) {
   return (
@@ -32,7 +33,7 @@ function ReportTable({
   emptyMessage = "Nenhum registro.",
   align = [],
 }: {
-  headers: string[]
+  headers: React.ReactNode[]
   rows: React.ReactNode[][]
   emptyMessage?: string
   align?: ("left" | "right" | "center")[]
@@ -43,11 +44,11 @@ function ReportTable({
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="report-table w-full text-sm">
-        <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+        <thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             {headers.map((h, i) => (
               <th
-                key={h}
+                key={i}
                 className={cn(
                   "px-3 py-2 text-left font-medium",
                   align[i] === "right" && "text-right",
@@ -96,7 +97,7 @@ function Progress({ pct }: { pct: number }) {
   )
 }
 
-function Stat({ label, value, hint, tone }: { label: string; value: React.ReactNode; hint?: string; tone?: "danger" | "warning" }) {
+function Stat({ label, value, hint, tone }: { label: React.ReactNode; value: React.ReactNode; hint?: string; tone?: "danger" | "warning" }) {
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2.5">
       <p className="text-xs text-muted-foreground">{label}</p>
@@ -182,7 +183,14 @@ export function ReportView({ report }: { report: ProjectReport }) {
             <Stat label="Tarefas em atraso" value={s.tasksOverdue} tone={s.tasksOverdue > 0 ? "danger" : undefined} />
             <Stat label="Sprints" value={s.sprintsTotal} />
             <Stat label="Componentes" value={s.componentsTotal} />
-            <Stat label="Custo total estimado" value={formatCurrency(s.totalCost)} />
+            <Stat
+              label={
+                <HelpLabel label="Custo estimado" content={HELP.estimatedCost}>
+                  Custo total estimado
+                </HelpLabel>
+              }
+              value={formatCurrency(s.totalCost)}
+            />
           </div>
           {Object.keys(s.requirementsByStatus).length > 0 && (
             <p className="text-xs text-muted-foreground">
@@ -200,7 +208,7 @@ export function ReportView({ report }: { report: ProjectReport }) {
           <ReportTable
             headers={["Sprint", "Período", "Status", "Tarefas", "Concluídas", "Progresso"]}
             align={["left", "left", "left", "right", "right", "left"]}
-            emptyMessage="Nenhuma sprint planejada."
+            emptyMessage="Nenhuma sprint ainda."
             rows={report.sprints.map((sp) => [
               <span key="n">
                 <span className="font-medium">{sp.name}</span>
@@ -221,7 +229,7 @@ export function ReportView({ report }: { report: ProjectReport }) {
           <ReportTable
             headers={["Módulo", "Tarefas", "Concluídas", "Progresso"]}
             align={["left", "right", "right", "left"]}
-            emptyMessage="Nenhuma funcionalidade cadastrada."
+            emptyMessage="Nenhuma funcionalidade ainda."
             rows={report.modules.map((m) => [
               m.name,
               m.tasksTotal,
@@ -251,11 +259,29 @@ export function ReportView({ report }: { report: ProjectReport }) {
       )}
 
       {sections.has("requirements") && (
-        <Section title="Requisitos e rastreabilidade">
+        <Section
+          title={
+            <HelpLabel label="Rastreabilidade" content={HELP.traceability}>
+              Requisitos e rastreabilidade
+            </HelpLabel>
+          }
+        >
           <ReportTable
-            headers={["Código", "Descrição", "Categoria", "Prioridade", "Status", "Nível", "Tarefas"]}
+            headers={[
+              "Código",
+              "Descrição",
+              <HelpLabel key="categoria" label="Categoria" content={HELP.category}>
+                Categoria
+              </HelpLabel>,
+              "Prioridade",
+              "Status",
+              <HelpLabel key="nivel" label="Nível" content={HELP.requirementLevel}>
+                Nível
+              </HelpLabel>,
+              "Tarefas",
+            ]}
             align={["left", "left", "left", "left", "left", "left", "center"]}
-            emptyMessage="Nenhum requisito cadastrado."
+            emptyMessage="Nenhum requisito ainda."
             rows={report.requirements.map((r) => [
               <span key="c" className="font-mono text-xs">{r.code}</span>,
               r.description,
@@ -314,7 +340,7 @@ export function ReportView({ report }: { report: ProjectReport }) {
           <ReportTable
             headers={["Componente", "Descrição", "Qtd.", "Preço unit.", "Subtotal", "Requisito"]}
             align={["left", "left", "right", "right", "right", "left"]}
-            emptyMessage="Nenhum componente cadastrado."
+            emptyMessage="Nenhum componente ainda."
             rows={report.components.map((c) => [
               c.name,
               c.description,

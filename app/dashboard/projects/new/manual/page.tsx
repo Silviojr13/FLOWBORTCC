@@ -89,9 +89,9 @@ export default function ManualProjectPage() {
 
   return (
     <ProjectCreationLayout currentStep="requisitos">
-      <div className="flex w-full flex-col gap-6">
+      <div className="flex w-full flex-col gap-10">
         {!project ? (
-          <>
+          <div className="flex w-full flex-col gap-8">
             <div className="flex flex-col gap-2">
               <h1 className="text-2xl font-semibold tracking-tight text-navy dark:text-foreground sm:text-3xl">
                 Dê um nome ao seu projeto
@@ -102,7 +102,7 @@ export default function ManualProjectPage() {
               </p>
             </div>
 
-            <FieldGroup className="max-w-lg gap-4">
+            <FieldGroup className="gap-4">
               {chatImport && (
                 <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
                   {chatImport.requirements.length} requisito(s) levantados na conversa serão
@@ -137,17 +137,21 @@ export default function ManualProjectPage() {
                 </Button>
               </div>
             </FieldGroup>
-          </>
+          </div>
         ) : (
           <>
-            <ProjectIdentityCard project={project} />
+            <div className="flex flex-col gap-6">
+              <ProjectIdentityCard project={project} />
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex flex-col gap-1">
-                <h2 className="text-lg font-semibold text-foreground">{stepContent.title}</h2>
-                <p className="text-sm text-muted-foreground">{stepContent.description}</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-lg font-semibold text-foreground">{stepContent.title}</h2>
+                  {stepContent.description ? (
+                    <p className="text-sm text-muted-foreground">{stepContent.description}</p>
+                  ) : null}
+                </div>
+                <AiChatAssistButton />
               </div>
-              <AiChatAssistButton />
             </div>
 
             <RequirementsTable
@@ -155,7 +159,7 @@ export default function ManualProjectPage() {
               initialRequirements={chatImport?.requirements}
             />
 
-            <div className="flex justify-end border-t pt-4">
+            <div className="flex justify-end border-t pt-6">
               <Button
                 className="gap-1.5"
                 onClick={() => router.push(`/dashboard/projects/${project.id}?step=funcionalidades`)}
