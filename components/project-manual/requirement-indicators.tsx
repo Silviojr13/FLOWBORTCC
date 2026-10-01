@@ -16,9 +16,24 @@ const PRIORITY_CONFIG: Record<
   Priority,
   { icon: typeof CircleIcon; className: string; label: string }
 > = {
-  Alta: { icon: AlertCircleIcon, className: "text-red-600 dark:text-red-400", label: "Alta" },
-  Média: { icon: CircleDotIcon, className: "text-amber-600 dark:text-amber-400", label: "Média" },
-  Baixa: { icon: MinusIcon, className: "text-teal-700 dark:text-teal-300", label: "Baixa" },
+  Alta: {
+    icon: AlertCircleIcon,
+    className:
+      "border border-red-200 bg-red-100 text-red-800 dark:border-red-900/80 dark:bg-red-950/80 dark:text-red-200",
+    label: "Alta",
+  },
+  Média: {
+    icon: CircleDotIcon,
+    className:
+      "border border-amber-200 bg-amber-100 text-amber-900 dark:border-amber-900/80 dark:bg-amber-950/80 dark:text-amber-200",
+    label: "Média",
+  },
+  Baixa: {
+    icon: MinusIcon,
+    className:
+      "border border-teal-200 bg-teal-100 text-teal-800 dark:border-teal-900/80 dark:bg-teal-950/80 dark:text-teal-200",
+    label: "Baixa",
+  },
 }
 
 const STATUS_CONFIG: Record<
@@ -51,7 +66,12 @@ export function PriorityIndicator({ value }: { value: Priority }) {
   const config = PRIORITY_CONFIG[value]
   const Icon = config.icon
   return (
-    <span className={cn("inline-flex items-center gap-1.5 text-sm", config.className)}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium",
+        config.className
+      )}
+    >
       <Icon className="size-3.5 shrink-0" aria-hidden />
       {config.label}
     </span>
@@ -76,14 +96,7 @@ export function CategoryIndicator({ value }: { value: Category }) {
 }
 
 export function PrioritySelectItem({ value }: { value: Priority }) {
-  const config = PRIORITY_CONFIG[value]
-  const Icon = config.icon
-  return (
-    <span className="flex items-center gap-2">
-      <Icon className={cn("size-3.5", config.className)} />
-      {config.label}
-    </span>
-  )
+  return <PriorityIndicator value={value} />
 }
 
 export function StatusSelectItem({ value }: { value: Status }) {
