@@ -371,7 +371,7 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
 
       {!isLoading && stats && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div data-tour="project-overview-stats" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-xl border border-border bg-card px-4 py-3">
               <p className="text-xs text-muted-foreground">Tarefas</p>
               <p className="mt-1 text-2xl font-semibold">{stats.tasksTotal}</p>

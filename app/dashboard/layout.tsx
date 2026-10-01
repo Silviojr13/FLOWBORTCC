@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { TourLauncher } from "@/components/tour/tour-launcher"
 import BackgroundAnimation from "@/components/background-animation"
 import { tursoDb } from "@/lib/turso-db"
 
@@ -48,6 +49,9 @@ export default async function DashboardLayout({
           </div>
         </div>
       </SidebarInset>
+
+      {/* Tour guiado da primeira sessão (só aparece para quem ainda não o concluiu). */}
+      <TourLauncher />
     </SidebarProvider>
   )
 }

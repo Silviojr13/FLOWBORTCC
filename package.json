@@ -21,7 +21,9 @@
     "script:create-kanban-tables": "dotenv -e .env -- tsx scripts/create-kanban-tables.ts",
     "script:alter-chats-project": "dotenv -e .env -- tsx scripts/alter-chats-project.ts",
     "script:alter-users-onboarding": "dotenv -e .env -- tsx scripts/alter-users-onboarding.ts",
-    "test:e2e": "pytest"
+    "test:e2e": "pytest",
+    "script:alter-tour-guiado": "dotenv -e .env -- tsx scripts/alter-tour-guiado.ts",
+    "script:reset-tour": "dotenv -e .env -- tsx scripts/reset-tour.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

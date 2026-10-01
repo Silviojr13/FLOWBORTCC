@@ -21,7 +21,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { EllipsisVerticalIcon, LogOutIcon } from "lucide-react"
+import { EllipsisVerticalIcon, LogOutIcon, SparklesIcon } from "lucide-react"
+import { startGuidedTour } from "@/lib/tour"
 
 export type SidebarUser = {
   name?: string | null
@@ -146,6 +147,10 @@ export function NavUser({
             align="end"
             sideOffset={4}
           >
+            <DropdownMenuItem onClick={() => startGuidedTour()}>
+              <SparklesIcon />
+              Fazer tour guiado
+            </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={(event) => {
                 event.preventDefault()

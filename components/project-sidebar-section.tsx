@@ -283,7 +283,7 @@ function ModuleLink({
   const isActive = activeKey === navItem.key
 
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem data-tour={`project-nav-${navItem.key}`}>
       <SidebarMenuButton
         asChild
         isActive={isActive}

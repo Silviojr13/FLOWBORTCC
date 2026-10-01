@@ -257,7 +257,7 @@ export function RequirementsTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
+      <div data-tour="requirements-coverage" className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
