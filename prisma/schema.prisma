@@ -26,6 +26,8 @@ model User {
   // Nulo só em contas criadas depois desta coluna que ainda não concluíram
   // o onboarding. A migração preenche as contas anteriores com createdAt.
   onboardingCompletedAt DateTime?
+  // Tour guiado da primeira sessão: nulo enquanto o usuário não concluiu nem pulou.
+  tourCompletedAt       DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   accounts      Account[]
@@ -105,6 +107,8 @@ model Project {
   // "manual" | "ia" — de onde o projeto veio (define, por exemplo, se a vitrine de
   // componentes gera sugestões automaticamente ou só quando o usuário pedir)
   origin      String    @default("manual")
+  // Projeto de exemplo criado automaticamente para o tour guiado da primeira sessão.
+  isTutorial  Boolean   @default(false)
   startDate   DateTime?
   endDate     DateTime?
   userId      String

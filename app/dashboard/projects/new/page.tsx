@@ -25,7 +25,7 @@ export default function NewProjectChoicePage() {
         </h1>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div data-tour="new-project-options" className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <button
           type="button"
           onClick={() => beginCreation(`/dashboard?new=ai&t=${Date.now()}`)}

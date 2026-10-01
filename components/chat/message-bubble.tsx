@@ -104,6 +104,7 @@ export function MessageBubble({
             size="sm"
             variant="outline"
             className="mt-2 gap-1.5"
+            data-tour="save-requirements"
             onClick={() => onSaveRequirements?.(msg.content)}
           >
             <SaveIcon className="size-3.5" />

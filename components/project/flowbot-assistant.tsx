@@ -498,6 +498,7 @@ export function FlowbotAssistant({
         onClick={() => setIsOpen((v) => !v)}
         aria-label={isOpen ? "Fechar assistente FlowBot" : "Abrir assistente FlowBot"}
         aria-expanded={isOpen}
+        data-tour="flowbot-assistant"
         className="fixed right-4 bottom-5 z-50 flex size-[4.75rem] items-center justify-center rounded-full border-2 border-primary/40 bg-card shadow-xl ring-4 ring-primary/15 transition-transform duration-200 hover:scale-105 hover:border-primary/60 focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none sm:right-7 sm:bottom-7 sm:size-20"
       >
         <span className={cn(!isOpen && "animate-float-soft")}>

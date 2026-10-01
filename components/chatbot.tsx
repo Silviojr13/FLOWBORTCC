@@ -13,6 +13,13 @@ import {
   type ChatMessage as Message,
 } from "@/components/chat/message-bubble";
 import { parseRequirementsFromMessage } from "@/lib/parse-requirements";
+import { DEMO_CHAT } from "@/lib/tour-chat-script";
+import {
+  notifyDemoChatDone,
+  notifyDemoSave,
+  onDemoChatEnd,
+  onDemoChatRequest,
+} from "@/lib/tour-chat";
 
 const CHAT_IMPORT_KEY = "flowbot:chat-requirements";
 
@@ -46,6 +53,74 @@ export default function ChatPage() {
   ]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Demonstração do tour guiado: enquanto ativa, a conversa é roteirizada e nada é enviado
+  // à IA nem gravado no banco.
+  const isDemoRef = useRef(false);
+  // Trechos já reproduzidos: um pedido repetido (Strict Mode, clique duplo) é ignorado.
+  const playedRef = useRef(new Set<string>());
+
+  /* Tour guiado: reproduz trechos da conversa roteirizada */
+  useEffect(() => {
+    let cancelled = false;
+    const sleep = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
+
+    const stopRequest = onDemoChatRequest(async (segment) => {
+      if (playedRef.current.has(segment)) return;
+      playedRef.current.add(segment);
+      isDemoRef.current = true;
+
+      for (const message of DEMO_CHAT[segment]) {
+        if (cancelled) return;
+
+        if (message.role === "user") {
+          // Digita na caixa de mensagem, como se fosse o usuário.
+          for (let i = 1; i <= message.content.length; i += 2) {
+            if (cancelled) return;
+            setInput(message.content.slice(0, i));
+            await sleep(22);
+          }
+          setInput(message.content);
+          await sleep(350);
+          setInput("");
+          setMessages((prev) => [...prev, message]);
+        } else {
+          // "Pensando" e depois a resposta chega em partes, como no streaming real.
+          setIsStreaming(true);
+          setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+          await sleep(900);
+          for (let i = 0; i < message.content.length; i += 6) {
+            if (cancelled) return;
+            const partial = message.content.slice(0, i + 6);
+            setMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = { role: "assistant", content: partial };
+              return updated;
+            });
+            await sleep(14);
+          }
+          setIsStreaming(false);
+        }
+        await sleep(400);
+      }
+
+      if (!cancelled) notifyDemoChatDone(segment);
+    });
+
+    const stopEnd = onDemoChatEnd(() => {
+      if (!isDemoRef.current) return;
+      isDemoRef.current = false;
+      playedRef.current.clear();
+      setMessages([]);
+      setInput("");
+      setIsStreaming(false);
+    });
+
+    return () => {
+      cancelled = true;
+      stopRequest();
+      stopEnd();
+    };
+  }, []);
 
   /* Auto-scroll on new messages */
   useEffect(() => {
@@ -107,7 +182,7 @@ export default function ChatPage() {
   /* Send message */
   const sendMessage = useCallback(async (overrideText?: string) => {
     const trimmed = (overrideText ?? input).trim();
-    if (!trimmed || isStreaming) return;
+    if (!trimmed || isStreaming || isDemoRef.current) return;
 
     // Close sidebar on send for a cleaner chat experience
     setOpen(false);
@@ -222,6 +297,12 @@ export default function ChatPage() {
   /* Save requirements generated in Modo A into a new project */
   const handleSaveRequirements = useCallback(
     (content: string) => {
+      // Na demonstração, salvar é um passo do tour (que cria o projeto de exemplo).
+      if (isDemoRef.current) {
+        notifyDemoSave();
+        return;
+      }
+
       const requirements = parseRequirementsFromMessage(content);
       if (requirements.length === 0) return;
 
