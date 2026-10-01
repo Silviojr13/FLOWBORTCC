@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import {
   DndContext,
@@ -29,7 +29,6 @@ import {
   GripVerticalIcon,
   HistoryIcon,
   MoreHorizontalIcon,
-  PencilIcon,
   PlusIcon,
   Settings2Icon,
   Trash2Icon,
@@ -107,6 +106,20 @@ function initials(name: string) {
 /*  Card                                                               */
 /* ------------------------------------------------------------------ */
 
+class MousePointerSensor extends PointerSensor {
+  static activators = [
+    {
+      eventName: "onPointerDown" as const,
+      handler: ({ nativeEvent }: { nativeEvent: PointerEvent }) =>
+        nativeEvent.pointerType === "mouse" && nativeEvent.button === 0 && nativeEvent.isPrimary,
+    },
+  ]
+}
+
+function isolateCardControl(event: React.SyntheticEvent) {
+  event.stopPropagation()
+}
+
 function TaskCardContent({
   task,
   columns,
@@ -129,17 +142,38 @@ function TaskCardContent({
   onDelete: (task: Task) => void
 }) {
   const overdue = isTaskOverdue(task, isDone)
-  // Integração Requisitos → Kanban: o requisito desta tarefa foi descartado.
   const requirementDiscarded = task.requirement?.status === "Descartado"
+  const draggedRef = useRef(false)
+
+  useEffect(() => {
+    if (!isDragging) return
+    draggedRef.current = true
+    return () => {
+      window.setTimeout(() => {
+        draggedRef.current = false
+      }, 0)
+    }
+  }, [isDragging])
+
+  function openFromClick(event: React.MouseEvent) {
+    if (event.target instanceof Element && event.target.closest("[data-card-control]")) return
+    if (draggedRef.current) {
+      draggedRef.current = false
+      return
+    }
+    onEdit(task)
+  }
 
   return (
     <div
       className={cn(
-        "rounded-lg border border-border bg-card p-3 shadow-sm transition-shadow",
-        isDragging && "opacity-40",
+        "cursor-grab rounded-lg border border-border bg-card p-3 shadow-sm transition-shadow active:cursor-grabbing",
+        isDragging && "cursor-grabbing opacity-40 shadow-md",
         overdue && "border-destructive/50",
         requirementDiscarded && "border-amber-400/70 bg-amber-50/40 dark:bg-amber-950/20"
       )}
+      {...dragHandleProps}
+      onClick={openFromClick}
     >
       {requirementDiscarded && (
         <p className="mb-2 flex items-center gap-1.5 rounded-md bg-amber-100/70 px-2 py-1 text-[11px] font-medium text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
@@ -148,19 +182,21 @@ function TaskCardContent({
         </p>
       )}
       <div className="flex items-start gap-2">
-        <button
-          type="button"
-          className="mt-0.5 shrink-0 cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
-          aria-label={`Arrastar ${task.title}`}
-          {...dragHandleProps}
-        >
+        <span className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden>
           <GripVerticalIcon className="size-4" />
-        </button>
+        </span>
 
         <button
           type="button"
-          className="min-w-0 flex-1 text-left"
-          onClick={() => onEdit(task)}
+          className="min-w-0 flex-1 cursor-grab text-left active:cursor-grabbing"
+          onClick={(event) => {
+            event.stopPropagation()
+            if (draggedRef.current) {
+              draggedRef.current = false
+              return
+            }
+            onEdit(task)
+          }}
         >
           <p className={cn("text-sm font-medium leading-snug", isDone && "text-muted-foreground line-through")}>
             {task.title}
@@ -170,33 +206,40 @@ function TaskCardContent({
           )}
         </button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="-mr-1 -mt-1 size-7 shrink-0 text-muted-foreground"
-              aria-label="Ações da tarefa"
-            >
-              <MoreHorizontalIcon className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(task)}>
-              <PencilIcon className="size-4" />
-              Editar
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onHistory(task)}>
-              <HistoryIcon className="size-4" />
-              Histórico
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={() => onDelete(task)}>
-              <Trash2Icon className="size-4" />
-              Excluir
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div
+          data-card-control
+          onPointerDown={isolateCardControl}
+          onTouchStart={isolateCardControl}
+          onClick={isolateCardControl}
+          onKeyDown={isolateCardControl}
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="-mr-1 -mt-1 size-7 shrink-0 cursor-pointer text-muted-foreground"
+                aria-label="Ações da tarefa"
+              >
+                <MoreHorizontalIcon className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEdit(task)}>
+                Abrir
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onHistory(task)}>
+                <HistoryIcon className="size-4" />
+                Histórico
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onClick={() => onDelete(task)}>
+                <Trash2Icon className="size-4" />
+                Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 pl-6 text-xs">
@@ -247,9 +290,16 @@ function TaskCardContent({
         </p>
       )}
 
-      <div className="mt-3 pl-6">
+      <div
+        className="mt-3 pl-6"
+        data-card-control
+        onPointerDown={isolateCardControl}
+        onTouchStart={isolateCardControl}
+        onClick={isolateCardControl}
+        onKeyDown={isolateCardControl}
+      >
         <Select value={task.columnId} onValueChange={(columnId) => onMove(task.id, columnId)}>
-          <SelectTrigger size="sm" className="w-full min-w-[10rem]" aria-label="Mover para coluna">
+          <SelectTrigger size="sm" className="w-full min-w-[10rem] cursor-pointer" aria-label="Mover para coluna">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -396,8 +446,8 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
   const [isColumnsDialogOpen, setIsColumnsDialogOpen] = useState(false)
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } })
+    useSensor(MousePointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
   )
 
   // Recarrega o quadro do servidor (após mutações, para refletir ordem/histórico/sprints).
@@ -553,6 +603,8 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
         throw new Error(data.error || "Erro ao excluir tarefa")
       }
       setTasks((prev) => prev.filter((t) => t.id !== task.id))
+      setDialogTask(null)
+      setIsTaskDialogOpen(false)
       toast.success("Tarefa excluída.")
       load()
     } catch (error) {
@@ -765,7 +817,7 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
 
         <DragOverlay dropAnimation={null}>
           {activeTask ? (
-            <div className="w-[280px] rotate-1 cursor-grabbing opacity-95 shadow-lg">
+            <div className="w-[280px] rotate-1 cursor-grabbing opacity-95 shadow-xl">
               <TaskCardContent
                 task={activeTask}
                 columns={columns}
@@ -794,6 +846,8 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
           upsertTask(task)
           load()
         }}
+        onHistory={setHistoryTask}
+        onDelete={deleteTask}
       />
 
       <TaskHistorySheet
