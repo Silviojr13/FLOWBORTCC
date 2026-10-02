@@ -27,7 +27,8 @@
     "script:reset-tour": "dotenv -e .env -- tsx scripts/reset-tour.ts",
     "script:seed-flowbot-project": "dotenv -e .env -- tsx scripts/seed-flowbot-project.ts",
     "script:create-diagrams-table": "dotenv -e .env -- tsx scripts/create-diagrams-table.ts",
-    "script:alter-resources": "dotenv -e .env -- tsx scripts/alter-resources.ts"
+    "script:alter-resources": "dotenv -e .env -- tsx scripts/alter-resources.ts",
+    "script:alter-usability-studies": "dotenv -e .env -- tsx scripts/alter-usability-studies.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

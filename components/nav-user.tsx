@@ -21,8 +21,17 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { EllipsisVerticalIcon, LogOutIcon, SparklesIcon } from "lucide-react"
+import Link from "next/link"
+import {
+  CircleHelpIcon,
+  ClipboardCheckIcon,
+  EllipsisVerticalIcon,
+  LogOutIcon,
+  SparklesIcon,
+} from "lucide-react"
 import { startGuidedTour } from "@/lib/tour"
+import { openHelpCenter } from "@/lib/page-tutorials"
+import { useStudyMe } from "@/lib/use-study-me"
 
 export type SidebarUser = {
   name?: string | null
@@ -92,6 +101,7 @@ export function NavUser({
   isLoading?: boolean
 }) {
   const { isMobile } = useSidebar()
+  const isAdmin = useStudyMe().data?.isAdmin ?? false
   const [isSigningOut, setIsSigningOut] = useState(false)
 
   if (isLoading || user === undefined) {
@@ -151,6 +161,18 @@ export function NavUser({
               <SparklesIcon />
               Fazer tour guiado
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openHelpCenter()}>
+              <CircleHelpIcon />
+              Central de tutoriais
+            </DropdownMenuItem>
+            {isAdmin && (
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/admin/avaliacoes">
+                  <ClipboardCheckIcon />
+                  Avaliações de usabilidade
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               onSelect={(event) => {
                 event.preventDefault()

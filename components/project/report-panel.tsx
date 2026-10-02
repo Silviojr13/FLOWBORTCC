@@ -38,6 +38,7 @@ import {
   type ReportType,
 } from "@/lib/report"
 import { reportQueryString, useProjectReport, type ReportQuery } from "@/lib/use-project-report"
+import { markStudyTaskDone } from "@/lib/use-study-me"
 
 // O Select não aceita valor vazio: "__all__" representa "todos" na interface.
 const ALL = "__all__"
@@ -111,6 +112,8 @@ export function ReportPanel({ projectId }: { projectId: string }) {
     try {
       const { downloadReportPdf } = await import("@/lib/report-pdf")
       await downloadReportPdf(report)
+      // Avaliação de usabilidade: o PDF é gerado no navegador, então a própria tela avisa.
+      markStudyTaskDone("relatorio")
     } catch (err) {
       console.error(err)
       toast.error("Não foi possível gerar o PDF.")
@@ -122,7 +125,7 @@ export function ReportPanel({ projectId }: { projectId: string }) {
   return (
     <div className="flex flex-col gap-6">
       {/* Parâmetros (UC11 passo 2: tipo, período e filtros) */}
-      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
+      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4" data-tour="report-filters">
         <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
           <Field>
             <FieldLabel>Tipo de relatório</FieldLabel>
@@ -207,7 +210,7 @@ export function ReportPanel({ projectId }: { projectId: string }) {
       </div>
 
       {/* Exportação (RF15) */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2" data-tour="report-exports">
         <Button
           size="sm"
           variant="outline"

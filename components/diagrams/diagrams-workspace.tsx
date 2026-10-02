@@ -271,7 +271,7 @@ export function DiagramsWorkspace({ projectId, projectName }: { projectId: strin
   return (
     <div className="flex flex-col gap-6">
       {/* Novo diagrama */}
-      <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm dark:shadow-none">
+      <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm dark:shadow-none" data-tour="diagrams-new">
         <div className="flex flex-col gap-1">
           <h2 className="text-sm font-medium text-foreground">Novo diagrama</h2>
           <p className="text-xs text-muted-foreground">
@@ -325,7 +325,7 @@ export function DiagramsWorkspace({ projectId, projectName }: { projectId: strin
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         {/* Lista */}
-        <aside className="flex flex-col gap-2 lg:w-64 lg:shrink-0">
+        <aside className="flex flex-col gap-2 lg:w-64 lg:shrink-0" data-tour="diagrams-list">
           <h2 className="px-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
             Diagramas do projeto
           </h2>

@@ -45,7 +45,9 @@ export default function ProjectComponentsCostsPage() {
           projectId={id}
           onChange={() => setRefreshToken((t) => t + 1)}
         />
-        <CostSummary projectId={id} refreshToken={refreshToken} />
+        <div data-tour="components-cost">
+          <CostSummary projectId={id} refreshToken={refreshToken} />
+        </div>
       </div>
     </ProjectShell>
   )
