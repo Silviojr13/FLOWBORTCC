@@ -2,18 +2,15 @@
 
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { workspaceGutter } from "@/components/layout/workspace"
 import { ProjectShell } from "@/components/project/project-shell"
-import { ComponentsTable } from "@/components/project-manual/components-table"
-import { CostSummary } from "@/components/project-manual/cost-summary"
+import { ResourcesPanel } from "@/components/resources/resources-panel"
 import { useProject } from "@/lib/use-project"
 
-export default function ProjectComponentsCostsPage() {
+export default function ProjectResourcesPage() {
   const { id } = useParams<{ id: string }>()
   const { project, notFound, isLoading } = useProject(id)
-  const [refreshToken, setRefreshToken] = useState(0)
 
   if (notFound) {
     return (
@@ -37,16 +34,11 @@ export default function ProjectComponentsCostsPage() {
   return (
     <ProjectShell
       project={project}
-      title="Componentes"
-      width="focused"
+      title="Recursos"
+      description="Pessoas, equipamentos, software e espaços que o projeto usa, com o orçamento consolidado."
+      width="wide"
     >
-      <div className="flex flex-col gap-8">
-        <ComponentsTable
-          projectId={id}
-          onChange={() => setRefreshToken((t) => t + 1)}
-        />
-        <CostSummary projectId={id} refreshToken={refreshToken} />
-      </div>
+      <ResourcesPanel projectId={id} />
     </ProjectShell>
   )
 }

@@ -7,12 +7,19 @@ export interface ReportQuery {
   type: ReportType
   from: string
   to: string
+  /** Filtros opcionais: "" = todos. */
+  sprint?: string
+  assignee?: string
+  feature?: string
 }
 
 export function reportQueryString(q: ReportQuery, extra?: Record<string, string>) {
   const params = new URLSearchParams({ type: q.type })
   if (q.from) params.set("from", q.from)
   if (q.to) params.set("to", q.to)
+  if (q.sprint) params.set("sprint", q.sprint)
+  if (q.assignee) params.set("assignee", q.assignee)
+  if (q.feature) params.set("feature", q.feature)
   for (const [k, v] of Object.entries(extra ?? {})) params.set(k, v)
   return params.toString()
 }

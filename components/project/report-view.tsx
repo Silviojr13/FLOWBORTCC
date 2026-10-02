@@ -7,6 +7,7 @@ import {
   formatCurrency,
   formatReportDate,
   formatReportDateTime,
+  filtersLabel,
   periodLabel,
   type ProjectReport,
 } from "@/lib/report"
@@ -150,6 +151,12 @@ export function ReportView({ report }: { report: ProjectReport }) {
             <dt className="inline font-medium">Gerado em: </dt>
             <dd className="inline">{formatReportDateTime(report.generatedAt)}</dd>
           </div>
+          {filtersLabel(report.filters) && (
+            <div className="sm:col-span-2 lg:col-span-4">
+              <dt className="inline font-medium">Filtros: </dt>
+              <dd className="inline">{filtersLabel(report.filters)}</dd>
+            </div>
+          )}
         </dl>
       </header>
 
@@ -182,14 +189,19 @@ export function ReportView({ report }: { report: ProjectReport }) {
             <Stat label="Progresso" value={`${s.progressPct}%`} hint="tarefas concluídas" />
             <Stat label="Tarefas em atraso" value={s.tasksOverdue} tone={s.tasksOverdue > 0 ? "danger" : undefined} />
             <Stat label="Sprints" value={s.sprintsTotal} />
-            <Stat label="Componentes" value={s.componentsTotal} />
+            <Stat
+              label="Componentes e recursos"
+              value={`${s.componentsTotal} · ${s.resourcesTotal}`}
+              hint={`${formatCurrency(s.totalCost)} · ${formatCurrency(s.resourcesCost)}`}
+            />
             <Stat
               label={
                 <HelpLabel label="Custo estimado" content={HELP.estimatedCost}>
-                  Custo total estimado
+                  Orçamento total
                 </HelpLabel>
               }
-              value={formatCurrency(s.totalCost)}
+              value={formatCurrency(s.budgetTotal)}
+              hint={`desembolso: ${formatCurrency(report.budget.toSpend)}`}
             />
           </div>
           {Object.keys(s.requirementsByStatus).length > 0 && (
@@ -336,13 +348,14 @@ export function ReportView({ report }: { report: ProjectReport }) {
       )}
 
       {sections.has("components") && (
-        <Section title="Componentes e custos">
+        <Section title="Componentes">
           <ReportTable
-            headers={["Componente", "Descrição", "Qtd.", "Preço unit.", "Subtotal", "Requisito"]}
-            align={["left", "left", "right", "right", "right", "left"]}
+            headers={["Componente", "Tipo", "Descrição", "Qtd.", "Preço unit.", "Subtotal", "Requisito"]}
+            align={["left", "left", "left", "right", "right", "right", "left"]}
             emptyMessage="Nenhum componente ainda."
             rows={report.components.map((c) => [
               c.name,
+              c.domain,
               c.description,
               c.quantity,
               formatCurrency(c.unitPrice),
@@ -351,9 +364,41 @@ export function ReportView({ report }: { report: ProjectReport }) {
             ])}
           />
           <p className="text-right text-sm">
-            <span className="text-muted-foreground">Custo total estimado: </span>
+            <span className="text-muted-foreground">Custo dos componentes: </span>
             <span className="text-lg font-semibold">{formatCurrency(s.totalCost)}</span>
           </p>
+        </Section>
+      )}
+
+      {sections.has("resources") && (
+        <Section title="Recursos e orçamento">
+          <ReportTable
+            headers={["Recurso", "Tipo", "Disponibilidade", "Cálculo", "Custo", "Requisito"]}
+            align={["left", "left", "left", "left", "right", "left"]}
+            emptyMessage="Nenhum recurso cadastrado."
+            rows={report.resources.map((r) => [
+              <span key="n">
+                <span className="font-medium">{r.name}</span>
+                {r.description && <span className="block text-xs text-muted-foreground">{r.description}</span>}
+              </span>,
+              r.type,
+              r.availability,
+              r.calculation,
+              formatCurrency(r.cost),
+              r.requirementCode ? <span key="r" className="font-mono text-xs">{r.requirementCode}</span> : null,
+            ])}
+          />
+          <ReportTable
+            headers={["Orçamento", "Valor"]}
+            align={["left", "right"]}
+            rows={[
+              ["Componentes de hardware", formatCurrency(report.budget.componentsHardware)],
+              ["Componentes de software", formatCurrency(report.budget.componentsSoftware)],
+              ["Recursos já disponíveis (custo de uso)", formatCurrency(report.budget.resourcesAvailable)],
+              ["Desembolso necessário (componentes + recursos a adquirir)", formatCurrency(report.budget.toSpend)],
+              [<span key="t" className="font-semibold">Orçamento total</span>, <span key="v" className="font-semibold">{formatCurrency(report.budget.total)}</span>],
+            ]}
+          />
         </Section>
       )}
 

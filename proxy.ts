@@ -8,12 +8,11 @@ export async function proxy(req: NextRequest) {
   const isLoginPage = req.nextUrl.pathname === "/login";
   const isRootPage = req.nextUrl.pathname === "/";
   const isDashboardPage = req.nextUrl.pathname === "/dashboard" || req.nextUrl.pathname.startsWith("/dashboard/");
-  const isPrintPage = req.nextUrl.pathname.startsWith("/print/");
   const isOnboardingPage =
     req.nextUrl.pathname === "/onboarding" ||
     req.nextUrl.pathname.startsWith("/onboarding/");
   const isAuthRoute = req.nextUrl.pathname.startsWith("/api/auth");
-  const isProtectedRoute = isRootPage || isDashboardPage || isPrintPage || isOnboardingPage;
+  const isProtectedRoute = isRootPage || isDashboardPage || isOnboardingPage;
 
   if (isAuthRoute) return NextResponse.next();
 

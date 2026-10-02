@@ -1,6 +1,8 @@
 // Tipos e serializadores do relatório consolidado do projeto (RF13, RF15, UC11).
 // Sem dependências de servidor: usado tanto pela API quanto pelas telas.
 
+import type { BudgetBreakdown } from "./resources"
+
 export const REPORT_TYPES = ["completo", "progresso", "requisitos", "custos"] as const
 export type ReportType = (typeof REPORT_TYPES)[number]
 
@@ -8,7 +10,7 @@ export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
   completo: "Completo",
   progresso: "Progresso (sprints e tarefas)",
   requisitos: "Requisitos e rastreabilidade",
-  custos: "Componentes e custos",
+  custos: "Custos (componentes e recursos)",
 }
 
 export function isReportType(value: unknown): value is ReportType {
@@ -17,10 +19,10 @@ export function isReportType(value: unknown): value is ReportType {
 
 // Seções incluídas em cada tipo de relatório.
 export const REPORT_SECTIONS: Record<ReportType, ReportSection[]> = {
-  completo: ["summary", "sprints", "modules", "columns", "requirements", "tasks", "components"],
+  completo: ["summary", "sprints", "modules", "columns", "requirements", "tasks", "components", "resources"],
   progresso: ["summary", "sprints", "modules", "columns", "tasks"],
   requisitos: ["summary", "requirements", "tasks"],
-  custos: ["summary", "components"],
+  custos: ["summary", "components", "resources"],
 }
 
 export type ReportSection =
@@ -31,15 +33,26 @@ export type ReportSection =
   | "requirements"
   | "tasks"
   | "components"
+  | "resources"
 
-export const CSV_TABLES = ["tasks", "requirements", "components", "sprints"] as const
+export const CSV_TABLES = ["tasks", "requirements", "components", "resources", "sprints"] as const
 export type CsvTable = (typeof CSV_TABLES)[number]
 
 export const CSV_TABLE_LABELS: Record<CsvTable, string> = {
   tasks: "Tarefas",
   requirements: "Requisitos",
   components: "Componentes",
+  resources: "Recursos",
   sprints: "Sprints",
+}
+
+/** Valor dos filtros de sprint e funcionalidade que seleciona os itens sem vínculo. */
+export const REPORT_FILTER_NONE = "none"
+
+export interface ReportFilters {
+  sprint: string
+  assignee: string
+  feature: string
 }
 
 export function isCsvTable(value: unknown): value is CsvTable {
@@ -50,6 +63,14 @@ export interface ProjectReport {
   generatedAt: string
   type: ReportType
   period: { from: string | null; to: string | null }
+  /** Rótulos dos filtros aplicados (para o cabeçalho do relatório). */
+  filters: { sprint: string | null; assignee: string | null; feature: string | null }
+  /** Opções disponíveis para os filtros, a partir de todos os dados do projeto. */
+  filterOptions: {
+    sprints: { id: string; name: string }[]
+    assignees: string[]
+    features: { id: string; name: string }[]
+  }
   hasDataInPeriod: boolean
   project: {
     id: string
@@ -71,8 +92,14 @@ export interface ProjectReport {
     progressPct: number
     sprintsTotal: number
     componentsTotal: number
+    /** Custo dos componentes (hardware + software). */
     totalCost: number
+    resourcesTotal: number
+    resourcesCost: number
+    /** Componentes + recursos. */
+    budgetTotal: number
   }
+  budget: BudgetBreakdown
   sprints: {
     id: string
     name: string
@@ -116,8 +143,28 @@ export interface ProjectReport {
     quantity: number
     unitPrice: number
     subtotal: number
+    domain: string
     requirementCode: string | null
   }[]
+  resources: {
+    name: string
+    description: string | null
+    type: string
+    availability: string
+    calculation: string
+    cost: number
+    requirementCode: string | null
+  }[]
+}
+
+/** Texto curto dos filtros ativos, ou null se não houver nenhum. */
+export function filtersLabel(filters: ProjectReport["filters"]): string | null {
+  const parts = [
+    filters.sprint && `Sprint: ${filters.sprint}`,
+    filters.assignee && `Responsável: ${filters.assignee}`,
+    filters.feature && `Funcionalidade: ${filters.feature}`,
+  ].filter(Boolean)
+  return parts.length ? parts.join(" · ") : null
 }
 
 /* ------------------------------------------------------------------ */
@@ -190,6 +237,8 @@ export function reportToMarkdown(report: ProjectReport): string {
   out.push("")
   out.push(`- **Tipo:** ${REPORT_TYPE_LABELS[report.type]}`)
   out.push(`- **Período:** ${periodLabel(report.period)}`)
+  const activeFilters = filtersLabel(report.filters)
+  if (activeFilters) out.push(`- **Filtros:** ${activeFilters}`)
   out.push(`- **Gerado em:** ${formatReportDateTime(report.generatedAt)}`)
   if (report.project.description) out.push(`- **Descrição:** ${report.project.description}`)
   if (report.project.startDate || report.project.endDate) {
@@ -216,8 +265,9 @@ export function reportToMarkdown(report: ProjectReport): string {
         ["Tarefas", `${s.tasksTotal} (${s.tasksDone} concluídas · ${s.progressPct}%)`],
         ["Tarefas em atraso", s.tasksOverdue],
         ["Sprints", s.sprintsTotal],
-        ["Componentes", s.componentsTotal],
-        ["Custo total estimado", formatCurrency(s.totalCost)],
+        ["Componentes", `${s.componentsTotal} (${formatCurrency(s.totalCost)})`],
+        ["Recursos", `${s.resourcesTotal} (${formatCurrency(s.resourcesCost)})`],
+        ["Orçamento total", formatCurrency(s.budgetTotal)],
       ]
     ))
     out.push("")
@@ -304,12 +354,13 @@ export function reportToMarkdown(report: ProjectReport): string {
   }
 
   if (sections.has("components")) {
-    out.push("## Componentes e custos")
+    out.push("## Componentes")
     out.push("")
     out.push(mdTable(
-      ["Componente", "Descrição", "Qtd.", "Preço unit.", "Subtotal", "Requisito"],
+      ["Componente", "Tipo", "Descrição", "Qtd.", "Preço unit.", "Subtotal", "Requisito"],
       report.components.map((c) => [
         c.name,
+        c.domain,
         c.description,
         c.quantity,
         formatCurrency(c.unitPrice),
@@ -318,7 +369,37 @@ export function reportToMarkdown(report: ProjectReport): string {
       ])
     ))
     out.push("")
-    out.push(`**Custo total estimado:** ${formatCurrency(s.totalCost)}`)
+    out.push(`**Custo dos componentes:** ${formatCurrency(s.totalCost)}`)
+    out.push("")
+  }
+
+  if (sections.has("resources")) {
+    out.push("## Recursos")
+    out.push("")
+    out.push(mdTable(
+      ["Recurso", "Tipo", "Disponibilidade", "Cálculo", "Custo", "Requisito"],
+      report.resources.map((r) => [
+        r.name,
+        r.type,
+        r.availability,
+        r.calculation,
+        formatCurrency(r.cost),
+        r.requirementCode,
+      ])
+    ))
+    out.push("")
+    out.push("### Orçamento")
+    out.push("")
+    out.push(mdTable(
+      ["Item", "Valor"],
+      [
+        ["Componentes de hardware", formatCurrency(report.budget.componentsHardware)],
+        ["Componentes de software", formatCurrency(report.budget.componentsSoftware)],
+        ["Recursos já disponíveis (custo de uso)", formatCurrency(report.budget.resourcesAvailable)],
+        ["Desembolso necessário", formatCurrency(report.budget.toSpend)],
+        ["Orçamento total", formatCurrency(report.budget.total)],
+      ]
+    ))
     out.push("")
   }
 
@@ -377,14 +458,28 @@ export function reportTableToCsv(report: ProjectReport, table: CsvTable): string
       )
     case "components":
       return toCsv(
-        ["Componente", "Descrição", "Quantidade", "Preço unitário", "Subtotal", "Requisito"],
+        ["Componente", "Tipo", "Descrição", "Quantidade", "Preço unitário", "Subtotal", "Requisito"],
         report.components.map((c) => [
           c.name,
+          c.domain,
           c.description,
           c.quantity,
           c.unitPrice.toFixed(2).replace(".", ","),
           c.subtotal.toFixed(2).replace(".", ","),
           c.requirementCode,
+        ])
+      )
+    case "resources":
+      return toCsv(
+        ["Recurso", "Tipo", "Disponibilidade", "Cálculo", "Custo", "Requisito", "Descrição"],
+        report.resources.map((r) => [
+          r.name,
+          r.type,
+          r.availability,
+          r.calculation,
+          r.cost.toFixed(2).replace(".", ","),
+          r.requirementCode,
+          r.description,
         ])
       )
     case "sprints":

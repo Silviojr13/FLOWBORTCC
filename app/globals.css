@@ -265,7 +265,7 @@
   }
 }
 
-/* Impressão do relatório (RF15 — PDF pelo navegador) */
+/* Impressão da tela de relatório (Ctrl+P). O PDF exportado é gerado à parte, em lib/report-pdf.ts. */
 @media print {
   .no-print {
     display: none !important;

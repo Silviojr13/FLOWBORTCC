@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getCurrentUser } from "../../../../../lib/auth";
 import { tursoDb } from "../../../../../lib/turso-db";
+import { isComponentDomain } from "../../../../../lib/resources";
 
 async function assertProjectOwnership(projectId: string, userId: string) {
   return tursoDb.project.findUnique({ where: { id: projectId, userId } });
@@ -73,7 +74,7 @@ export async function POST(
     );
   }
 
-  const { name, description, quantity, unitPrice, requirementId } = await req.json();
+  const { name, description, quantity, unitPrice, requirementId, domain } = await req.json();
 
   if (!name || typeof name !== "string" || !name.trim()) {
     return new Response(
@@ -119,6 +120,7 @@ export async function POST(
         description: typeof description === "string" ? description.trim() || null : null,
         quantity: qty,
         unitPrice: price,
+        domain: isComponentDomain(domain) ? domain : "Hardware",
         projectId,
         requirementId: linkedRequirementId,
       },

@@ -1,11 +1,12 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
 import {
   ChevronDownIcon,
   FileDownIcon,
   FileTextIcon,
-  PrinterIcon,
+  LoaderCircleIcon,
   XIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -23,6 +24,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -30,40 +32,97 @@ import { ReportView } from "@/components/project/report-view"
 import {
   CSV_TABLES,
   CSV_TABLE_LABELS,
+  REPORT_FILTER_NONE,
   REPORT_TYPES,
   REPORT_TYPE_LABELS,
   type ReportType,
 } from "@/lib/report"
 import { reportQueryString, useProjectReport, type ReportQuery } from "@/lib/use-project-report"
 
-// Tela de relatórios (UC11): escolhe tipo e período, visualiza e exporta (RF15).
+// O Select não aceita valor vazio: "__all__" representa "todos" na interface.
+const ALL = "__all__"
+
+const EMPTY_QUERY: ReportQuery = { type: "completo", from: "", to: "", sprint: "", assignee: "", feature: "" }
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+  noneLabel,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: { value: string; label: string }[]
+  noneLabel: string
+}) {
+  return (
+    <Field>
+      <FieldLabel>{label}</FieldLabel>
+      <Select value={value || ALL} onValueChange={(v) => onChange(v === ALL ? "" : v)}>
+        <SelectTrigger className="w-full" aria-label={label}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>Todos</SelectItem>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))}
+          <SelectSeparator />
+          <SelectItem value={REPORT_FILTER_NONE}>{noneLabel}</SelectItem>
+        </SelectContent>
+      </Select>
+    </Field>
+  )
+}
+
+// Tela de relatórios (UC11): escolhe tipo, período e filtros, visualiza e exporta (RF15).
 export function ReportPanel({ projectId }: { projectId: string }) {
-  const [draft, setDraft] = useState<ReportQuery>({ type: "completo", from: "", to: "" })
+  const [draft, setDraft] = useState<ReportQuery>(EMPTY_QUERY)
   const [query, setQuery] = useState<ReportQuery>(draft)
   const { report, error, isLoading } = useProjectReport(projectId, query)
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
 
   const invalidPeriod = !!draft.from && !!draft.to && draft.to < draft.from
-  const isDirty = draft.type !== query.type || draft.from !== query.from || draft.to !== query.to
-  const hasPeriod = !!query.from || !!query.to
+  const isDirty = reportQueryString(draft) !== reportQueryString(query)
+  const hasRefinement = !!query.from || !!query.to || !!query.sprint || !!query.assignee || !!query.feature
+  const draftHasRefinement = !!draft.from || !!draft.to || !!draft.sprint || !!draft.assignee || !!draft.feature
 
   const apiBase = `/api/projects/${projectId}/report`
-  const printHref = `/print/projects/${projectId}/report?${reportQueryString(query)}`
+  const options = report?.filterOptions
 
   function apply() {
     if (invalidPeriod) return
     setQuery(draft)
   }
 
-  function clearPeriod() {
-    const next = { ...draft, from: "", to: "" }
+  function clearRefinements() {
+    const next = { ...EMPTY_QUERY, type: draft.type }
     setDraft(next)
     setQuery(next)
   }
 
+  async function exportPdf() {
+    if (!report) return
+    setIsExportingPdf(true)
+    try {
+      const { downloadReportPdf } = await import("@/lib/report-pdf")
+      await downloadReportPdf(report)
+    } catch (err) {
+      console.error(err)
+      toast.error("Não foi possível gerar o PDF.")
+    } finally {
+      setIsExportingPdf(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {/* Parâmetros (UC11 passo 2: tipo e período) */}
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+      {/* Parâmetros (UC11 passo 2: tipo, período e filtros) */}
+      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
         <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
           <Field>
             <FieldLabel>Tipo de relatório</FieldLabel>
@@ -105,31 +164,59 @@ export function ReportPanel({ projectId }: { projectId: string }) {
           </Field>
         </div>
 
+        <div className="grid gap-3 sm:grid-cols-3">
+          <FilterSelect
+            label="Sprint"
+            value={draft.sprint ?? ""}
+            onChange={(sprint) => setDraft((d) => ({ ...d, sprint }))}
+            options={(options?.sprints ?? []).map((s) => ({ value: s.id, label: s.name }))}
+            noneLabel="Sem sprint"
+          />
+          <FilterSelect
+            label="Responsável"
+            value={draft.assignee ?? ""}
+            onChange={(assignee) => setDraft((d) => ({ ...d, assignee }))}
+            options={(options?.assignees ?? []).map((a) => ({ value: a, label: a }))}
+            noneLabel="Sem responsável"
+          />
+          <FilterSelect
+            label="Funcionalidade"
+            value={draft.feature ?? ""}
+            onChange={(feature) => setDraft((d) => ({ ...d, feature }))}
+            options={(options?.features ?? []).map((f) => ({ value: f.id, label: f.name }))}
+            noneLabel="Sem funcionalidade"
+          />
+        </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" disabled={!isDirty || invalidPeriod} onClick={apply}>
             Gerar relatório
           </Button>
-          {(draft.from || draft.to) && (
-            <Button size="sm" variant="ghost" className="gap-1 text-muted-foreground" onClick={clearPeriod}>
+          {draftHasRefinement && (
+            <Button size="sm" variant="ghost" className="gap-1 text-muted-foreground" onClick={clearRefinements}>
               <XIcon className="size-3.5" />
-              Todo o projeto
+              Limpar filtros
             </Button>
           )}
           <p className="text-xs text-muted-foreground">
             {invalidPeriod
               ? "A data final deve ser igual ou posterior à inicial."
-              : "O período filtra tarefas pelo prazo (ou data de criação) e sprints que cruzam o intervalo."}
+              : "Período, sprint, responsável e funcionalidade recortam as tarefas e o progresso. Requisitos, componentes e recursos aparecem sempre completos."}
           </p>
         </div>
       </div>
 
       {/* Exportação (RF15) */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="outline" className="gap-1.5" disabled={!report} asChild>
-          <a href={printHref} target="_blank" rel="noopener">
-            <PrinterIcon className="size-4" />
-            Exportar PDF
-          </a>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          disabled={!report || isExportingPdf}
+          onClick={() => void exportPdf()}
+        >
+          {isExportingPdf ? <LoaderCircleIcon className="size-4 animate-spin" /> : <FileDownIcon className="size-4" />}
+          Exportar PDF
         </Button>
 
         <DropdownMenu>
@@ -160,9 +247,9 @@ export function ReportPanel({ projectId }: { projectId: string }) {
           </a>
         </Button>
 
-        {hasPeriod && report && (
+        {hasRefinement && report && (
           <span className="text-xs text-muted-foreground">
-            Exportações usam o mesmo tipo e período do relatório exibido.
+            Exportações usam o mesmo tipo, período e filtros do relatório exibido.
           </span>
         )}
       </div>

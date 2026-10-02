@@ -348,7 +348,7 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
             )
           })}
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-5">
           {PROJECT_SECONDARY_SHORTCUTS.map((shortcut) => {
             const Icon = shortcut.icon
             return (

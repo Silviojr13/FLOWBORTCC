@@ -33,6 +33,7 @@ interface HardwareComponentItem {
   description: string | null
   quantity: number
   unitPrice: number
+  domain?: string
   requirementId: string | null
 }
 
@@ -191,6 +192,7 @@ export function ComponentsTable({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <CardTitle className="text-base leading-snug">{component.name}</CardTitle>
+                      <Badge variant="secondary">{component.domain === "Software" ? "Software" : "Hardware"}</Badge>
                       {origin === "ia" && (
                         <Badge variant="outline" className="gap-0.5 border-primary/30 text-primary">
                           <SparklesIcon className="size-3" />
@@ -270,6 +272,7 @@ export function ComponentsTable({
                 description: editingComponent.description ?? "",
                 quantity: String(editingComponent.quantity),
                 unitPrice: String(editingComponent.unitPrice),
+                domain: editingComponent.domain === "Software" ? "Software" : "Hardware",
                 requirementId: editingComponent.requirementId ?? "__none__",
               }
             : undefined
