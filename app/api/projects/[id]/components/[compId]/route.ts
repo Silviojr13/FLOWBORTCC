@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getCurrentUser } from "../../../../../../lib/auth";
 import { tursoDb } from "../../../../../../lib/turso-db";
+import { isComponentDomain } from "../../../../../../lib/resources";
 
 async function findOwnedComponent(projectId: string, compId: string, userId: string) {
   const component = await tursoDb.hardwareComponent.findUnique({
@@ -37,7 +38,7 @@ export async function PATCH(
     );
   }
 
-  const { name, description, quantity, unitPrice, requirementId } = await req.json();
+  const { name, description, quantity, unitPrice, requirementId, domain } = await req.json();
 
   if (name !== undefined && (typeof name !== "string" || !name.trim())) {
     return new Response(
@@ -94,6 +95,7 @@ export async function PATCH(
         description: description !== undefined ? (typeof description === "string" ? description.trim() || null : null) : undefined,
         quantity: qty,
         unitPrice: price,
+        domain: isComponentDomain(domain) ? domain : undefined,
         requirementId: linkedRequirementId,
       },
     });

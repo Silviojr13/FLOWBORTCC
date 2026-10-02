@@ -12,6 +12,7 @@ import {
 
 // Relatório consolidado do projeto (RF13 / UC11) com exportação (RF15).
 // Query: type=completo|progresso|requisitos|custos, from=YYYY-MM-DD, to=YYYY-MM-DD,
+//        sprint=<id>|none, assignee=<nome>|none, feature=<id>|none,
 //        format=json|md|csv, table=tasks|requirements|components|sprints (só para csv).
 export async function GET(
   req: NextRequest,
@@ -45,11 +46,20 @@ export async function GET(
     return jsonError("Formato inválido (json, md ou csv)", 400);
   }
   if (format === "csv" && !isCsvTable(table)) {
-    return jsonError("Tabela inválida (tasks, requirements, components ou sprints)", 400);
+    return jsonError("Tabela inválida (tasks, requirements, components, resources ou sprints)", 400);
   }
 
   try {
-    const report = await buildProjectReport(project, { type: typeParam, from, to });
+    const report = await buildProjectReport(project, {
+      type: typeParam,
+      from,
+      to,
+      filters: {
+        sprint: q.get("sprint") ?? "",
+        assignee: q.get("assignee") ?? "",
+        feature: q.get("feature") ?? "",
+      },
+    });
 
     if (format === "md") {
       return new Response(reportToMarkdown(report), {

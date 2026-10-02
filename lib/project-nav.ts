@@ -6,7 +6,9 @@ import {
   Columns3Icon,
   FileChartColumnIcon,
   LayoutDashboardIcon,
+  NetworkIcon,
   SparklesIcon,
+  WalletIcon,
 } from "lucide-react"
 
 export type ProjectModuleKey =
@@ -16,7 +18,9 @@ export type ProjectModuleKey =
   | "report"
   | "features"
   | "components"
+  | "resources"
   | "requirements"
+  | "diagrams"
 
 export type ProjectModule = {
   key: ProjectModuleKey
@@ -64,10 +68,17 @@ export const PROJECT_MODULES: ProjectModule[] = [
   },
   {
     key: "components",
-    label: "Componentes e Custos",
-    description: "Lista de peças e orçamento.",
+    label: "Componentes",
+    description: "Peças do projeto e custo estimado.",
     icon: BoxIcon,
     href: (projectId) => `/dashboard/projects/${projectId}/components-costs`,
+  },
+  {
+    key: "resources",
+    label: "Recursos",
+    description: "Pessoas, equipamentos e custos do projeto.",
+    icon: WalletIcon,
+    href: (projectId) => `/dashboard/projects/${projectId}/resources`,
   },
   {
     key: "requirements",
@@ -75,6 +86,13 @@ export const PROJECT_MODULES: ProjectModule[] = [
     description: "Defina o que o projeto precisa atender.",
     icon: ClipboardListIcon,
     href: (projectId) => `/dashboard/projects/${projectId}?step=requisitos`,
+  },
+  {
+    key: "diagrams",
+    label: "Diagramas",
+    description: "C4, modelo relacional e UML do projeto.",
+    icon: NetworkIcon,
+    href: (projectId) => `/dashboard/projects/${projectId}/diagrams`,
   },
 ]
 
@@ -87,7 +105,7 @@ export const PROJECT_MODULE_GROUPS = [
   {
     id: "structure",
     label: "Estrutura do projeto",
-    keys: ["features", "components", "requirements"] as const,
+    keys: ["features", "components", "resources", "requirements", "diagrams"] as const,
   },
 ]
 
@@ -96,7 +114,11 @@ export const PROJECT_PRIMARY_SHORTCUTS = PROJECT_MODULES.filter((item) =>
 )
 
 export const PROJECT_SECONDARY_SHORTCUTS = PROJECT_MODULES.filter((item) =>
-  item.key === "features" || item.key === "components" || item.key === "requirements"
+  item.key === "features" ||
+  item.key === "components" ||
+  item.key === "resources" ||
+  item.key === "requirements" ||
+  item.key === "diagrams"
 )
 
 const WIZARD_CRUMB_LABELS: Record<string, string> = {
@@ -135,6 +157,8 @@ export function getProjectModuleKey(
   if (matchesPath(pathname, `${base}/report`)) return "report"
   if (matchesPath(pathname, `${base}/features`)) return "features"
   if (matchesPath(pathname, `${base}/components-costs`)) return "components"
+  if (matchesPath(pathname, `${base}/resources`)) return "resources"
+  if (matchesPath(pathname, `${base}/diagrams`)) return "diagrams"
   return null
 }
 

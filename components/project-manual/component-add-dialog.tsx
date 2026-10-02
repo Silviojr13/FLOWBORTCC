@@ -35,6 +35,7 @@ export interface ComponentFormValues {
   description: string
   quantity: string
   unitPrice: string
+  domain: "Hardware" | "Software"
   requirementId: string
 }
 
@@ -43,6 +44,7 @@ const EMPTY: ComponentFormValues = {
   description: "",
   quantity: "1",
   unitPrice: "",
+  domain: "Hardware",
   requirementId: NO_REQUIREMENT,
 }
 
@@ -98,6 +100,7 @@ export function ComponentAddDialog({
       description: draft.description.trim() || undefined,
       quantity,
       unitPrice,
+      domain: draft.domain,
       requirementId: draft.requirementId === NO_REQUIREMENT ? null : draft.requirementId,
     }
 
@@ -162,6 +165,19 @@ export function ComponentAddDialog({
               rows={2}
               placeholder="Breve descrição, se necessário"
             />
+          </Field>
+          <Field>
+            <FieldLabel>Tipo</FieldLabel>
+            <Select
+              value={draft.domain}
+              onValueChange={(v) => setDraft((d) => ({ ...d, domain: v as ComponentFormValues["domain"] }))}
+            >
+              <SelectTrigger aria-label="Tipo do componente"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Hardware">Hardware — peça física do produto</SelectItem>
+                <SelectItem value="Software">Software — licença, biblioteca ou serviço embarcado</SelectItem>
+              </SelectContent>
+            </Select>
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field>

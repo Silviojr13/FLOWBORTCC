@@ -120,9 +120,11 @@ model Project {
   features     Feature[]
   tasks        Task[]
   components   HardwareComponent[]
+  resources    Resource[]
   columns      KanbanColumn[]
   sprints      Sprint[]
   chats        Chat[]
+  diagrams     Diagram[]
 
   @@map("projects")
 }
@@ -147,6 +149,7 @@ model Requirement {
   features   Feature[]
   tasks      Task[]
   components HardwareComponent[]
+  resources  Resource[]
 
   @@unique([projectId, code])
   @@map("requirements")
@@ -274,6 +277,8 @@ model HardwareComponent {
   description   String?
   quantity      Int      @default(1)
   unitPrice     Float    @default(0)
+  // "Hardware" | "Software": o que vai no produto, físico ou não (placa, sensor, licença, biblioteca paga)
+  domain        String   @default("Hardware")
   projectId     String
   requirementId String?
   createdAt     DateTime @default(now())
@@ -283,4 +288,53 @@ model HardwareComponent {
   requirement Requirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
 
   @@map("hardware_components")
+}
+
+// Diagramas de engenharia de software do projeto (C4, ER, UML...), guardados como código
+// Mermaid: o texto é a fonte da verdade e o desenho é gerado na tela.
+model Diagram {
+  id        String   @id @default(cuid())
+  title     String
+  // Chave do tipo em lib/diagrams.ts (ex.: "c4-context", "er", "class")
+  type      String
+  code      String
+  // Instruções dadas à IA (ex.: "detalhe o firmware"): reaproveitadas ao gerar de novo
+  instructions String?
+  // "ia" | "dados" | "manual" — quem produziu a versão atual
+  source    String   @default("ia")
+  projectId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("diagrams")
+}
+
+// Recursos que a organização usa para construir o projeto — pessoas, equipamentos,
+// software e serviços, espaços. Diferente dos componentes, não vão dentro do produto e
+// continuam com a organização depois. Cada um tem um custo de uso ou de aquisição.
+model Resource {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  // Chave em lib/resources.ts: "pessoa" | "equipamento" | "software" | "espaco" | "outro"
+  type          String
+  // "disponivel" (a organização já tem) | "adquirir" (precisa contratar ou comprar)
+  availability  String   @default("disponivel")
+  // "hora" | "mes" | "unico" — define o que a quantidade significa
+  costModel     String   @default("unico")
+  unitCost      Float    @default(0)
+  quantity      Float    @default(1)
+  projectId     String
+  requirementId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requirement Requirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@map("resources")
 }

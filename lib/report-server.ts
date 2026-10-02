@@ -1,12 +1,32 @@
 import { tursoDb } from "./turso-db";
 import { getSprintStatus, isTaskOverdue } from "./kanban";
-import { REPORT_SECTIONS, type ProjectReport, type ReportType } from "./report";
+import {
+  REPORT_FILTER_NONE,
+  REPORT_SECTIONS,
+  type ProjectReport,
+  type ReportFilters,
+  type ReportType,
+} from "./report";
+import {
+  RESOURCE_AVAILABILITY_LABELS,
+  RESOURCE_TYPES,
+  RESOURCE_TYPE_LABELS,
+  buildBudget,
+  describeResourceCost,
+  isResourceAvailability,
+  isResourceType,
+  resourceCost,
+} from "./resources";
 
 export interface ReportOptions {
   type: ReportType;
   from: Date | null;
   to: Date | null;
+  /** Sprint, responsável e funcionalidade: "" = todos; REPORT_FILTER_NONE = sem vínculo. */
+  filters?: Partial<ReportFilters>;
 }
+
+const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 function pct(done: number, total: number) {
   return total > 0 ? Math.round((done / total) * 100) : 0;
@@ -20,9 +40,11 @@ function inPeriod(date: Date | null, from: Date | null, to: Date | null) {
   return true;
 }
 
-// Consolida requisitos, tarefas, sprints, funcionalidades e componentes do projeto (UC11).
+// Consolida requisitos, tarefas, sprints, funcionalidades, componentes e recursos (UC11).
 // Período: filtra tarefas pelo prazo (ou pela data de criação, se não houver prazo) e
-// sprints que intersectam o intervalo. Requisitos e componentes não têm dimensão temporal.
+// sprints que intersectam o intervalo. Sprint, responsável e funcionalidade filtram as
+// tarefas (e, no caso da sprint, a tabela de sprints). Requisitos, componentes e recursos
+// não têm dimensão temporal.
 export async function buildProjectReport(
   project: {
     id: string;
@@ -37,8 +59,12 @@ export async function buildProjectReport(
   const projectId = project.id;
   const { from, to } = options;
   const hasPeriod = from !== null || to !== null;
+  const sprintFilter = options.filters?.sprint ?? "";
+  const assigneeFilter = options.filters?.assignee ?? "";
+  const featureFilter = options.filters?.feature ?? "";
+  const hasFilters = Boolean(sprintFilter || assigneeFilter || featureFilter);
 
-  const [requirements, features, columns, allTasks, allSprints, components] = await Promise.all([
+  const [requirements, features, columns, allTasks, allSprints, components, resources] = await Promise.all([
     tursoDb.requirement.findMany({ where: { projectId }, orderBy: { code: "asc" } }),
     tursoDb.feature.findMany({ where: { projectId }, orderBy: { createdAt: "asc" } }),
     tursoDb.kanbanColumn.findMany({ where: { projectId }, orderBy: { order: "asc" } }),
@@ -58,19 +84,38 @@ export async function buildProjectReport(
       orderBy: { createdAt: "asc" },
       include: { requirement: { select: { code: true } } },
     }),
+    tursoDb.resource.findMany({
+      where: { projectId },
+      orderBy: [{ type: "asc" }, { createdAt: "asc" }],
+      include: { requirement: { select: { code: true } } },
+    }),
   ]);
 
-  const tasks = hasPeriod
-    ? allTasks.filter((t) => inPeriod(t.dueDate ?? t.createdAt, from, to))
-    : allTasks;
+  const matchesAssignee = (assignee: string | null) =>
+    !assigneeFilter ||
+    (assigneeFilter === REPORT_FILTER_NONE ? !assignee : assignee === assigneeFilter);
+  const matchesFeature = (featureId: string | null) =>
+    !featureFilter ||
+    (featureFilter === REPORT_FILTER_NONE ? featureId === null : featureId === featureFilter);
+  const matchesSprint = (sprintId: string | null) =>
+    !sprintFilter ||
+    (sprintFilter === REPORT_FILTER_NONE ? sprintId === null : sprintId === sprintFilter);
 
-  const sprints = hasPeriod
-    ? allSprints.filter((s) => {
-        if (from && s.endDate.getTime() < from.getTime()) return false;
-        if (to && s.startDate.getTime() > to.getTime()) return false;
-        return true;
-      })
-    : allSprints;
+  const tasks = allTasks.filter(
+    (t) =>
+      (!hasPeriod || inPeriod(t.dueDate ?? t.createdAt, from, to)) &&
+      matchesSprint(t.sprintId) &&
+      matchesAssignee(t.assignee) &&
+      matchesFeature(t.featureId)
+  );
+
+  const sprints = allSprints.filter((s) => {
+    if (sprintFilter === REPORT_FILTER_NONE) return false;
+    if (sprintFilter && s.id !== sprintFilter) return false;
+    if (from && s.endDate.getTime() < from.getTime()) return false;
+    if (to && s.startDate.getTime() > to.getTime()) return false;
+    return true;
+  });
 
   const taskIds = new Set(tasks.map((t) => t.id));
   const tasksDone = tasks.filter((t) => t.column.isDone);
@@ -109,7 +154,10 @@ export async function buildProjectReport(
   }));
 
   const sprintRows = sprints.map((s) => {
-    const sprintTasks = allTasks.filter((t) => t.sprintId === s.id);
+    // Responsável e funcionalidade também recortam o progresso de cada sprint.
+    const sprintTasks = allTasks.filter(
+      (t) => t.sprintId === s.id && matchesAssignee(t.assignee) && matchesFeature(t.featureId)
+    );
     const done = sprintTasks.filter((t) => t.column.isDone).length;
     return {
       id: s.id,
@@ -125,6 +173,12 @@ export async function buildProjectReport(
   });
 
   const totalCost = components.reduce((sum, c) => sum + c.quantity * c.unitPrice, 0);
+  const budget = buildBudget(components, resources);
+  const resourcesCost = resources.reduce((sum, r) => sum + resourceCost(r), 0);
+
+  const typeOrder: readonly string[] = RESOURCE_TYPES;
+  const featureName = (id: string) => features.find((f) => f.id === id)?.name ?? null;
+  const sprintName = (id: string) => allSprints.find((s) => s.id === id)?.name ?? null;
 
   const sortedTasks = [...tasks].sort(
     (a, b) => a.column.order - b.column.order || a.order - b.order
@@ -134,7 +188,19 @@ export async function buildProjectReport(
     generatedAt: new Date().toISOString(),
     type: options.type,
     period: { from: from?.toISOString() ?? null, to: to?.toISOString() ?? null },
-    hasDataInPeriod: !hasPeriod || tasks.length > 0 || sprints.length > 0,
+    filters: {
+      sprint: !sprintFilter ? null : sprintFilter === REPORT_FILTER_NONE ? "Sem sprint" : sprintName(sprintFilter),
+      assignee: !assigneeFilter ? null : assigneeFilter === REPORT_FILTER_NONE ? "Sem responsável" : assigneeFilter,
+      feature: !featureFilter ? null : featureFilter === REPORT_FILTER_NONE ? "Sem funcionalidade" : featureName(featureFilter),
+    },
+    filterOptions: {
+      sprints: allSprints.map((s) => ({ id: s.id, name: s.name })),
+      assignees: [...new Set(allTasks.map((t) => t.assignee).filter((a): a is string => Boolean(a)))].sort(
+        (a, b) => a.localeCompare(b, "pt-BR")
+      ),
+      features: features.map((f) => ({ id: f.id, name: f.name })),
+    },
+    hasDataInPeriod: (!hasPeriod && !hasFilters) || tasks.length > 0 || sprints.length > 0,
     project: {
       id: project.id,
       name: project.name,
@@ -156,7 +222,11 @@ export async function buildProjectReport(
       sprintsTotal: sprints.length,
       componentsTotal: components.length,
       totalCost,
+      resourcesTotal: resources.length,
+      resourcesCost,
+      budgetTotal: budget.total,
     },
+    budget,
     sprints: sprintRows,
     modules,
     columns: columns.map((c) => ({
@@ -195,7 +265,22 @@ export async function buildProjectReport(
       quantity: c.quantity,
       unitPrice: c.unitPrice,
       subtotal: c.quantity * c.unitPrice,
+      domain: c.domain === "Software" ? "Software" : "Hardware",
       requirementCode: c.requirement?.code ?? null,
+    })),
+    // Mesma ordem da aba Recursos: pessoas, equipamentos, software, espaços, outros.
+    resources: [...resources]
+      .sort((a, b) => typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type))
+      .map((r) => ({
+      name: r.name,
+      description: r.description,
+      type: isResourceType(r.type) ? RESOURCE_TYPE_LABELS[r.type] : r.type,
+      availability: isResourceAvailability(r.availability)
+        ? RESOURCE_AVAILABILITY_LABELS[r.availability]
+        : r.availability,
+      calculation: describeResourceCost(r, (v) => money.format(v)),
+      cost: resourceCost(r),
+      requirementCode: r.requirement?.code ?? null,
     })),
   };
 }
