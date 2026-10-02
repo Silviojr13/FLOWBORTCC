@@ -178,6 +178,8 @@ export interface StudyParticipation {
 }
 
 export interface StudyInvite {
+  /** "link": aberto pelo link de convite; "email": convite enviado pelo admin para o e-mail da conta */
+  source: "link" | "email"
   code: string
   title: string
   intro: string

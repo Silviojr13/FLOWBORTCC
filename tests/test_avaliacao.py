@@ -73,3 +73,39 @@ def test_progresso_dos_tutoriais(autenticado):
 
     zerado = api(driver, "PATCH", "/api/user/tutorials", {"reset": True})
     assert zerado["data"]["progress"] == {}
+
+
+def test_convite_por_email(autenticado, avaliacao, credentials):
+    """O admin convida pelo e-mail exato; o convite aparece para a conta sem link."""
+    driver = autenticado
+    email, _ = credentials
+    base = f"/api/admin/studies/{avaliacao['id']}/invitations"
+
+    assert api(driver, "POST", base, {"email": "nao-e-email"})["status"] == 400
+
+    convite = api(driver, "POST", base, {"email": email.upper()})
+    assert convite["status"] == 201, convite
+    assert convite["data"]["invitation"]["email"] == email.lower()
+    assert convite["data"]["invitation"]["hasAccount"] is True
+    assert convite["data"]["invitation"]["status"] == "pendente"
+
+    sem_conta = api(driver, "POST", base, {"email": "ninguem-cadastrado@flowbot.test"})
+    assert sem_conta["data"]["invitation"]["hasAccount"] is False
+
+    me = api(driver, "GET", "/api/studies/me")["data"]
+    assert me["invite"]["source"] == "email"
+    assert me["invite"]["code"] == avaliacao["inviteCode"]
+
+    # Recusar esconde o convite; convidar de novo reabre.
+    api(driver, "POST", "/api/studies/decline", {"code": avaliacao["inviteCode"]})
+    assert api(driver, "GET", "/api/studies/me")["data"]["invite"] is None
+    api(driver, "POST", base, {"email": email})
+
+    aceite = api(driver, "POST", "/api/studies/join", {"code": avaliacao["inviteCode"], "consent": True})
+    assert aceite["status"] == 201
+    convites = api(driver, "GET", base)["data"]["invitations"]
+    assert next(c for c in convites if c["email"] == email.lower())["status"] == "aceito"
+
+    # Cancelar só vale para convite ainda não aceito.
+    pendente = next(c for c in convites if c["status"] == "pendente")
+    assert api(driver, "DELETE", f"{base}/{pendente['id']}")["status"] == 200

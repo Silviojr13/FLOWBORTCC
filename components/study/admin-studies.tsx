@@ -6,9 +6,11 @@ import {
   CopyIcon,
   DownloadIcon,
   LoaderCircleIcon,
+  MailIcon,
   PlusIcon,
   RefreshCwIcon,
   Trash2Icon,
+  XIcon,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -23,6 +25,7 @@ import {
   susRating,
 } from "@/lib/study"
 import type { StudyResults } from "@/lib/study-results"
+import { inviteUrl as buildInviteUrl } from "@/lib/site"
 
 interface StudySummary {
   id: string
@@ -110,6 +113,140 @@ function resultsToCsv(results: StudyResults) {
 
 /* ------------------------------------------------------------------ */
 
+interface EmailInvitation {
+  id: string
+  email: string
+  invitedAt: string
+  status: "pendente" | "aceito" | "recusado"
+  hasAccount: boolean
+}
+
+const INVITATION_STATUS: Record<EmailInvitation["status"], { label: string; className: string }> = {
+  pendente: { label: "Pendente", className: "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300" },
+  aceito: { label: "Aceito", className: "border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300" },
+  recusado: { label: "Recusado", className: "border-border text-muted-foreground" },
+}
+
+/**
+ * Convite por e-mail: o admin digita o e-mail exato e o convite aparece dentro do FlowBot
+ * para essa conta (ou quando ela for criada). Não há busca nem lista de contas cadastradas.
+ */
+function EmailInvites({ studyId, open }: { studyId: string; open: boolean }) {
+  const [invitations, setInvitations] = useState<EmailInvitation[]>([])
+  const [email, setEmail] = useState("")
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/admin/studies/${studyId}/invitations`)
+      .then((r) => r.json())
+      .then((data) => !cancelled && setInvitations(data.invitations ?? []))
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [studyId])
+
+  async function invite() {
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/admin/studies/${studyId}/invitations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Não foi possível convidar.")
+      const created: EmailInvitation = data.invitation
+      setInvitations((list) => [created, ...list.filter((i) => i.id !== created.id)])
+      setEmail("")
+      toast.success(
+        created.hasAccount
+          ? "Convite enviado. Ele aparece para a pessoa no próximo acesso ao FlowBot."
+          : "Convite registrado. Ele aparece quando a pessoa criar a conta com este e-mail."
+      )
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível convidar.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function cancel(invitation: EmailInvitation) {
+    const res = await fetch(`/api/admin/studies/${studyId}/invitations/${invitation.id}`, { method: "DELETE" })
+    if (!res.ok) {
+      toast.error("Não foi possível cancelar o convite.")
+      return
+    }
+    setInvitations((list) => list.filter((i) => i.id !== invitation.id))
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-sm font-semibold text-foreground">Convidar por e-mail</h2>
+        <p className="text-xs text-muted-foreground">
+          Digite o e-mail exato da pessoa. O convite aparece para ela dentro do FlowBot, no guia do
+          participante. Por privacidade, o FlowBot não lista nem sugere as contas cadastradas.
+        </p>
+      </div>
+      <form
+        className="flex flex-col gap-2 sm:flex-row"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void invite()
+        }}
+      >
+        <Input
+          id="study-invite-email"
+          type="email"
+          inputMode="email"
+          autoComplete="off"
+          placeholder="pessoa@exemplo.com"
+          value={email}
+          disabled={!open}
+          onChange={(e) => setEmail(e.target.value)}
+          aria-label="E-mail da pessoa convidada"
+        />
+        <Button type="submit" disabled={!open || busy || !email.trim()}>
+          {busy ? <LoaderCircleIcon className="animate-spin" /> : <MailIcon />}
+          Convidar
+        </Button>
+      </form>
+      {!open && <p className="text-xs text-muted-foreground">Reabra a avaliação para convidar pessoas.</p>}
+
+      {invitations.length > 0 && (
+        <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+          {invitations.map((inv) => (
+            <li key={inv.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm">
+              <span className="min-w-0 flex-1 truncate">{inv.email}</span>
+              <span className="text-xs text-muted-foreground">
+                {inv.hasAccount ? "conta encontrada" : "ainda sem conta"}
+              </span>
+              <Badge variant="outline" className={INVITATION_STATUS[inv.status].className}>
+                {INVITATION_STATUS[inv.status].label}
+              </Badge>
+              {inv.status !== "aceito" && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-7 text-muted-foreground hover:text-destructive"
+                  aria-label={`Cancelar o convite de ${inv.email}`}
+                  onClick={() => void cancel(inv)}
+                >
+                  <XIcon className="size-4" />
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+
 function StudyDetail({ study, onChanged }: { study: StudySummary; onChanged: (s: StudySummary) => void }) {
   const [results, setResults] = useState<StudyResults | null>(null)
   const [refreshToken, setRefreshToken] = useState(0)
@@ -117,7 +254,8 @@ function StudyDetail({ study, onChanged }: { study: StudySummary; onChanged: (s:
   const [saving, setSaving] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
 
-  const inviteUrl = typeof window === "undefined" ? `/avaliacao/${study.inviteCode}` : `${window.location.origin}/avaliacao/${study.inviteCode}`
+  // Sempre o domínio publicado (flowbottcc.vercel.app), mesmo acessando pelo localhost.
+  const inviteUrl = buildInviteUrl(study.inviteCode)
 
   useEffect(() => {
     let cancelled = false
@@ -224,6 +362,8 @@ function StudyDetail({ study, onChanged }: { study: StudySummary; onChanged: (s:
           guia do participante, que aparece à direita dentro do FlowBot.
         </p>
       </div>
+
+      <EmailInvites studyId={study.id} open={study.status === "aberta"} />
 
       {!results ? (
         <p className="py-6 text-center text-sm text-muted-foreground">Carregando resultados...</p>

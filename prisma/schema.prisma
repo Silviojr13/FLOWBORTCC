@@ -363,6 +363,7 @@ model Study {
 
   createdBy    User               @relation("StudiesCreated", fields: [createdById], references: [id], onDelete: Cascade)
   participants StudyParticipant[]
+  invitations  StudyInvitation[]
 
   @@map("studies")
 }
@@ -398,4 +399,22 @@ model StudyTaskProgress {
 
   @@unique([participantId, taskKey])
   @@map("study_task_progress")
+}
+
+// Convite por e-mail: o admin informa o e-mail exato (sem listar contas). O convite aparece
+// dentro do FlowBot para a conta com esse e-mail, mesmo que ela seja criada depois.
+model StudyInvitation {
+  id         String    @id @default(cuid())
+  studyId    String
+  // Sempre em minúsculas
+  email      String
+  invitedAt  DateTime  @default(now())
+  acceptedAt DateTime?
+  declinedAt DateTime?
+
+  study Study @relation(fields: [studyId], references: [id], onDelete: Cascade)
+
+  @@unique([studyId, email])
+  @@index([email])
+  @@map("study_invitations")
 }

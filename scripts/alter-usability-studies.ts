@@ -65,6 +65,17 @@ async function alterUsabilityStudies() {
       "completedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "study_task_progress_participantId_fkey" FOREIGN KEY ("participantId") REFERENCES "study_participants" ("id") ON DELETE CASCADE ON UPDATE CASCADE
     )`,
+    `CREATE TABLE IF NOT EXISTS "study_invitations" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "studyId" TEXT NOT NULL,
+      "email" TEXT NOT NULL,
+      "invitedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "acceptedAt" DATETIME,
+      "declinedAt" DATETIME,
+      CONSTRAINT "study_invitations_studyId_fkey" FOREIGN KEY ("studyId") REFERENCES "studies" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    )`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "study_invitations_studyId_email_key" ON "study_invitations"("studyId", "email")`,
+    `CREATE INDEX IF NOT EXISTS "study_invitations_email_idx" ON "study_invitations"("email")`,
     `CREATE UNIQUE INDEX IF NOT EXISTS "studies_inviteCode_key" ON "studies"("inviteCode")`,
     `CREATE UNIQUE INDEX IF NOT EXISTS "study_participants_studyId_userId_key" ON "study_participants"("studyId", "userId")`,
     `CREATE UNIQUE INDEX IF NOT EXISTS "study_task_progress_participantId_taskKey_key" ON "study_task_progress"("participantId", "taskKey")`,

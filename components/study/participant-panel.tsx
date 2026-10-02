@@ -96,8 +96,32 @@ function InviteView({ invite, onDismiss }: { invite: StudyInvite; onDismiss: () 
     }
   }
 
+  // Convite por e-mail: recusar faz ele deixar de aparecer em qualquer acesso.
+  async function decline() {
+    setBusy(true)
+    try {
+      const res = await fetch("/api/studies/decline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: invite.code }),
+      })
+      if (!res.ok) throw new Error("Não foi possível recusar o convite.")
+      onDismiss()
+      await refreshStudyMe()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível recusar o convite.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 text-sm leading-relaxed">
+      {invite.source === "email" && (
+        <p className="rounded-xl bg-primary/5 px-3 py-2 text-xs text-primary">
+          A equipe do FlowBot convidou a sua conta para esta avaliação.
+        </p>
+      )}
       <Paragraphs text={invite.intro} />
       <div className="flex flex-col gap-2 rounded-xl bg-muted/50 p-3">
         <p className="font-medium text-foreground">Termo de participação</p>
@@ -122,6 +146,16 @@ function InviteView({ invite, onDismiss }: { invite: StudyInvite; onDismiss: () 
         <Button variant="ghost" className="text-muted-foreground" onClick={onDismiss}>
           Agora não
         </Button>
+        {invite.source === "email" && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void decline()}
+            className="self-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            Não quero participar
+          </button>
+        )}
       </div>
     </div>
   )

@@ -148,10 +148,15 @@ export async function loadParticipation(userId: string): Promise<StudyParticipat
   };
 }
 
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
 export async function findInvite(code: string): Promise<StudyInvite | null> {
   const study = await tursoDb.study.findUnique({ where: { inviteCode: code } });
   if (!study) return null;
   return {
+    source: "link",
     code: study.inviteCode,
     title: study.title,
     intro: study.intro,
@@ -159,4 +164,49 @@ export async function findInvite(code: string): Promise<StudyInvite | null> {
     contact: study.contact,
     status: study.status,
   };
+}
+
+/**
+ * Convite por e-mail pendente para a conta: avaliação aberta, convite não aceito nem
+ * recusado e a pessoa ainda não participa dela.
+ */
+export async function findEmailInvite(userId: string): Promise<StudyInvite | null> {
+  const user = await tursoDb.user.findUnique({ where: { id: userId }, select: { email: true } });
+  if (!user?.email) return null;
+
+  const invitation = await tursoDb.studyInvitation.findFirst({
+    where: {
+      email: normalizeEmail(user.email),
+      acceptedAt: null,
+      declinedAt: null,
+      study: { status: "aberta", participants: { none: { userId } } },
+    },
+    orderBy: { invitedAt: "desc" },
+    include: { study: true },
+  });
+  if (!invitation) return null;
+
+  return {
+    source: "email",
+    code: invitation.study.inviteCode,
+    title: invitation.study.title,
+    intro: invitation.study.intro,
+    privacy: invitation.study.privacy,
+    contact: invitation.study.contact,
+    status: invitation.study.status,
+  };
+}
+
+/** Registra o aceite ou a recusa no convite por e-mail da conta, se houver. */
+export async function settleEmailInvitation(
+  studyId: string,
+  userId: string,
+  outcome: "accepted" | "declined"
+) {
+  const user = await tursoDb.user.findUnique({ where: { id: userId }, select: { email: true } });
+  if (!user?.email) return;
+  await tursoDb.studyInvitation.updateMany({
+    where: { studyId, email: normalizeEmail(user.email), acceptedAt: null },
+    data: outcome === "accepted" ? { acceptedAt: new Date() } : { declinedAt: new Date() },
+  });
 }

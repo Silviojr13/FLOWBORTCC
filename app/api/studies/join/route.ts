@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { tursoDb } from "@/lib/turso-db";
-import { loadParticipation } from "@/lib/study-server";
+import { loadParticipation, settleEmailInvitation } from "@/lib/study-server";
 
 // POST: aceita o convite. Exige o aceite explícito do termo de participação.
 export async function POST(req: NextRequest) {
@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
     create: { studyId: study.id, userId: user.id },
     update: {},
   });
+  await settleEmailInvitation(study.id, user.id, "accepted");
 
   return NextResponse.json({ participation: await loadParticipation(user.id) }, { status: 201 });
 }
