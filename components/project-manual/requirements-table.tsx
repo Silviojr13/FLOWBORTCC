@@ -106,7 +106,7 @@ export function RequirementsTable({
       }
     }
 
-    load()
+    void load()
     return () => {
       cancelled = true
     }
@@ -144,7 +144,7 @@ export function RequirementsTable({
       }
     }
 
-    importFromChat()
+    void importFromChat()
     return () => {
       cancelled = true
     }
@@ -328,7 +328,7 @@ export function RequirementsTable({
                       value={draft.description}
                       onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") confirmEdit()
+                        if (e.key === "Enter") void confirmEdit()
                         if (e.key === "Escape") cancelEdit()
                       }}
                     />
@@ -448,7 +448,7 @@ export function RequirementsTable({
                     value={draft.description}
                     onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") confirmEdit()
+                      if (e.key === "Enter") void confirmEdit()
                       if (e.key === "Escape") cancelEdit()
                     }}
                   />

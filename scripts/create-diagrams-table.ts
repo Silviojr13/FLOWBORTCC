@@ -40,4 +40,7 @@ async function createDiagramsTable() {
   }
 }
 
-createDiagramsTable();
+createDiagramsTable().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

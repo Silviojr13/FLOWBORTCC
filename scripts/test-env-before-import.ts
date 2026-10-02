@@ -1,13 +1,13 @@
 // Verificar as variáveis antes de qualquer importação
 console.log('Antes da importação:');
-console.log('DATABASE_URL:', process.env.DATABASE_URL);
+console.log('DATABASE_URL:', process.env.DATABASE_URL ? "definida" : "ausente");
 console.log('TURSO_AUTH_TOKEN exists:', !!process.env.TURSO_AUTH_TOKEN);
 
 // Importar dotenv explicitamente
 import('dotenv').then(dotenv => {
   dotenv.config();
   console.log('\nApós carregar dotenv:');
-  console.log('DATABASE_URL:', process.env.DATABASE_URL);
+  console.log('DATABASE_URL:', process.env.DATABASE_URL ? "definida" : "ausente");
   console.log('TURSO_AUTH_TOKEN exists:', !!process.env.TURSO_AUTH_TOKEN);
 
   // Agora importar o db

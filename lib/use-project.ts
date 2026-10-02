@@ -38,7 +38,7 @@ export function useProject(projectId: string) {
       }
     }
 
-    load()
+    void load()
 
     return () => {
       cancelled = true

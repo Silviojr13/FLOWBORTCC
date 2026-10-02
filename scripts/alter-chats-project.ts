@@ -39,4 +39,7 @@ async function alterChatsProject() {
   }
 }
 
-alterChatsProject();
+alterChatsProject().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

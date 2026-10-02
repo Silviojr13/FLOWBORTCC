@@ -120,4 +120,7 @@ async function createProjectTables() {
   }
 }
 
-createProjectTables();
+createProjectTables().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

@@ -86,7 +86,7 @@ export function ComponentsTable({
       }
     }
 
-    load()
+    void load()
     return () => {
       cancelled = true
     }

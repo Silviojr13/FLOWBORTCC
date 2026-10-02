@@ -1,7 +1,8 @@
 name: CI
 
-# Garantia de qualidade da ferramenta (Sprint 2): lint, verificação de tipos, build e
-# análise estática no Sonar a cada push e Pull Request.
+# Garantia de qualidade da ferramenta (Sprint 2): lint, verificação de tipos e build a cada
+# push e Pull Request. A análise estática roda no SonarCloud pela análise automática, ligada
+# ao repositório; a configuração dela está em .sonarcloud.properties.
 
 on:
   push:
@@ -21,51 +22,24 @@ jobs:
           node-version: 20
           cache: npm
 
-      # O postinstall roda "prisma generate", que não precisa de conexão com o banco.
+      # --ignore-scripts: nenhum pacote executa código durante a instalação. O único passo
+      # necessário depois dela, gerar o cliente do Prisma, roda explicitamente a seguir.
       - name: Instalar dependências
-        run: npm ci
+        run: npm ci --ignore-scripts
+
+      - name: Gerar cliente do Prisma
+        run: npm run db:generate
 
       - name: Lint
-        run: npx eslint app components lib scripts
+        run: npm run lint -- app components lib scripts
 
       - name: Verificação de tipos
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Build
-        run: npx next build
+        run: npm run build
         env:
           # Valores de placeholder: o build não acessa o banco nem o provedor de IA.
           DATABASE_URL: file:./build.db
           NEXTAUTH_SECRET: build-only-secret
           NEXTAUTH_URL: http://localhost:3000
-
-  sonar:
-    name: Análise estática (SonarCloud)
-    runs-on: ubuntu-latest
-    needs: qualidade
-    # PRs de forks não recebem os segredos do repositório.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-    steps:
-      # Sem o segredo SONAR_TOKEN o scan é pulado com um aviso, em vez de reprovar o PR.
-      - name: Verificar token do Sonar
-        id: token
-        run: |
-          if [ -z "$SONAR_TOKEN" ]; then
-            echo "::notice::SONAR_TOKEN não configurado no repositório: análise do SonarCloud pulada."
-            echo "configurado=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "configurado=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - uses: actions/checkout@v4
-        if: steps.token.outputs.configurado == 'true'
-        with:
-          # O Sonar usa o histórico para atribuir os problemas aos autores corretos.
-          fetch-depth: 0
-
-      - name: SonarCloud Scan
-        if: steps.token.outputs.configurado == 'true'
-        uses: SonarSource/sonarqube-scan-action@v4

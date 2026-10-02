@@ -69,4 +69,7 @@ async function resetTour() {
   }
 }
 
-resetTour();
+resetTour().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

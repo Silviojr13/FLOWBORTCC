@@ -112,7 +112,7 @@ export function ComponentSuggestions({
       if (!cancelled) await generateSuggestions()
     }
 
-    run()
+    void run()
     return () => {
       cancelled = true
     }
@@ -151,7 +151,7 @@ export function ComponentSuggestions({
     if (visibleCount < suggestions.length) {
       setVisibleCount((c) => Math.min(c + LOAD_MORE_STEP, suggestions.length))
     } else {
-      generateSuggestions()
+      void generateSuggestions()
     }
   }
 

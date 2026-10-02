@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { createClient } from '@libsql/client';
 
 async function testTursoClient() {
-  console.log('DATABASE_URL:', process.env.DATABASE_URL);
+  console.log('DATABASE_URL:', process.env.DATABASE_URL ? "definida" : "ausente");
   
   try {
     // Tentar criar cliente do LibSQL
@@ -30,4 +30,7 @@ async function testTursoClient() {
   }
 }
 
-testTursoClient();
+testTursoClient().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

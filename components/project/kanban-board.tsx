@@ -173,7 +173,15 @@ function TaskCardContent({
         requirementDiscarded && "border-amber-400/70 bg-amber-50/40 dark:bg-amber-950/20"
       )}
       {...dragHandleProps}
+      // O arrasto é só por mouse e toque; pelo teclado, Enter ou Espaço abrem a tarefa.
+      role="button"
+      tabIndex={0}
       onClick={openFromClick}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return
+        e.preventDefault()
+        onEdit(task)
+      }}
     >
       {requirementDiscarded && (
         <p className="mb-2 flex items-center gap-1.5 rounded-md bg-amber-100/70 px-2 py-1 text-[11px] font-medium text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
@@ -317,7 +325,7 @@ function TaskCardContent({
 
 function DraggableTaskCard(props: Parameters<typeof TaskCardContent>[0]) {
   const { task } = props
-  const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
+  const { listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
     id: task.id,
     data: { type: "task", task },
   })
@@ -333,7 +341,6 @@ function DraggableTaskCard(props: Parameters<typeof TaskCardContent>[0]) {
         setDropRef(node)
       }}
       style={style}
-      {...attributes}
     >
       <TaskCardContent {...props} isDragging={isDragging} dragHandleProps={listeners} />
     </div>
@@ -488,7 +495,10 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
   /* ---- filtros (UC06 fluxo alternativo) ---- */
 
   const assignees = useMemo(
-    () => Array.from(new Set(tasks.map((t) => t.assignee).filter((a): a is string => !!a))).sort(),
+    () =>
+      Array.from(new Set(tasks.map((t) => t.assignee).filter((a): a is string => !!a))).sort((a, b) =>
+        a.localeCompare(b, "pt-BR")
+      ),
     [tasks]
   )
 

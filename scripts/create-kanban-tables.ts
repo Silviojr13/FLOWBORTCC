@@ -118,4 +118,7 @@ async function createKanbanTables() {
   }
 }
 
-createKanbanTables();
+createKanbanTables().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
