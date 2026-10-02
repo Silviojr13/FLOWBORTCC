@@ -54,4 +54,7 @@ async function alterUsersOnboarding() {
   }
 }
 
-alterUsersOnboarding();
+alterUsersOnboarding().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

@@ -57,5 +57,6 @@ $env:FLOWBOT_BASE_URL="http://localhost:3000"; $env:FLOWBOT_TEST_EMAIL="..."; $e
 
 A suíte depende de uma aplicação no ar e de um banco Turso com conta de teste. Executá-la
 no GitHub Actions exigiria expor as credenciais do banco de produção e geraria dados a cada
-push. O workflow de CI roda lint, verificação de tipos, build e a análise do Sonar; os
-testes de integração são executados localmente e antes das entregas.
+push. O workflow de CI roda lint, verificação de tipos e build; a análise estática roda no
+SonarCloud pela análise automática a cada push e Pull Request. Os testes de integração são
+executados localmente e antes das entregas.

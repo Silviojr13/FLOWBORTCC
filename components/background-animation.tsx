@@ -32,8 +32,9 @@ const PULSE_MIN = 0.003;
 const PULSE_MAX = 0.008;
 
 /* ── Helpers ── */
+// Só posição e brilho das partículas decorativas: nada de segurança depende disso.
 function rand(min: number, max: number) {
-  return Math.random() * (max - min) + min;
+  return Math.random() * (max - min) + min; // NOSONAR
 }
 
 function totalNodeCount(w: number, h: number) {

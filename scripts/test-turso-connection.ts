@@ -3,7 +3,7 @@ import { createClient } from '@libsql/client';
 
 async function testConnection() {
   console.log('Tentando conectar ao banco Turso...');
-  console.log('DATABASE_URL:', process.env.DATABASE_URL);
+  console.log('DATABASE_URL:', process.env.DATABASE_URL ? "definida" : "ausente");
   console.log('TURSO_AUTH_TOKEN exists:', !!process.env.TURSO_AUTH_TOKEN);
 
   const client = createClient({
@@ -23,4 +23,7 @@ async function testConnection() {
   }
 }
 
-testConnection();
+testConnection().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

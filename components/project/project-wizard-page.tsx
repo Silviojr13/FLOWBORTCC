@@ -310,7 +310,7 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
       }
     }
 
-    load()
+    void load()
     return () => {
       cancelled = true
     }

@@ -46,4 +46,7 @@ async function alterResources() {
   }
 }
 
-alterResources();
+alterResources().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

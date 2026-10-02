@@ -1,7 +1,7 @@
 import { createClient } from "@libsql/client";
 
 async function main() {
-  console.log("DATABASE_URL:", process.env.DATABASE_URL);
+  console.log("DATABASE_URL:", process.env.DATABASE_URL ? "definida" : "ausente");
   console.log("TURSO_AUTH_TOKEN:", process.env.TURSO_AUTH_TOKEN ? "Presente" : "Ausente");
   
   try {
@@ -19,4 +19,7 @@ async function main() {
   }
 }
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

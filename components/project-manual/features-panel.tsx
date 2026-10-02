@@ -101,7 +101,7 @@ export function FeaturesPanel({ projectId }: { projectId: string }) {
       }
     }
 
-    load()
+    void load()
     return () => {
       cancelled = true
     }

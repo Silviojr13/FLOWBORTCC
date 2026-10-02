@@ -79,7 +79,7 @@ export function ProjectCreationSummary({
       }
     }
 
-    load()
+    void load()
     return () => {
       cancelled = true
     }
