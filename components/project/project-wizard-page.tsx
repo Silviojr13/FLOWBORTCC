@@ -323,7 +323,7 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-3" data-tour="project-shortcuts">
         <h2 className="text-sm font-medium text-foreground">Acessar projeto</h2>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           {PROJECT_PRIMARY_SHORTCUTS.map((shortcut) => {

@@ -28,12 +28,18 @@ model User {
   onboardingCompletedAt DateTime?
   // Tour guiado da primeira sessão: nulo enquanto o usuário não concluiu nem pulou.
   tourCompletedAt       DateTime?
+  // "user" | "admin": o admin cria e acompanha as avaliações de usabilidade
+  role                  String    @default("user")
+  // Tutoriais por página já concluídos: JSON { [chave]: data ISO }
+  tutorialProgress      String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   accounts      Account[]
   chats         Chat[]
   sessions      Session[]
   projects      Project[]
+  studiesCreated      Study[]            @relation("StudiesCreated")
+  studyParticipations StudyParticipant[]
 
   @@map("users")
 }
@@ -337,4 +343,59 @@ model Resource {
 
   @@index([projectId])
   @@map("resources")
+}
+
+// Avaliação de usabilidade conduzida dentro da plataforma (validação do TCC). O roteiro de
+// tarefas é fixo (lib/study.ts); o admin define textos, período e status.
+model Study {
+  id          String    @id @default(cuid())
+  title       String
+  intro       String
+  privacy     String
+  contact     String?
+  // Código do link de convite: /avaliacao/<inviteCode>
+  inviteCode  String    @unique
+  // "aberta" | "encerrada"
+  status      String    @default("aberta")
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  createdBy    User               @relation("StudiesCreated", fields: [createdById], references: [id], onDelete: Cascade)
+  participants StudyParticipant[]
+
+  @@map("studies")
+}
+
+model StudyParticipant {
+  id          String    @id @default(cuid())
+  studyId     String
+  userId      String
+  // Aceite do termo de participação; também marca o início da contagem de tempo
+  consentAt   DateTime  @default(now())
+  submittedAt DateTime?
+  // JSON: { sus: number[10], open: Record<string,string>, profile: Record<string,string> }
+  answers     String?
+  susScore    Float?
+
+  study Study               @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  user  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks StudyTaskProgress[]
+
+  @@unique([studyId, userId])
+  @@map("study_participants")
+}
+
+model StudyTaskProgress {
+  id            String   @id @default(cuid())
+  participantId String
+  taskKey       String
+  // "auto" (detectada pelo sistema) | "manual" (marcada pelo participante)
+  method        String
+  completedAt   DateTime @default(now())
+
+  participant StudyParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, taskKey])
+  @@map("study_task_progress")
 }

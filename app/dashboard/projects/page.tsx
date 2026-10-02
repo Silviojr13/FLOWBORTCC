@@ -48,7 +48,7 @@ export default function ProjectsPage() {
             Projetos
           </h1>
         </div>
-        <Button asChild className="h-10 w-full gap-1.5 sm:w-auto">
+        <Button asChild className="h-10 w-full gap-1.5 sm:w-auto" data-tour="projects-new">
           <Link href="/dashboard/projects/new">
             <PlusIcon className="size-4" />
             Novo projeto
@@ -81,7 +81,7 @@ export default function ProjectsPage() {
       )}
 
       {!isLoading && hasProjects && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div data-tour="projects-list" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {projects.map((project) => (
             <ProjectCardWithImage key={project.id} project={project} />
           ))}

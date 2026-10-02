@@ -208,7 +208,7 @@ export function ProjectStepRail({
   railContext?: StepRailContext
 }) {
   return (
-    <aside className={cn(className)}>
+    <aside className={cn(className)} data-tour="home-steps">
       {variant === "rail" ? (
         <ProjectStepRailDesktop
           currentStep={currentStep}

@@ -327,7 +327,7 @@ export function FeaturesPanel({ projectId }: { projectId: string }) {
       {editingId === NEW_ROW_ID && renderDraftForm()}
 
       {editingId !== NEW_ROW_ID && (
-        <Button variant="outline" size="sm" className="w-fit gap-1.5" onClick={startCreate}>
+        <Button variant="outline" size="sm" className="w-fit gap-1.5" onClick={startCreate} data-tour="features-add">
           <PlusIcon className="size-4" />
           Adicionar funcionalidade
         </Button>

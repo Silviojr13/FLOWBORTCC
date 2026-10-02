@@ -513,7 +513,7 @@ export function RequirementsTable({
       </div>
 
       {editingId !== NEW_ROW_ID && (
-        <Button size="sm" className="w-fit gap-1.5" onClick={startCreate}>
+        <Button size="sm" className="w-fit gap-1.5" onClick={startCreate} data-tour="requirements-add">
           <PlusIcon className="size-4" />
           Adicionar requisito
         </Button>

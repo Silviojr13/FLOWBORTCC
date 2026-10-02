@@ -36,7 +36,7 @@ export function ChatInput({
   return (
     <div className="safe-bottom sticky bottom-0 z-30 bg-gradient-to-t from-background via-background/95 to-transparent px-0 pb-3 pt-2 sm:pb-4">
       <div className={embedded ? "w-full" : "mx-auto w-full max-w-3xl"}>
-        <div className="rounded-xl border border-border bg-card p-2 shadow-sm transition-[border-color,box-shadow] duration-200 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10">
+        <div data-tour="home-chat-input" className="rounded-xl border border-border bg-card p-2 shadow-sm transition-[border-color,box-shadow] duration-200 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10">
           <div className="flex items-end gap-2">
             <textarea
               ref={textareaRef}

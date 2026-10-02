@@ -126,7 +126,7 @@ export function SprintsPanel({ projectId }: { projectId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" className="gap-1.5" onClick={openCreate}>
+        <Button size="sm" className="gap-1.5" onClick={openCreate} data-tour="sprints-new">
           <PlusIcon className="size-4" />
           Planejar sprint
         </Button>

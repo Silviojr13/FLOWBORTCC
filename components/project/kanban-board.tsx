@@ -699,7 +699,7 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
   return (
     <div className="flex flex-col gap-4">
       {/* Barra de ações e filtros */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2" data-tour="kanban-toolbar">
         <Button size="sm" className="gap-1.5" onClick={() => openCreate()}>
           <PlusIcon className="size-4" />
           Nova tarefa
@@ -726,7 +726,7 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2" data-tour="kanban-filters">
         <Select value={filters.assignee} onValueChange={(v) => setFilters((f) => ({ ...f, assignee: v }))}>
           <SelectTrigger size="sm" className="min-w-[10rem]" aria-label="Filtrar por responsável">
             <SelectValue />

@@ -5,6 +5,9 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TourLauncher } from "@/components/tour/tour-launcher"
+import { ParticipantPanel } from "@/components/study/participant-panel"
+import { HelpCenter } from "@/components/tutorials/help-center"
+import { PageTutorialRunner } from "@/components/tutorials/page-tutorial-runner"
 import BackgroundAnimation from "@/components/background-animation"
 import { tursoDb } from "@/lib/turso-db"
 
@@ -52,6 +55,13 @@ export default async function DashboardLayout({
 
       {/* Tour guiado da primeira sessão (só aparece para quem ainda não o concluiu). */}
       <TourLauncher />
+
+      {/* Guia do participante: só para quem aceitou (ou recebeu) um convite de avaliação. */}
+      <ParticipantPanel />
+
+      {/* Central de tutoriais (botão "Tutoriais" no cabeçalho) e o executor dos tutoriais por tela. */}
+      <HelpCenter />
+      <PageTutorialRunner />
     </SidebarProvider>
   )
 }

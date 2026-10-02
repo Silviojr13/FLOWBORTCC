@@ -41,7 +41,7 @@ export function WelcomeScreen({
       </p>
 
       {/* Suggestion chips */}
-      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+      <div data-tour="home-suggestions" className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
         {suggestions.map((s) => (
           <Button
             key={s.label}

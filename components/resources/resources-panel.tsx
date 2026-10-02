@@ -145,7 +145,7 @@ export function ResourcesPanel({ projectId }: { projectId: string }) {
   return (
     <div className="flex flex-col gap-6">
       {/* Orçamento consolidado */}
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-3" data-tour="resources-budget">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <SummaryCard
             emphasis
@@ -235,7 +235,7 @@ export function ResourcesPanel({ projectId }: { projectId: string }) {
                 </button>
               ))}
             </div>
-            <Button size="sm" onClick={openNew}>
+            <Button size="sm" onClick={openNew} data-tour="resources-add">
               <PlusIcon />
               Adicionar recurso
             </Button>
