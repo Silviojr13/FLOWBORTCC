@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { onProjectsChanged } from "@/lib/projects-changed"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { ArrowLeftIcon } from "lucide-react"
@@ -131,6 +132,10 @@ export function ProjectSidebarSection() {
   const activeProjectId = useMemo(() => extractActiveProjectId(pathname), [pathname])
   const step = searchParams.get("step")
 
+  // Incrementado quando a lista muda (ex.: projeto excluído): recarrega os projetos.
+  const [reloadToken, setReloadToken] = useState(0)
+  useEffect(() => onProjectsChanged(() => setReloadToken((t) => t + 1)), [])
+
   useEffect(() => {
     let cancelled = false
 
@@ -152,7 +157,7 @@ export function ProjectSidebarSection() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [reloadToken])
 
   useEffect(() => {
     if (!activeProjectId || isLoading) return
