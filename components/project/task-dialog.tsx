@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useId, useState } from "react"
 import { toast } from "sonner"
 import {
   CalendarIcon,
@@ -613,8 +613,8 @@ function TaskTeamFields({
   const team = [draft.assignee, ...draft.participants].filter((name) => name.trim())
   const suggestions = people.filter((name) => !team.some((member) => sameName(member, name)))
 
-  function addParticipant() {
-    const name = newName.trim().replace(/\s+/g, " ")
+  function addParticipant(typed = newName) {
+    const name = typed.trim().replace(/\s+/g, " ")
     setNewName("")
     if (!name || team.some((member) => sameName(member, name))) return
     // Sem responsável, a primeira pessoa adicionada assume a tarefa.
@@ -630,12 +630,6 @@ function TaskTeamFields({
 
   return (
     <>
-      <datalist id="task-people">
-        {suggestions.map((name) => (
-          <option key={name} value={name} />
-        ))}
-      </datalist>
-
       <PropertyField
         label={
           <HelpLabel label="Responsável principal" content={HELP.taskLead}>
@@ -643,19 +637,19 @@ function TaskTeamFields({
           </HelpLabel>
         }
       >
-        <label className="flex h-9 items-center gap-2 rounded-lg px-2 hover:bg-background">
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
-            {initials(draft.assignee) || <CrownIcon className="size-3" aria-hidden />}
-          </span>
-          <input
-            aria-label="Responsável principal"
-            list="task-people"
-            value={draft.assignee}
-            placeholder="Quem responde pela tarefa"
-            onChange={(event) => onChange({ assignee: event.target.value })}
-            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-          />
-        </label>
+        <NameCombobox
+          label="Responsável principal"
+          placeholder="Quem responde pela tarefa"
+          value={draft.assignee}
+          suggestions={suggestions}
+          onChange={(assignee) => onChange({ assignee })}
+          onPick={(assignee) => onChange({ assignee })}
+          icon={
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+              {initials(draft.assignee) || <CrownIcon className="size-3" aria-hidden />}
+            </span>
+          }
+        />
       </PropertyField>
 
       <PropertyField
@@ -698,26 +692,148 @@ function TaskTeamFields({
             ))}
           </ul>
         )}
-        <form
-          className="flex h-9 items-center gap-2 rounded-lg px-2 hover:bg-background"
-          onSubmit={(event) => {
-            event.preventDefault()
-            addParticipant()
-          }}
-        >
-          <PlusIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-          <input
-            aria-label="Adicionar participante"
-            list="task-people"
-            value={newName}
-            placeholder="Adicionar pessoa"
-            onChange={(event) => setNewName(event.target.value)}
-            onBlur={addParticipant}
-            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-          />
-        </form>
+        <NameCombobox
+          label="Adicionar participante"
+          placeholder="Adicionar pessoa"
+          value={newName}
+          suggestions={suggestions}
+          onChange={setNewName}
+          onPick={addParticipant}
+          onCommit={() => addParticipant()}
+          icon={<PlusIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
+        />
       </PropertyField>
     </>
+  )
+}
+
+/**
+ * Campo de nome com sugestões das pessoas do projeto. A lista é desenhada logo abaixo do campo
+ * (o datalist nativo aparece fora do lugar dentro do diálogo). Setas escolhem, Enter confirma
+ * e Esc fecha; também aceita um nome novo digitado.
+ */
+function NameCombobox({
+  label,
+  placeholder,
+  value,
+  suggestions,
+  icon,
+  onChange,
+  onPick,
+  onCommit,
+}: {
+  label: string
+  placeholder: string
+  value: string
+  suggestions: string[]
+  icon: React.ReactNode
+  onChange: (value: string) => void
+  /** Pessoa escolhida na lista. */
+  onPick: (name: string) => void
+  /** Enter ou saída do campo sem escolher da lista (nome digitado). */
+  onCommit?: () => void
+}) {
+  const listId = useId()
+  const [open, setOpen] = useState(false)
+  const [active, setActive] = useState(-1)
+  const typed = value.trim().toLocaleLowerCase("pt-BR")
+  const options = suggestions.filter(
+    (name) => name.toLocaleLowerCase("pt-BR").includes(typed) && name.toLocaleLowerCase("pt-BR") !== typed
+  )
+  const showList = open && options.length > 0
+
+  function pick(name: string) {
+    onPick(name)
+    setOpen(false)
+    setActive(-1)
+  }
+
+  function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "ArrowDown" && options.length > 0) {
+      event.preventDefault()
+      setOpen(true)
+      setActive((i) => (i + 1) % options.length)
+    } else if (event.key === "ArrowUp" && options.length > 0) {
+      event.preventDefault()
+      setOpen(true)
+      setActive((i) => (i <= 0 ? options.length - 1 : i - 1))
+    } else if (event.key === "Enter") {
+      event.preventDefault()
+      if (showList && active >= 0) pick(options[active])
+      else {
+        onCommit?.()
+        setOpen(false)
+      }
+    } else if (event.key === "Escape" && showList) {
+      // Fecha só a lista, sem fechar a tarefa.
+      event.preventDefault()
+      event.stopPropagation()
+      setOpen(false)
+    }
+  }
+
+  return (
+    <div className="relative">
+      <label className="flex h-9 items-center gap-2 rounded-lg px-2 hover:bg-background">
+        {icon}
+        <input
+          role="combobox"
+          aria-label={label}
+          aria-expanded={showList}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={showList && active >= 0 ? `${listId}-${active}` : undefined}
+          autoComplete="off"
+          value={value}
+          placeholder={placeholder}
+          onChange={(event) => {
+            onChange(event.target.value)
+            setOpen(true)
+            setActive(-1)
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => {
+            setOpen(false)
+            setActive(-1)
+            onCommit?.()
+          }}
+          onKeyDown={onKeyDown}
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+        />
+      </label>
+      {showList && (
+        <ul
+          id={listId}
+          role="listbox"
+          aria-label={`Sugestões para ${label.toLowerCase()}`}
+          className="absolute inset-x-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-md"
+        >
+          {options.map((name, index) => (
+            <li
+              key={name}
+              id={`${listId}-${index}`}
+              role="option"
+              aria-selected={index === active}
+              // mousedown antes do blur do campo, para a escolha não se perder.
+              onMouseDown={(event) => {
+                event.preventDefault()
+                pick(name)
+              }}
+              onMouseEnter={() => setActive(index)}
+              className={cn(
+                "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm",
+                index === active && "bg-accent text-accent-foreground"
+              )}
+            >
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
+                {initials(name)}
+              </span>
+              <span className="truncate">{name}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
