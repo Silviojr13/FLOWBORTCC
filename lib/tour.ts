@@ -77,7 +77,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     target: "requirements-coverage",
-    route: "/dashboard/projects/:id?step=requisitos",
+    route: "/dashboard/projects/:id/requirements",
     title: "Requisitos conectados à execução",
     body: "Aqui ficam os requisitos da conversa, numerados (RF01, RNF01…) e com histórico de alterações. As colunas Cobertura e Custo mostram quantas tarefas atendem cada requisito e quanto de hardware ele exige.",
     achievement: "Requisitos explorados",

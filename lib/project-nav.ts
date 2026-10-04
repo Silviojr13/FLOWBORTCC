@@ -85,7 +85,7 @@ export const PROJECT_MODULES: ProjectModule[] = [
     label: "Requisitos",
     description: "Defina o que o projeto precisa atender.",
     icon: ClipboardListIcon,
-    href: (projectId) => `/dashboard/projects/${projectId}?step=requisitos`,
+    href: (projectId) => `/dashboard/projects/${projectId}/requirements`,
   },
   {
     key: "diagrams",
@@ -146,11 +146,8 @@ export function getProjectModuleKey(
 ): ProjectModuleKey | null {
   const base = `/dashboard/projects/${projectId}`
 
-  if (pathname === base) {
-    if (step === "requisitos") return "requirements"
-    if (step) return null
-    return "overview"
-  }
+  // Com ?step= a página é o assistente de criação, que não corresponde a nenhuma aba.
+  if (pathname === base) return step ? null : "overview"
 
   if (matchesPath(pathname, `${base}/kanban`)) return "kanban"
   if (matchesPath(pathname, `${base}/sprints`)) return "sprints"
@@ -158,6 +155,7 @@ export function getProjectModuleKey(
   if (matchesPath(pathname, `${base}/features`)) return "features"
   if (matchesPath(pathname, `${base}/components-costs`)) return "components"
   if (matchesPath(pathname, `${base}/resources`)) return "resources"
+  if (matchesPath(pathname, `${base}/requirements`)) return "requirements"
   if (matchesPath(pathname, `${base}/diagrams`)) return "diagrams"
   return null
 }

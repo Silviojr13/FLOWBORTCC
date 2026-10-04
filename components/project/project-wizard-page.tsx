@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { ArrowLeftIcon, ArrowRightIcon, LayoutGridIcon } from "lucide-react"
+import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react"
 import { HELP, HelpLabel } from "@/components/help-tooltip"
 import { workspaceGutter } from "@/components/layout/workspace"
 import { ProjectContextNav } from "@/components/project/project-context-nav"
@@ -459,7 +459,7 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
                   ? "Requisitos não foram definidos na criação."
                   : "Nenhum requisito registrado ainda."}{" "}
                 <Link
-                  href={`/dashboard/projects/${projectId}?step=requisitos`}
+                  href={`/dashboard/projects/${projectId}/requirements`}
                   className="font-medium text-primary underline-offset-4 hover:underline"
                 >
                   Definir requisitos
@@ -467,15 +467,6 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
               </p>
             </div>
           )}
-
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5" asChild>
-              <Link href={`/dashboard/projects/${projectId}?step=requisitos`}>
-                <LayoutGridIcon className="size-4" />
-                Revisar etapas
-              </Link>
-            </Button>
-          </div>
         </>
       )}
     </div>

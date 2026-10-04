@@ -8,7 +8,7 @@ from conftest import TIMEOUT, aguardar_carregamento, api, corpo
 
 
 def abrir_requisitos(driver, base_url, projeto_id):
-    driver.get(f"{base_url}/dashboard/projects/{projeto_id}?step=requisitos")
+    driver.get(f"{base_url}/dashboard/projects/{projeto_id}/requirements")
     WebDriverWait(driver, TIMEOUT).until(
         EC.presence_of_element_located((By.TAG_NAME, "table"))
     )

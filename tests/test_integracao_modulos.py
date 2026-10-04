@@ -155,7 +155,7 @@ def test_listagem_de_requisitos_traz_cobertura_e_custo(autenticado, base_url, pr
     assert linha["componentsTotal"] == 1
     assert linha["estimatedCost"] == 15.0
 
-    driver.get(f"{base_url}/dashboard/projects/{projeto['id']}?step=requisitos")
+    driver.get(f"{base_url}/dashboard/projects/{projeto['id']}/requirements")
     aguardar_carregamento(driver)
     WebDriverWait(driver, TIMEOUT).until(lambda d: "0/1" in corpo(d))
 
@@ -174,6 +174,6 @@ def test_requisito_sem_tarefa_e_sinalizado(autenticado, base_url, projeto):
         {"description": "Requisito sem tarefa.", "category": "Funcional", "priority": "Baixa"},
     )
 
-    driver.get(f"{base_url}/dashboard/projects/{projeto['id']}?step=requisitos")
+    driver.get(f"{base_url}/dashboard/projects/{projeto['id']}/requirements")
     aguardar_carregamento(driver)
     WebDriverWait(driver, TIMEOUT).until(lambda d: "Sem tarefa" in corpo(d))
