@@ -96,7 +96,7 @@ export const PAGE_TUTORIALS: PageTutorial[] = [
     title: "Requisitos",
     summary: "Cadastro, rastreabilidade e histórico dos requisitos.",
     scope: "projeto",
-    path: (id) => `/dashboard/projects/${id}?step=requisitos`,
+    path: (id) => `/dashboard/projects/${id}/requirements`,
     steps: [
       {
         target: "requirements-coverage",
@@ -274,12 +274,12 @@ export function tutorialForLocation(pathname: string, search: string): { key: st
     features: "funcionalidades",
     "components-costs": "componentes",
     resources: "recursos",
+    requirements: "requisitos",
     diagrams: "diagramas",
   }
   if (section) return bySection[section] ? { key: bySection[section], projectId } : null
-  const step = new URLSearchParams(search).get("step")
-  if (step === "requisitos") return { key: "requisitos", projectId }
-  return step ? null : { key: "visao-geral", projectId }
+  // Com ?step= a tela é o assistente de criação, que não tem tutorial próprio.
+  return new URLSearchParams(search).get("step") ? null : { key: "visao-geral", projectId }
 }
 
 /* ---- ponte entre a central de tutoriais e o executor (montado no layout) ---- */

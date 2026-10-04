@@ -87,7 +87,7 @@ export function GuidedTour({
     const destino = resolveRoute(step.route, projectId)
     if (!destino) return
     const atual = `${pathname}${window.location.search}`
-    // Compara caminho e query: o passo de requisitos muda só o ?step= da mesma página.
+    // Compara caminho e query: alguns destinos diferem só pelo ?query da mesma página.
     if (atual !== destino) router.push(destino)
   }, [stepIndex, step.route, projectId, pathname, router])
 
