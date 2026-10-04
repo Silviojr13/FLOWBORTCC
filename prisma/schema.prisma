@@ -435,3 +435,21 @@ model PasswordResetToken {
   @@index([userId])
   @@map("password_reset_tokens")
 }
+
+// Login com Google num e-mail que já tem conta com senha: o Google comprovou o e-mail, mas
+// a associação só acontece depois que a pessoa confirma a senha da conta existente.
+// Guarda o vínculo pendente por 15 minutos; o token do link fica só como hash.
+model PendingAccountLink {
+  id                String   @id @default(cuid())
+  tokenHash         String   @unique
+  email             String
+  provider          String
+  providerAccountId String
+  type              String
+  // Senhas erradas: com 5, o pedido é cancelado
+  attempts          Int      @default(0)
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+
+  @@map("pending_account_links")
+}

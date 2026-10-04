@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 
@@ -33,11 +33,21 @@ import { cn } from "@/lib/utils"
 const INVALID_CREDENTIALS_MESSAGE =
   "E-mail ou senha incorretos. Se você criou a conta com o Google, use “Continuar com Google” ou defina uma senha em “Esqueceu sua senha?”."
 
+// Erros que o login com Google devolve na URL (?error=).
+const LOGIN_ERRORS: Record<string, string> = {
+  OAuthAccountNotLinked:
+    "Este e-mail já tem uma conta criada com e-mail e senha. Entre com a senha ou tente o Google de novo para associar as contas.",
+  GoogleEmailNaoVerificado:
+    "O Google não confirmou este e-mail, então não é possível associá-lo a uma conta existente. Entre com e-mail e senha.",
+  AccessDenied: "Não foi possível entrar com o Google. Tente de novo.",
+}
+
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter()
+  const urlError = useSearchParams().get("error")
   const [values, setValues] = useState<LoginFormValues>({
     email: "",
     password: "",
@@ -102,7 +112,11 @@ export function LoginForm({
 
       <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
         <FieldGroup>
-          {formNotice ? <AuthUnavailableNotice message={formNotice} /> : null}
+          {formNotice ? (
+            <AuthUnavailableNotice message={formNotice} />
+          ) : urlError ? (
+            <AuthUnavailableNotice message={LOGIN_ERRORS[urlError] ?? "Não foi possível entrar. Tente de novo."} />
+          ) : null}
 
           <Field data-invalid={!!fieldErrors.email}>
             <FieldLabel htmlFor="login-email" className="text-foreground">
