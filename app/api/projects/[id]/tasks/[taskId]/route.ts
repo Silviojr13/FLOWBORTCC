@@ -7,7 +7,11 @@ import {
   findOwnedProject,
   json,
   jsonError,
+  MAX_TASK_PARTICIPANTS,
+  normalizeTaskTeam,
   parseDateInput,
+  parseParticipants,
+  participantsWrite,
   resolveProjectRef,
   taskInclude,
 } from "../../../../../../lib/kanban-server";
@@ -39,6 +43,7 @@ export async function PATCH(
     description,
     priority,
     assignee,
+    participants,
     dueDate,
     columnId,
     order,
@@ -55,6 +60,28 @@ export async function PATCH(
   }
   if (order !== undefined && (!Number.isInteger(order) || order < 0)) {
     return jsonError("Ordem inválida", 400);
+  }
+
+  // Mudar o responsável ou os participantes recalcula a equipe inteira, partindo do que a
+  // tarefa já tem para o campo que não veio no pedido.
+  const participantList = parseParticipants(participants);
+  if (participantList === "invalid") return jsonError("Participantes devem ser uma lista de nomes", 400);
+  let team: { assignee: string | null; participants: string[] } | undefined;
+  if (assignee !== undefined || participantList !== undefined) {
+    const current =
+      participantList ??
+      (
+        await tursoDb.taskParticipant.findMany({
+          where: { taskId },
+          orderBy: { order: "asc" },
+          select: { name: true },
+        })
+      ).map((p) => p.name);
+    const normalized = normalizeTaskTeam(assignee !== undefined ? assignee : existing.assignee, current);
+    if (normalized === "too-many") {
+      return jsonError(`Uma tarefa pode ter no máximo ${MAX_TASK_PARTICIPANTS} participantes além do responsável`, 400);
+    }
+    team = normalized;
   }
 
   let due: Date | null | undefined;
@@ -115,12 +142,8 @@ export async function PATCH(
               : null
             : undefined,
         priority,
-        assignee:
-          assignee !== undefined
-            ? typeof assignee === "string"
-              ? assignee.trim() || null
-              : null
-            : undefined,
+        assignee: team?.assignee,
+        participants: team ? participantsWrite(team.participants) : undefined,
         dueDate: due,
         order: nextOrder,
         columnId: targetColumn?.id,

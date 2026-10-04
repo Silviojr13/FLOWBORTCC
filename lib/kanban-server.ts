@@ -52,7 +52,56 @@ export const taskInclude = {
   requirement: { select: { id: true, code: true, description: true, status: true } },
   feature: { select: { id: true, name: true } },
   sprint: { select: { id: true, name: true } },
+  participants: { select: { name: true }, orderBy: { order: "asc" } },
 } as const;
+
+export const MAX_TASK_PARTICIPANTS = 10;
+const MAX_NAME_LENGTH = 80;
+
+function cleanName(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const name = value.trim().replace(/\s+/g, " ").slice(0, MAX_NAME_LENGTH);
+  return name || null;
+}
+
+/** Lê `participants` do corpo do pedido: undefined quando não veio, "invalid" se malformado. */
+export function parseParticipants(value: unknown): string[] | undefined | "invalid" {
+  if (value === undefined) return undefined;
+  if (value === null) return [];
+  if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) return "invalid";
+  return value as string[];
+}
+
+/**
+ * Equipe da tarefa: o responsável principal (quem responde por ela) e os participantes que a
+ * executam junto. Tira nomes vazios, repetidos (sem diferenciar maiúsculas) e o próprio
+ * responsável da lista. Sem responsável, o primeiro participante assume: uma tarefa com
+ * pessoas precisa de alguém a quem perguntar sobre ela.
+ */
+export function normalizeTaskTeam(
+  assignee: unknown,
+  participants: unknown[]
+): { assignee: string | null; participants: string[] } | "too-many" {
+  let lead = cleanName(assignee);
+  const seen = new Set(lead ? [lead.toLocaleLowerCase("pt-BR")] : []);
+  const others: string[] = [];
+  for (const raw of participants) {
+    const name = cleanName(raw);
+    if (!name) continue;
+    const key = name.toLocaleLowerCase("pt-BR");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    others.push(name);
+  }
+  if (!lead && others.length > 0) lead = others.shift()!;
+  if (others.length > MAX_TASK_PARTICIPANTS) return "too-many";
+  return { assignee: lead, participants: others };
+}
+
+/** Escrita aninhada que substitui os participantes da tarefa. */
+export function participantsWrite(names: string[]) {
+  return { deleteMany: {}, create: names.map((name, order) => ({ name, order })) };
+}
 
 export async function listTasks(projectId: string) {
   return tursoDb.task.findMany({

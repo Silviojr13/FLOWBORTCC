@@ -8,7 +8,10 @@ import {
   json,
   jsonError,
   listTasks,
+  MAX_TASK_PARTICIPANTS,
+  normalizeTaskTeam,
   parseDateInput,
+  parseParticipants,
   resolveProjectRef,
   taskInclude,
 } from "../../../../../lib/kanban-server";
@@ -50,6 +53,7 @@ export async function POST(
     description,
     priority,
     assignee,
+    participants,
     dueDate,
     columnId,
     requirementId,
@@ -68,6 +72,13 @@ export async function POST(
 
   const due = parseDateInput(dueDate);
   if (due === "invalid") return jsonError("Prazo inválido", 400);
+
+  const participantList = parseParticipants(participants);
+  if (participantList === "invalid") return jsonError("Participantes devem ser uma lista de nomes", 400);
+  const team = normalizeTaskTeam(assignee, participantList ?? []);
+  if (team === "too-many") {
+    return jsonError(`Uma tarefa pode ter no máximo ${MAX_TASK_PARTICIPANTS} participantes além do responsável`, 400);
+  }
 
   const [reqId, featId, sprId] = await Promise.all([
     resolveProjectRef("requirement", requirementId, projectId),
@@ -96,7 +107,8 @@ export async function POST(
         title: title.trim(),
         description: typeof description === "string" ? description.trim() || null : null,
         priority: resolvedPriority,
-        assignee: typeof assignee === "string" ? assignee.trim() || null : null,
+        assignee: team.assignee,
+        participants: { create: team.participants.map((name, order) => ({ name, order })) },
         dueDate: due,
         order: (last?.order ?? -1) + 1,
         columnId: column.id,

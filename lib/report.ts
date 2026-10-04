@@ -130,7 +130,9 @@ export interface ProjectReport {
     column: string
     isDone: boolean
     priority: string
+    /** Responsável principal. */
     assignee: string | null
+    participants: string[]
     dueDate: string | null
     overdue: boolean
     requirementCode: string | null
@@ -175,6 +177,12 @@ const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "
 
 export function formatCurrency(value: number) {
   return currency.format(value)
+}
+
+/** "Responsável (+ participantes)", como aparece nas tabelas de tarefas. */
+export function formatTaskTeam(t: { assignee: string | null; participants?: string[] }) {
+  if (!t.assignee) return null
+  return t.participants?.length ? `${t.assignee} (+ ${t.participants.join(", ")})` : t.assignee
 }
 
 export function formatReportDate(value: string | null | undefined) {
@@ -343,7 +351,7 @@ export function reportToMarkdown(report: ProjectReport): string {
         t.title,
         t.column,
         t.priority,
-        t.assignee,
+        formatTaskTeam(t),
         t.dueDate ? `${formatReportDate(t.dueDate)}${t.overdue ? " (atrasada)" : ""}` : null,
         t.requirementCode,
         t.featureName,
@@ -434,7 +442,7 @@ export function reportTableToCsv(report: ProjectReport, table: CsvTable): string
           t.column,
           t.isDone,
           t.priority,
-          t.assignee,
+          formatTaskTeam(t),
           t.dueDate ? t.dueDate.slice(0, 10) : null,
           t.overdue,
           t.requirementCode,

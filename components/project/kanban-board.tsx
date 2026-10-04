@@ -93,6 +93,46 @@ interface Filters {
 
 const EMPTY_FILTERS: Filters = { assignee: ALL, priority: ALL, sprint: ALL, requirement: ALL }
 
+/** Responsável principal e participantes de uma tarefa. */
+function taskPeople(task: Task): string[] {
+  return [task.assignee, ...(task.participants ?? []).map((p) => p.name)].filter((name): name is string => !!name)
+}
+
+/**
+ * Pessoas no card: o responsável principal em destaque, seguido dos participantes. O nome
+ * escrito é o do principal, que é com quem se fala sobre a tarefa.
+ */
+function TaskTeam({ lead, participants }: { lead: string; participants: { name: string }[] }) {
+  const shown = participants.slice(0, 2)
+  const hidden = participants.length - shown.length
+  const title = participants.length
+    ? `Responsável principal: ${lead}\nParticipantes: ${participants.map((p) => p.name).join(", ")}`
+    : `Responsável principal: ${lead}`
+  return (
+    <span className="inline-flex items-center gap-1.5 text-muted-foreground" title={title}>
+      <span className="flex items-center">
+        <span className="relative z-10 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground ring-2 ring-card">
+          {initials(lead) || <UserIcon className="size-3" />}
+        </span>
+        {shown.map((p) => (
+          <span
+            key={p.name}
+            className="-ml-1.5 flex size-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary ring-2 ring-card"
+          >
+            {initials(p.name)}
+          </span>
+        ))}
+        {hidden > 0 && (
+          <span className="-ml-1.5 flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground ring-2 ring-card">
+            +{hidden}
+          </span>
+        )}
+      </span>
+      <span className="max-w-[9rem] truncate">{lead}</span>
+    </span>
+  )
+}
+
 function initials(name: string) {
   return name
     .split(/\s+/)
@@ -282,14 +322,7 @@ function TaskCardContent({
           </span>
         )}
 
-        {task.assignee && (
-          <span className="inline-flex items-center gap-1 text-muted-foreground" title={task.assignee}>
-            <span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
-              {initials(task.assignee) || <UserIcon className="size-3" />}
-            </span>
-            <span className="max-w-[9rem] truncate">{task.assignee}</span>
-          </span>
-        )}
+        {task.assignee && <TaskTeam lead={task.assignee} participants={task.participants ?? []} />}
       </div>
 
       {task.feature && (
@@ -494,11 +527,10 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
 
   /* ---- filtros (UC06 fluxo alternativo) ---- */
 
+  // Todas as pessoas do quadro, responsáveis principais e participantes.
   const assignees = useMemo(
     () =>
-      Array.from(new Set(tasks.map((t) => t.assignee).filter((a): a is string => !!a))).sort((a, b) =>
-        a.localeCompare(b, "pt-BR")
-      ),
+      Array.from(new Set(tasks.flatMap((t) => taskPeople(t)))).sort((a, b) => a.localeCompare(b, "pt-BR")),
     [tasks]
   )
 
@@ -508,7 +540,7 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
     () =>
       tasks.filter((t) => {
         if (filters.assignee !== ALL) {
-          if (filters.assignee === NO_ASSIGNEE ? t.assignee !== null : t.assignee !== filters.assignee) return false
+          if (filters.assignee === NO_ASSIGNEE ? t.assignee !== null : !taskPeople(t).includes(filters.assignee)) return false
         }
         if (filters.priority !== ALL && t.priority !== filters.priority) return false
         if (filters.sprint !== ALL) {
@@ -732,7 +764,7 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL}>Todos os responsáveis</SelectItem>
+            <SelectItem value={ALL}>Todas as pessoas</SelectItem>
             <SelectItem value={NO_ASSIGNEE}>Sem responsável</SelectItem>
             {assignees.map((a) => (
               <SelectItem key={a} value={a}>
@@ -852,6 +884,7 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
         features={features}
         sprints={sprints}
         defaultColumnId={dialogColumnId}
+        people={assignees}
         onSaved={(task) => {
           upsertTask(task)
           load()

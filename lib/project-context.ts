@@ -28,6 +28,7 @@ export async function buildProjectContext(projectId: string, userId: string): Pr
         requirement: { select: { code: true } },
         feature: { select: { name: true } },
         sprint: { select: { name: true } },
+        participants: { select: { name: true }, orderBy: { order: "asc" } },
       },
     }),
     tursoDb.sprint.findMany({ where: { projectId }, orderBy: { startDate: "asc" } }),
@@ -86,7 +87,8 @@ export async function buildProjectContext(projectId: string, userId: string): Pr
       const meta = [
         t.column.name,
         `prioridade ${t.priority}`,
-        t.assignee ? `responsavel ${t.assignee}` : null,
+        t.assignee ? `responsavel principal ${t.assignee}` : null,
+        t.participants.length ? `participantes ${t.participants.map((p) => p.name).join(", ")}` : null,
         t.dueDate ? `prazo ${formatDate(t.dueDate)}` : null,
         t.requirement?.code ?? null,
         t.feature ? `func. ${t.feature.name}` : null,

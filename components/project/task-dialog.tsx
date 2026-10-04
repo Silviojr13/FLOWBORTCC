@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useId, useState } from "react"
 import { toast } from "sonner"
 import {
   CalendarIcon,
@@ -8,7 +8,9 @@ import {
   CircleDotIcon,
   CircleIcon,
   LoaderCircleIcon,
+  CrownIcon,
   MoreHorizontalIcon,
+  PlusIcon,
   XIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -54,6 +56,7 @@ export interface TaskDraft {
   description: string
   priority: TaskPriority
   assignee: string
+  participants: string[]
   dueDate: string
   columnId: string
   requirementId: string
@@ -67,6 +70,7 @@ function draftFromTask(task: Task | null, defaultColumnId: string): TaskDraft {
     description: task?.description ?? "",
     priority: task?.priority ?? "Média",
     assignee: task?.assignee ?? "",
+    participants: task?.participants?.map((p) => p.name) ?? [],
     dueDate: toDateInputValue(task?.dueDate),
     columnId: task?.columnId ?? defaultColumnId,
     requirementId: task?.requirementId ?? NONE,
@@ -81,6 +85,7 @@ function draftsEqual(a: TaskDraft, b: TaskDraft) {
     a.description === b.description &&
     a.priority === b.priority &&
     a.assignee === b.assignee &&
+    a.participants.join("\n") === b.participants.join("\n") &&
     a.dueDate === b.dueDate &&
     a.columnId === b.columnId &&
     a.requirementId === b.requirementId &&
@@ -126,6 +131,8 @@ interface TaskDialogProps {
   features: { id: string; name: string }[]
   sprints: Sprint[]
   defaultColumnId?: string
+  /** Nomes já usados no projeto, sugeridos ao escolher responsável e participantes. */
+  people?: string[]
   onSaved: (task: Task) => void
   onHistory?: (task: Task) => void
   onDelete?: (task: Task) => void
@@ -149,6 +156,7 @@ function TaskDialogSession({
   features,
   sprints,
   defaultColumnId,
+  people = [],
   onSaved,
   onHistory,
   onDelete,
@@ -194,6 +202,7 @@ function TaskDialogSession({
       description: draft.description.trim() || null,
       priority: draft.priority,
       assignee: draft.assignee.trim() || null,
+      participants: draft.participants,
       dueDate: draft.dueDate || null,
       columnId: draft.columnId,
       requirementId: draft.requirementId === NONE ? null : draft.requirementId,
@@ -333,6 +342,7 @@ function TaskDialogSession({
             draft={draft}
             columns={columns}
             sprints={sprints}
+            people={people}
             overdue={overdue}
             onChange={update}
           />
@@ -466,12 +476,14 @@ function TaskProperties({
   draft,
   columns,
   sprints,
+  people,
   overdue,
   onChange,
 }: {
   draft: TaskDraft
   columns: KanbanColumn[]
   sprints: Sprint[]
+  people: string[]
   overdue: boolean
   onChange: (patch: Partial<TaskDraft>) => void
 }) {
@@ -530,20 +542,7 @@ function TaskProperties({
         </Select>
       </PropertyField>
 
-      <PropertyField label="Responsável">
-        <label className="flex h-9 items-center gap-2 rounded-lg px-2 hover:bg-background">
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
-            {initials(draft.assignee) || "—"}
-          </span>
-          <input
-            aria-label="Responsável"
-            value={draft.assignee}
-            placeholder="Nome de quem executa"
-            onChange={(event) => onChange({ assignee: event.target.value })}
-            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-          />
-        </label>
-      </PropertyField>
+      <TaskTeamFields draft={draft} people={people} onChange={onChange} />
 
       <PropertyField label="Prazo">
         <label
@@ -591,6 +590,250 @@ function TaskProperties({
         </Select>
       </PropertyField>
     </aside>
+  )
+}
+
+const sameName = (a: string, b: string) =>
+  a.trim().toLocaleLowerCase("pt-BR") === b.trim().toLocaleLowerCase("pt-BR")
+
+/**
+ * Responsável principal e participantes. O principal responde pela tarefa; os participantes a
+ * executam junto. Qualquer participante pode virar o principal, e o anterior passa a participante.
+ */
+function TaskTeamFields({
+  draft,
+  people,
+  onChange,
+}: {
+  draft: TaskDraft
+  people: string[]
+  onChange: (patch: Partial<TaskDraft>) => void
+}) {
+  const [newName, setNewName] = useState("")
+  const team = [draft.assignee, ...draft.participants].filter((name) => name.trim())
+  const suggestions = people.filter((name) => !team.some((member) => sameName(member, name)))
+
+  function addParticipant(typed = newName) {
+    const name = typed.trim().replace(/\s+/g, " ")
+    setNewName("")
+    if (!name || team.some((member) => sameName(member, name))) return
+    // Sem responsável, a primeira pessoa adicionada assume a tarefa.
+    if (!draft.assignee.trim()) onChange({ assignee: name })
+    else onChange({ participants: [...draft.participants, name] })
+  }
+
+  function makeLead(index: number) {
+    const next = [...draft.participants]
+    const [name] = next.splice(index, 1, draft.assignee.trim())
+    onChange({ assignee: name, participants: next.filter((member) => member.trim()) })
+  }
+
+  return (
+    <>
+      <PropertyField
+        label={
+          <HelpLabel label="Responsável principal" content={HELP.taskLead}>
+            Responsável principal
+          </HelpLabel>
+        }
+      >
+        <NameCombobox
+          label="Responsável principal"
+          placeholder="Quem responde pela tarefa"
+          value={draft.assignee}
+          suggestions={suggestions}
+          onChange={(assignee) => onChange({ assignee })}
+          onPick={(assignee) => onChange({ assignee })}
+          icon={
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+              {initials(draft.assignee) || <CrownIcon className="size-3" aria-hidden />}
+            </span>
+          }
+        />
+      </PropertyField>
+
+      <PropertyField
+        label={
+          <HelpLabel label="Participantes" content={HELP.taskParticipants}>
+            Participantes
+          </HelpLabel>
+        }
+      >
+        {draft.participants.length > 0 && (
+          <ul className="flex flex-col" aria-label="Participantes da tarefa">
+            {draft.participants.map((name, index) => (
+              <li key={`${name}-${index}`} className="group flex h-9 items-center gap-2 rounded-lg px-2 hover:bg-background">
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
+                  {initials(name)}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground">{name}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  title="Tornar responsável principal"
+                  aria-label={`Tornar ${name} responsável principal`}
+                  className="text-muted-foreground opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
+                  onClick={() => makeLead(index)}
+                >
+                  <CrownIcon className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Remover ${name}`}
+                  className="text-muted-foreground opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
+                  onClick={() => onChange({ participants: draft.participants.filter((_, i) => i !== index) })}
+                >
+                  <XIcon className="size-3.5" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <NameCombobox
+          label="Adicionar participante"
+          placeholder="Adicionar pessoa"
+          value={newName}
+          suggestions={suggestions}
+          onChange={setNewName}
+          onPick={addParticipant}
+          onCommit={() => addParticipant()}
+          icon={<PlusIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
+        />
+      </PropertyField>
+    </>
+  )
+}
+
+/**
+ * Campo de nome com sugestões das pessoas do projeto. A lista é desenhada logo abaixo do campo
+ * (o datalist nativo aparece fora do lugar dentro do diálogo). Setas escolhem, Enter confirma
+ * e Esc fecha; também aceita um nome novo digitado.
+ */
+function NameCombobox({
+  label,
+  placeholder,
+  value,
+  suggestions,
+  icon,
+  onChange,
+  onPick,
+  onCommit,
+}: {
+  label: string
+  placeholder: string
+  value: string
+  suggestions: string[]
+  icon: React.ReactNode
+  onChange: (value: string) => void
+  /** Pessoa escolhida na lista. */
+  onPick: (name: string) => void
+  /** Enter ou saída do campo sem escolher da lista (nome digitado). */
+  onCommit?: () => void
+}) {
+  const listId = useId()
+  const [open, setOpen] = useState(false)
+  const [active, setActive] = useState(-1)
+  const typed = value.trim().toLocaleLowerCase("pt-BR")
+  const options = suggestions.filter(
+    (name) => name.toLocaleLowerCase("pt-BR").includes(typed) && name.toLocaleLowerCase("pt-BR") !== typed
+  )
+  const showList = open && options.length > 0
+
+  function pick(name: string) {
+    onPick(name)
+    setOpen(false)
+    setActive(-1)
+  }
+
+  function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "ArrowDown" && options.length > 0) {
+      event.preventDefault()
+      setOpen(true)
+      setActive((i) => (i + 1) % options.length)
+    } else if (event.key === "ArrowUp" && options.length > 0) {
+      event.preventDefault()
+      setOpen(true)
+      setActive((i) => (i <= 0 ? options.length - 1 : i - 1))
+    } else if (event.key === "Enter") {
+      event.preventDefault()
+      if (showList && active >= 0) pick(options[active])
+      else {
+        onCommit?.()
+        setOpen(false)
+      }
+    } else if (event.key === "Escape" && showList) {
+      // Fecha só a lista, sem fechar a tarefa.
+      event.preventDefault()
+      event.stopPropagation()
+      setOpen(false)
+    }
+  }
+
+  return (
+    <div className="relative">
+      <label className="flex h-9 items-center gap-2 rounded-lg px-2 hover:bg-background">
+        {icon}
+        <input
+          role="combobox"
+          aria-label={label}
+          aria-expanded={showList}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={showList && active >= 0 ? `${listId}-${active}` : undefined}
+          autoComplete="off"
+          value={value}
+          placeholder={placeholder}
+          onChange={(event) => {
+            onChange(event.target.value)
+            setOpen(true)
+            setActive(-1)
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => {
+            setOpen(false)
+            setActive(-1)
+            onCommit?.()
+          }}
+          onKeyDown={onKeyDown}
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+        />
+      </label>
+      {showList && (
+        <ul
+          id={listId}
+          role="listbox"
+          aria-label={`Sugestões para ${label.toLowerCase()}`}
+          className="absolute inset-x-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-md"
+        >
+          {options.map((name, index) => (
+            <li
+              key={name}
+              id={`${listId}-${index}`}
+              role="option"
+              aria-selected={index === active}
+              // mousedown antes do blur do campo, para a escolha não se perder.
+              onMouseDown={(event) => {
+                event.preventDefault()
+                pick(name)
+              }}
+              onMouseEnter={() => setActive(index)}
+              className={cn(
+                "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm",
+                index === active && "bg-accent text-accent-foreground"
+              )}
+            >
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
+                {initials(name)}
+              </span>
+              <span className="truncate">{name}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 

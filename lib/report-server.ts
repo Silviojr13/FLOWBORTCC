@@ -76,6 +76,7 @@ export async function buildProjectReport(
         requirement: { select: { code: true } },
         feature: { select: { id: true, name: true } },
         sprint: { select: { name: true } },
+        participants: { select: { name: true }, orderBy: { order: "asc" } },
       },
     }),
     tursoDb.sprint.findMany({ where: { projectId }, orderBy: { startDate: "asc" } }),
@@ -91,9 +92,12 @@ export async function buildProjectReport(
     }),
   ]);
 
-  const matchesAssignee = (assignee: string | null) =>
+  // Filtrar por uma pessoa traz as tarefas em que ela é a responsável principal ou participa.
+  const peopleOf = (t: { assignee: string | null; participants: { name: string }[] }) =>
+    [t.assignee, ...t.participants.map((p) => p.name)].filter((name): name is string => Boolean(name));
+  const matchesAssignee = (t: { assignee: string | null; participants: { name: string }[] }) =>
     !assigneeFilter ||
-    (assigneeFilter === REPORT_FILTER_NONE ? !assignee : assignee === assigneeFilter);
+    (assigneeFilter === REPORT_FILTER_NONE ? !t.assignee : peopleOf(t).includes(assigneeFilter));
   const matchesFeature = (featureId: string | null) =>
     !featureFilter ||
     (featureFilter === REPORT_FILTER_NONE ? featureId === null : featureId === featureFilter);
@@ -105,7 +109,7 @@ export async function buildProjectReport(
     (t) =>
       (!hasPeriod || inPeriod(t.dueDate ?? t.createdAt, from, to)) &&
       matchesSprint(t.sprintId) &&
-      matchesAssignee(t.assignee) &&
+      matchesAssignee(t) &&
       matchesFeature(t.featureId)
   );
 
@@ -156,7 +160,7 @@ export async function buildProjectReport(
   const sprintRows = sprints.map((s) => {
     // Responsável e funcionalidade também recortam o progresso de cada sprint.
     const sprintTasks = allTasks.filter(
-      (t) => t.sprintId === s.id && matchesAssignee(t.assignee) && matchesFeature(t.featureId)
+      (t) => t.sprintId === s.id && matchesAssignee(t) && matchesFeature(t.featureId)
     );
     const done = sprintTasks.filter((t) => t.column.isDone).length;
     return {
@@ -195,7 +199,7 @@ export async function buildProjectReport(
     },
     filterOptions: {
       sprints: allSprints.map((s) => ({ id: s.id, name: s.name })),
-      assignees: [...new Set(allTasks.map((t) => t.assignee).filter((a): a is string => Boolean(a)))].sort(
+      assignees: [...new Set(allTasks.flatMap(peopleOf))].sort(
         (a, b) => a.localeCompare(b, "pt-BR")
       ),
       features: features.map((f) => ({ id: f.id, name: f.name })),
@@ -253,6 +257,7 @@ export async function buildProjectReport(
         isDone: t.column.isDone,
         priority: t.priority,
         assignee: t.assignee,
+        participants: t.participants.map((p) => p.name),
         dueDate: t.dueDate?.toISOString() ?? null,
         overdue: isTaskOverdue({ dueDate: t.dueDate?.toISOString() ?? null }, t.column.isDone),
         requirementCode: t.requirement?.code ?? null,

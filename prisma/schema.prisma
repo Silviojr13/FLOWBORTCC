@@ -260,8 +260,23 @@ model Task {
   feature     Feature?      @relation(fields: [featureId], references: [id], onDelete: SetNull)
   sprint      Sprint?       @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   history     TaskHistory[]
+  participants TaskParticipant[]
 
   @@map("tasks")
+}
+
+// Pessoas que executam a tarefa junto com o responsável principal (`Task.assignee`), que
+// continua sendo quem responde por ela. Guarda o nome, como o responsável.
+model TaskParticipant {
+  id     String @id @default(cuid())
+  taskId String
+  name   String
+  order  Int    @default(0)
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_participants")
 }
 
 // Histórico de movimentação da tarefa entre colunas (RF09). Guarda o nome das colunas
