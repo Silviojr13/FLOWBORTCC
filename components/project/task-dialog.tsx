@@ -8,7 +8,9 @@ import {
   CircleDotIcon,
   CircleIcon,
   LoaderCircleIcon,
+  CrownIcon,
   MoreHorizontalIcon,
+  PlusIcon,
   XIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -54,6 +56,7 @@ export interface TaskDraft {
   description: string
   priority: TaskPriority
   assignee: string
+  participants: string[]
   dueDate: string
   columnId: string
   requirementId: string
@@ -67,6 +70,7 @@ function draftFromTask(task: Task | null, defaultColumnId: string): TaskDraft {
     description: task?.description ?? "",
     priority: task?.priority ?? "Média",
     assignee: task?.assignee ?? "",
+    participants: task?.participants?.map((p) => p.name) ?? [],
     dueDate: toDateInputValue(task?.dueDate),
     columnId: task?.columnId ?? defaultColumnId,
     requirementId: task?.requirementId ?? NONE,
@@ -81,6 +85,7 @@ function draftsEqual(a: TaskDraft, b: TaskDraft) {
     a.description === b.description &&
     a.priority === b.priority &&
     a.assignee === b.assignee &&
+    a.participants.join("\n") === b.participants.join("\n") &&
     a.dueDate === b.dueDate &&
     a.columnId === b.columnId &&
     a.requirementId === b.requirementId &&
@@ -126,6 +131,8 @@ interface TaskDialogProps {
   features: { id: string; name: string }[]
   sprints: Sprint[]
   defaultColumnId?: string
+  /** Nomes já usados no projeto, sugeridos ao escolher responsável e participantes. */
+  people?: string[]
   onSaved: (task: Task) => void
   onHistory?: (task: Task) => void
   onDelete?: (task: Task) => void
@@ -149,6 +156,7 @@ function TaskDialogSession({
   features,
   sprints,
   defaultColumnId,
+  people = [],
   onSaved,
   onHistory,
   onDelete,
@@ -194,6 +202,7 @@ function TaskDialogSession({
       description: draft.description.trim() || null,
       priority: draft.priority,
       assignee: draft.assignee.trim() || null,
+      participants: draft.participants,
       dueDate: draft.dueDate || null,
       columnId: draft.columnId,
       requirementId: draft.requirementId === NONE ? null : draft.requirementId,
@@ -333,6 +342,7 @@ function TaskDialogSession({
             draft={draft}
             columns={columns}
             sprints={sprints}
+            people={people}
             overdue={overdue}
             onChange={update}
           />
@@ -466,12 +476,14 @@ function TaskProperties({
   draft,
   columns,
   sprints,
+  people,
   overdue,
   onChange,
 }: {
   draft: TaskDraft
   columns: KanbanColumn[]
   sprints: Sprint[]
+  people: string[]
   overdue: boolean
   onChange: (patch: Partial<TaskDraft>) => void
 }) {
@@ -530,20 +542,7 @@ function TaskProperties({
         </Select>
       </PropertyField>
 
-      <PropertyField label="Responsável">
-        <label className="flex h-9 items-center gap-2 rounded-lg px-2 hover:bg-background">
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
-            {initials(draft.assignee) || "—"}
-          </span>
-          <input
-            aria-label="Responsável"
-            value={draft.assignee}
-            placeholder="Nome de quem executa"
-            onChange={(event) => onChange({ assignee: event.target.value })}
-            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-          />
-        </label>
-      </PropertyField>
+      <TaskTeamFields draft={draft} people={people} onChange={onChange} />
 
       <PropertyField label="Prazo">
         <label
@@ -591,6 +590,134 @@ function TaskProperties({
         </Select>
       </PropertyField>
     </aside>
+  )
+}
+
+const sameName = (a: string, b: string) =>
+  a.trim().toLocaleLowerCase("pt-BR") === b.trim().toLocaleLowerCase("pt-BR")
+
+/**
+ * Responsável principal e participantes. O principal responde pela tarefa; os participantes a
+ * executam junto. Qualquer participante pode virar o principal, e o anterior passa a participante.
+ */
+function TaskTeamFields({
+  draft,
+  people,
+  onChange,
+}: {
+  draft: TaskDraft
+  people: string[]
+  onChange: (patch: Partial<TaskDraft>) => void
+}) {
+  const [newName, setNewName] = useState("")
+  const team = [draft.assignee, ...draft.participants].filter((name) => name.trim())
+  const suggestions = people.filter((name) => !team.some((member) => sameName(member, name)))
+
+  function addParticipant() {
+    const name = newName.trim().replace(/\s+/g, " ")
+    setNewName("")
+    if (!name || team.some((member) => sameName(member, name))) return
+    // Sem responsável, a primeira pessoa adicionada assume a tarefa.
+    if (!draft.assignee.trim()) onChange({ assignee: name })
+    else onChange({ participants: [...draft.participants, name] })
+  }
+
+  function makeLead(index: number) {
+    const next = [...draft.participants]
+    const [name] = next.splice(index, 1, draft.assignee.trim())
+    onChange({ assignee: name, participants: next.filter((member) => member.trim()) })
+  }
+
+  return (
+    <>
+      <datalist id="task-people">
+        {suggestions.map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
+
+      <PropertyField
+        label={
+          <HelpLabel label="Responsável principal" content={HELP.taskLead}>
+            Responsável principal
+          </HelpLabel>
+        }
+      >
+        <label className="flex h-9 items-center gap-2 rounded-lg px-2 hover:bg-background">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+            {initials(draft.assignee) || <CrownIcon className="size-3" aria-hidden />}
+          </span>
+          <input
+            aria-label="Responsável principal"
+            list="task-people"
+            value={draft.assignee}
+            placeholder="Quem responde pela tarefa"
+            onChange={(event) => onChange({ assignee: event.target.value })}
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          />
+        </label>
+      </PropertyField>
+
+      <PropertyField
+        label={
+          <HelpLabel label="Participantes" content={HELP.taskParticipants}>
+            Participantes
+          </HelpLabel>
+        }
+      >
+        {draft.participants.length > 0 && (
+          <ul className="flex flex-col" aria-label="Participantes da tarefa">
+            {draft.participants.map((name, index) => (
+              <li key={`${name}-${index}`} className="group flex h-9 items-center gap-2 rounded-lg px-2 hover:bg-background">
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
+                  {initials(name)}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground">{name}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  title="Tornar responsável principal"
+                  aria-label={`Tornar ${name} responsável principal`}
+                  className="text-muted-foreground opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
+                  onClick={() => makeLead(index)}
+                >
+                  <CrownIcon className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Remover ${name}`}
+                  className="text-muted-foreground opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
+                  onClick={() => onChange({ participants: draft.participants.filter((_, i) => i !== index) })}
+                >
+                  <XIcon className="size-3.5" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form
+          className="flex h-9 items-center gap-2 rounded-lg px-2 hover:bg-background"
+          onSubmit={(event) => {
+            event.preventDefault()
+            addParticipant()
+          }}
+        >
+          <PlusIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <input
+            aria-label="Adicionar participante"
+            list="task-people"
+            value={newName}
+            placeholder="Adicionar pessoa"
+            onChange={(event) => setNewName(event.target.value)}
+            onBlur={addParticipant}
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          />
+        </form>
+      </PropertyField>
+    </>
   )
 }
 

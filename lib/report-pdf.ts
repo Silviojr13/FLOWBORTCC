@@ -8,6 +8,7 @@ import {
   formatCurrency,
   formatReportDate,
   formatReportDateTime,
+  formatTaskTeam,
   periodLabel,
   reportFileStem,
   type ProjectReport,
@@ -340,7 +341,7 @@ function buildDocument(report: ProjectReport): TDocumentDefinitions {
           } as TableCell,
           cell(t.column),
           cell(t.priority),
-          cell(t.assignee),
+          cell(formatTaskTeam(t)),
           cell(
             t.dueDate ? `${formatReportDate(t.dueDate)}${t.overdue ? " (atrasada)" : ""}` : null,
             t.overdue ? { color: COLOR.danger, bold: true } : {}

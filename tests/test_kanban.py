@@ -63,6 +63,41 @@ def test_criar_tarefa_com_responsavel_prazo_e_requisito(autenticado, base_url, p
     assert "Equipe de testes" in texto
 
 
+def test_tarefa_com_responsavel_principal_e_participantes(autenticado, base_url, projeto):
+    """RF06: a tarefa tem um responsável principal e participantes que a executam junto."""
+    driver = autenticado
+    base = f"/api/projects/{projeto['id']}/tasks"
+
+    criada = api(
+        driver,
+        "POST",
+        base,
+        {"title": "Montar o chassi", "assignee": "Ana", "participants": ["Bruno", "bruno", "ANA", " ", "Caio"]},
+    )
+    assert criada["status"] == 201, criada
+    tarefa = criada["data"]["task"]
+    assert tarefa["assignee"] == "Ana"
+    # Repetidos (sem diferenciar maiúsculas), vazios e o próprio responsável ficam de fora.
+    assert [p["name"] for p in tarefa["participants"]] == ["Bruno", "Caio"]
+
+    # Sem responsável, o primeiro participante assume a tarefa.
+    sem_principal = api(driver, "PATCH", f"{base}/{tarefa['id']}", {"assignee": None, "participants": ["Caio", "Davi"]})
+    assert sem_principal["status"] == 200, sem_principal
+    assert sem_principal["data"]["task"]["assignee"] == "Caio"
+    assert [p["name"] for p in sem_principal["data"]["task"]["participants"]] == ["Davi"]
+
+    demais = api(driver, "PATCH", f"{base}/{tarefa['id']}", {"participants": [f"P{i}" for i in range(11)]})
+    assert demais["status"] == 400
+
+    # Filtrar o relatório por um participante traz a tarefa.
+    relatorio = api(driver, "GET", f"/api/projects/{projeto['id']}/report?assignee=Davi")["data"]
+    relatorio = relatorio.get("report", relatorio)
+    assert [t["title"] for t in relatorio["tasks"]] == ["Montar o chassi"]
+
+    abrir_kanban(driver, base_url, projeto["id"])
+    assert "Caio" in corpo(driver)
+
+
 def test_mover_tarefa_registra_historico(autenticado, projeto):
     """RF07 + RF09: mover entre colunas atualiza o estado e grava o histórico."""
     driver = autenticado

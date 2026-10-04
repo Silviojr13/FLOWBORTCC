@@ -7,6 +7,7 @@ import {
   formatCurrency,
   formatReportDate,
   formatReportDateTime,
+  formatTaskTeam,
   filtersLabel,
   periodLabel,
   type ProjectReport,
@@ -332,7 +333,7 @@ export function ReportView({ report }: { report: ProjectReport }) {
               <span key="t" className={cn(t.isDone && "text-muted-foreground line-through")}>{t.title}</span>,
               t.column,
               t.priority,
-              t.assignee,
+              formatTaskTeam(t),
               t.dueDate ? (
                 <span key="d" className={cn(t.overdue && "font-medium text-destructive")}>
                   {formatReportDate(t.dueDate)}

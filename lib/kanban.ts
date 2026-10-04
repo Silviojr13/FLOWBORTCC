@@ -41,7 +41,10 @@ export interface Task {
   title: string
   description: string | null
   priority: TaskPriority
+  /** Responsável principal: quem responde pela tarefa. */
   assignee: string | null
+  /** Quem executa a tarefa junto com o responsável. */
+  participants: { name: string }[]
   dueDate: string | null
   order: number
   columnId: string

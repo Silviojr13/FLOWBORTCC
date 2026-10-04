@@ -31,6 +31,10 @@ export const HELP = {
     "Granularidade do requisito: sistema, subsistema ou componente.",
   aiSuggestion:
     "Proposta gerada pela IA a partir dos requisitos e funcionalidades do projeto.",
+  taskLead:
+    "Quem responde pela tarefa: é com essa pessoa que se fala sobre o andamento dela. Coordena os participantes.",
+  taskParticipants:
+    "Pessoas que executam a tarefa junto com o responsável principal. Todas fazem parte da entrega.",
 } as const
 
 export function HelpTooltip({
