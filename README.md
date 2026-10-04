@@ -30,6 +30,28 @@ This project uses Prisma ORM with support for Turso database. For local developm
    DATABASE_URL="libsql://flowbotdb.turso.io"
    ```
 
+## E-mail (recuperação de senha)
+
+O link de recuperação de senha é enviado por SMTP. Configure no `.env` (local) e nas
+variáveis de ambiente da Vercel (produção):
+
+```
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT="587"
+SMTP_USER="conta-que-envia@gmail.com"
+SMTP_PASS="senha de app de 16 letras"
+MAIL_FROM="FlowBot <conta-que-envia@gmail.com>"
+```
+
+- **Gmail**: ative a verificação em duas etapas na conta e gere uma *senha de app* em
+  myaccount.google.com/apppasswords; use-a em `SMTP_PASS` (a senha normal não funciona).
+- **Brevo** (300 e-mails/dia grátis): `SMTP_HOST="smtp-relay.brevo.com"`, usuário e chave
+  SMTP do painel, e um remetente verificado em `MAIL_FROM`.
+
+Sem SMTP configurado, em desenvolvimento o e-mail aparece no terminal do servidor; em
+produção o envio falha e o erro fica no log da Vercel. A tabela dos links é criada com
+`npm run script:alter-password-reset`.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

@@ -31,7 +31,7 @@ import {
 import { cn } from "@/lib/utils"
 
 const INVALID_CREDENTIALS_MESSAGE =
-  "Credenciais inválidas. Por favor, verifique seu e-mail e senha."
+  "E-mail ou senha incorretos. Se você criou a conta com o Google, use “Continuar com Google” ou defina uma senha em “Esqueceu sua senha?”."
 
 export function LoginForm({
   className,
@@ -91,13 +91,6 @@ export function LoginForm({
     }
   }
 
-  const handleForgotPassword = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault()
-    setFormNotice(
-      "Recuperação de senha ainda não está disponível. Entre com o Google ou tente novamente mais tarde."
-    )
-  }
-
   return (
     <AuthPageShell
       className={cn(className)}
@@ -140,8 +133,7 @@ export function LoginForm({
                 Senha
               </FieldLabel>
               <Link
-                href="#"
-                onClick={handleForgotPassword}
+                href="/esqueci-senha"
                 className="ml-auto text-sm text-primary underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-none"
               >
                 Esqueceu sua senha?
