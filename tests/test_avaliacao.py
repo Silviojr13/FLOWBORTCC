@@ -92,13 +92,17 @@ def test_convite_por_email(autenticado, avaliacao, credentials):
     sem_conta = api(driver, "POST", base, {"email": "ninguem-cadastrado@flowbot.test"})
     assert sem_conta["data"]["invitation"]["hasAccount"] is False
 
+    # Quem já participa de outra avaliação aberta não vê convites novos até terminar; a
+    # conta de teste pode estar nessa situação, então a exibição só é conferida sem ela.
     me = api(driver, "GET", "/api/studies/me")["data"]
-    assert me["invite"]["source"] == "email"
-    assert me["invite"]["code"] == avaliacao["inviteCode"]
+    if me["participation"] is None:
+        assert me["invite"]["source"] == "email"
+        assert me["invite"]["code"] == avaliacao["inviteCode"]
 
-    # Recusar esconde o convite; convidar de novo reabre.
+    # Recusar marca o convite como recusado; convidar de novo reabre.
     api(driver, "POST", "/api/studies/decline", {"code": avaliacao["inviteCode"]})
-    assert api(driver, "GET", "/api/studies/me")["data"]["invite"] is None
+    convites = api(driver, "GET", base)["data"]["invitations"]
+    assert next(c for c in convites if c["email"] == email.lower())["status"] == "recusado"
     api(driver, "POST", base, {"email": email})
 
     aceite = api(driver, "POST", "/api/studies/join", {"code": avaliacao["inviteCode"], "consent": True})

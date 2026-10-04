@@ -10,14 +10,20 @@ import { Button } from "@/components/ui/button"
 import { Workspace } from "@/components/layout/workspace"
 import { useProjectLocalMeta } from "@/lib/use-project-local-meta"
 
-function ProjectCardWithImage({ project }: { project: ProjectCardData }) {
+function ProjectCardWithImage({
+  project,
+  onDeleted,
+}: {
+  project: ProjectCardData
+  onDeleted: (projectId: string) => void
+}) {
   const meta = useProjectLocalMeta(project.id)
   const displayProject = {
     ...project,
     name: meta.name?.trim() || project.name,
     description: meta.description ?? project.description,
   }
-  return <ProjectCard project={displayProject} imageUrl={meta.imageDataUrl} />
+  return <ProjectCard project={displayProject} imageUrl={meta.imageDataUrl} onDeleted={onDeleted} />
 }
 
 export default function ProjectsPage() {
@@ -83,7 +89,11 @@ export default function ProjectsPage() {
       {!isLoading && hasProjects && (
         <div data-tour="projects-list" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {projects.map((project) => (
-            <ProjectCardWithImage key={project.id} project={project} />
+            <ProjectCardWithImage
+              key={project.id}
+              project={project}
+              onDeleted={(id) => setProjects((list) => list.filter((p) => p.id !== id))}
+            />
           ))}
         </div>
       )}

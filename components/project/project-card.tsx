@@ -1,8 +1,10 @@
 "use client"
 
 import Link from "next/link"
+import { useState } from "react"
 import { toast } from "sonner"
-import { ArrowRightIcon, Link2Icon, MoreHorizontalIcon } from "lucide-react"
+import { ArrowRightIcon, Link2Icon, MoreHorizontalIcon, Trash2Icon } from "lucide-react"
+import { DeleteProjectDialog } from "@/components/project/delete-project-dialog"
 import { ProjectCover } from "@/components/project/project-cover"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -10,6 +12,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
@@ -66,10 +69,13 @@ async function copyProjectLink(projectId: string) {
 export function ProjectCard({
   project,
   imageUrl,
+  onDeleted,
 }: {
   project: ProjectCardData
   imageUrl?: string
+  onDeleted?: (projectId: string) => void
 }) {
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const href = `/dashboard/projects/${project.id}`
   const metrics = metricsLine(project)
   const updated = formatUpdated(project.updatedAt)
@@ -116,6 +122,15 @@ export function ProjectCard({
                   <Link2Icon />
                   Copiar link do projeto
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  className="gap-2 py-2"
+                  onSelect={() => setDeleteOpen(true)}
+                >
+                  <Trash2Icon />
+                  Excluir projeto
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -135,6 +150,13 @@ export function ProjectCard({
           </div>
         </div>
       </div>
+
+      <DeleteProjectDialog
+        projectId={project.id}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onDeleted={() => onDeleted?.(project.id)}
+      />
     </Card>
   )
 }

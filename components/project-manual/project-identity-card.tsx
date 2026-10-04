@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react"
 import Image from "next/image"
-import { BotIcon, PencilIcon } from "lucide-react"
+import { BotIcon, PencilIcon, Trash2Icon } from "lucide-react"
+import { DeleteProjectDialog } from "@/components/project/delete-project-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -33,6 +34,7 @@ export function ProjectIdentityCard({
   variant?: "card" | "action"
 }) {
   const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const [displayName, setDisplayName] = useState(() => {
     const meta = loadProjectLocalMeta(project.id)
@@ -205,6 +207,26 @@ export function ProjectIdentityCard({
             <p className="text-xs text-muted-foreground">
               Nome, descrição e imagem são salvos localmente neste navegador.
             </p>
+
+            <div className="flex flex-col gap-2 rounded-xl border border-destructive/30 p-3">
+              <p className="text-sm font-medium text-foreground">Excluir projeto</p>
+              <p className="text-xs text-muted-foreground">
+                Apaga o projeto e tudo o que está nele: requisitos, tarefas, sprints, componentes,
+                recursos e diagramas. Não pode ser desfeito.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-fit border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => {
+                  setEditOpen(false)
+                  setDeleteOpen(true)
+                }}
+              >
+                <Trash2Icon className="size-3.5" />
+                Excluir este projeto
+              </Button>
+            </div>
           </div>
 
           <DialogFooter>
@@ -215,6 +237,8 @@ export function ProjectIdentityCard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeleteProjectDialog projectId={project.id} open={deleteOpen} onOpenChange={setDeleteOpen} />
     </>
   )
 }
