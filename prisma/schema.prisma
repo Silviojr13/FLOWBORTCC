@@ -40,6 +40,7 @@ model User {
   projects      Project[]
   studiesCreated      Study[]            @relation("StudiesCreated")
   studyParticipations StudyParticipant[]
+  passwordResetTokens PasswordResetToken[]
 
   @@map("users")
 }
@@ -417,4 +418,20 @@ model StudyInvitation {
   @@unique([studyId, email])
   @@index([email])
   @@map("study_invitations")
+}
+
+// Link de recuperação de senha enviado por e-mail. Guarda só o hash SHA-256 do token: quem
+// lê o banco não consegue montar um link válido. Vale 1 hora e um único uso.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
