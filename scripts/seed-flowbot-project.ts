@@ -9,9 +9,13 @@ import { PrismaLibSql } from '@prisma/adapter-libsql';
  * dentro dela mesma — e para testar como a ferramenta lida com um projeto 100% software.
  *
  *   npm run script:seed-flowbot-project -- usuario@email.com
+ *   npm run script:seed-flowbot-project -- usuario@email.com --atualizar
  *   npm run script:seed-flowbot-project -- usuario@email.com --recriar
  *
- * Sem --recriar, não faz nada se o projeto já existir na conta.
+ * --atualizar sincroniza um projeto existente sem apagar nada: cria os requisitos, módulos e
+ * tarefas que faltam, avança tarefas que ficaram prontas (nunca as move para trás) e
+ * redesenha os diagramas gerados a partir dos dados. O que a equipe criou ou mudou à mão
+ * continua como está. --recriar apaga o projeto e cria de novo.
  */
 
 const PROJECT_NAME = 'FlowBot — Plataforma (TCC)';
@@ -47,6 +51,8 @@ const REQUISITOS: [string, string, Categoria, string, string, string][] = [
   ['RF14', 'Exibir dashboard com indicadores de saúde: tarefas em atraso, requisitos sem cobertura e custo acumulado.', 'Funcional', 'Alta', 'Validado', 'Sistema'],
   ['RF15', 'Exportar relatórios nos formatos PDF ou CSV.', 'Funcional', 'Média', 'Validado', 'Componente'],
   ['RF16', 'Cadastrar projetos com nome, descrição, data de início e data prevista de término.', 'Funcional', 'Alta', 'Validado', 'Sistema'],
+  ['RF17', 'Gerar diagramas de engenharia de software (C4, modelo relacional e UML) a partir dos dados do projeto.', 'Funcional', 'Média', 'Validado', 'Subsistema'],
+  ['RF18', 'Cadastrar os recursos do projeto (pessoas, equipamentos, software e espaços) com custo e disponibilidade, compondo o orçamento consolidado.', 'Funcional', 'Média', 'Validado', 'Subsistema'],
   ['RNF01', 'Atingir pontuação média igual ou superior a 70 no questionário SUS na avaliação com usuários reais.', 'Não Funcional', 'Alta', 'Em Aberto', 'Sistema'],
   ['RNF02', 'Interface responsiva e funcional nas versões recentes do Chrome, Firefox e Edge.', 'Não Funcional', 'Média', 'Em Aberto', 'Sistema'],
   ['RNF03', 'Nenhuma alteração de requisito, tarefa ou componente pode ser perdida em falha inesperada: persistência imediata a cada escrita.', 'Não Funcional', 'Alta', 'Validado', 'Sistema'],
@@ -59,14 +65,18 @@ const REQUISITOS: [string, string, Categoria, string, string, string][] = [
 const MODULOS: [string, string, string, string][] = [
   ['Gestão de Requisitos', 'Cadastro, edição com histórico, níveis de abstração e cobertura por tarefas.', 'Concluída', 'RF01'],
   ['Kanban e Sprints', 'Quadro configurável, tarefas, drag-and-drop, sprints e histórico de movimentação.', 'Concluída', 'RF05'],
-  ['Componentes', 'Componentes do projeto, custo total e vínculo com requisitos.', 'Concluída', 'RF10'],
+  ['Componentes', 'Componentes de hardware e software do produto, custo total e vínculo com requisitos.', 'Concluída', 'RF10'],
   ['Relatórios e Indicadores', 'Visão geral com indicadores de saúde e relatório com exportação em PDF, CSV e Markdown.', 'Concluída', 'RF13'],
   ['Assistente FlowBot (IA)', 'Criação de projeto por conversa e robô do projeto que propõe alterações e só grava após confirmação.', 'Em desenvolvimento', 'RF01'],
   ['Autenticação e Onboarding', 'Login com e-mail e Google, pesquisa de primeiro acesso e isolamento por usuário.', 'Concluída', 'RNF05'],
   ['Tour guiado', 'Tutorial gamificado da primeira sessão com projeto de exemplo (guia do usuário dentro da plataforma).', 'Concluída', 'RF16'],
   ['Qualidade e testes', 'Testes E2E com Selenium, análise estática com SonarCloud e homologação.', 'Em desenvolvimento', 'RNF02'],
-  ['Validação com usuários', 'Avaliação SUS com 8 a 12 participantes e análise dos resultados.', 'Planejada', 'RNF01'],
-  ['Visão hardware × software', 'Separar a visão de hardware e de software do projeto, com ciclo de vida dos componentes.', 'Planejada', 'RF12'],
+  ['Validação com usuários', 'Avaliação SUS com 8 a 12 participantes e análise dos resultados.', 'Em desenvolvimento', 'RNF01'],
+  ['Visão hardware × software', 'Separar a visão de hardware e de software do projeto, com ciclo de vida dos componentes.', 'Em desenvolvimento', 'RF12'],
+  ['Diagramas de engenharia', 'C4, modelo relacional e UML escritos pela IA; rastreabilidade e cronograma a partir dos dados.', 'Concluída', 'RF17'],
+  ['Recursos e orçamento', 'Pessoas, equipamentos, software e espaços com custo e disponibilidade; orçamento consolidado.', 'Concluída', 'RF18'],
+  ['Avaliação na plataforma', 'Convite por link e por e-mail, guia do participante, tarefas detectadas e questionário SUS com resultados no admin.', 'Concluída', 'RNF01'],
+  ['Central de tutoriais', 'Tutorial de cada tela, tour para iniciantes e tutorial completo do projeto.', 'Concluída', 'RNF01'],
 ];
 
 // Serviços que sustentam a plataforma. O módulo foi pensado para peças físicas; aqui ele
@@ -144,24 +154,151 @@ const TAREFAS: Tarefa[] = [
   { titulo: 'Corrigir redirecionamento do login Google para o domínio da Vercel', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-09-27', requisito: 'RNF05', modulo: 'Autenticação e Onboarding', sprint: 1, coluna: 'Concluído', em: '2026-09-27' },
   { titulo: 'Suíte de testes E2E com Selenium (pytest)', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-09-25', requisito: 'RNF02', modulo: 'Qualidade e testes', sprint: 1, coluna: 'Concluído', em: '2026-09-25' },
   { titulo: 'Tour guiado gamificado (guia do usuário)', descricao: 'Convite após o onboarding, demonstração da IA criando o braço robótico e passeio pelos módulos.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-01', requisito: 'RF16', modulo: 'Tour guiado', sprint: 1, coluna: 'Concluído', em: '2026-10-01' },
-  { titulo: 'Criar projeto no SonarCloud e configurar SONAR_TOKEN', descricao: 'A configuração já está no repositório; falta criar o projeto e o secret no GitHub.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-09', requisito: 'RNF02', modulo: 'Qualidade e testes', sprint: 1, coluna: 'Em Progresso', em: '2026-09-30' },
+  { titulo: 'Criar projeto no SonarCloud e configurar SONAR_TOKEN', descricao: 'Projeto ligado com análise automática (sem token): nota A, 0 bugs, 0 vulnerabilidades e Quality Gate aprovado.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-09', requisito: 'RNF02', modulo: 'Qualidade e testes', sprint: 1, coluna: 'Concluído', em: '2026-10-02' },
   { titulo: 'Melhorias do chat: contexto enxuto, limite de histórico e aviso de truncamento', prioridade: 'Média', prazo: '2026-10-14', requisito: 'RNF03', modulo: 'Assistente FlowBot (IA)', sprint: 1, coluna: 'Backlog' },
-  { titulo: 'Botão "Excluir projeto" com confirmação do impacto', prioridade: 'Média', prazo: '2026-10-14', requisito: 'RF16', modulo: 'Gestão de Requisitos', sprint: 1, coluna: 'Backlog' },
+  { titulo: 'Botão "Excluir projeto" com confirmação do impacto', descricao: 'No menu do card e em Editar projeto; mostra o que será apagado e pede o nome do projeto.', prioridade: 'Média', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RF16', modulo: 'Gestão de Requisitos', sprint: 1, coluna: 'Concluído', em: '2026-10-04' },
   { titulo: 'Testar a interface no Chrome e no Firefox', descricao: 'A suíte E2E roda hoje só no Edge.', prioridade: 'Média', prazo: '2026-10-16', requisito: 'RNF02', modulo: 'Qualidade e testes', sprint: 1, coluna: 'Backlog' },
+  { titulo: 'Corrigir os apontamentos do SonarCloud (0 bugs e 0 vulnerabilidades)', descricao: 'Logs sem dados sensíveis, promessas tratadas, ordenação e acessibilidade do Kanban.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-09', requisito: 'RNF03', modulo: 'Qualidade e testes', sprint: 1, coluna: 'Concluído', em: '2026-10-02' },
+  { titulo: 'Endurecer o CI (instalação sem scripts e análise automática)', prioridade: 'Média', responsavel: 'Silvio', prazo: '2026-10-09', requisito: 'RNF05', modulo: 'Qualidade e testes', sprint: 1, coluna: 'Concluído', em: '2026-10-02' },
+  { titulo: 'Diagramas C4, ER e UML gerados pela IA', descricao: 'Níveis do C4 consistentes, correção automática de sintaxe, exportação em SVG e PNG.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-09', requisito: 'RF17', modulo: 'Diagramas de engenharia', sprint: 1, coluna: 'Concluído', em: '2026-10-02' },
+  { titulo: 'Rastreabilidade e cronograma (Gantt) a partir dos dados', prioridade: 'Média', responsavel: 'Silvio', prazo: '2026-10-09', requisito: 'RF17', modulo: 'Diagramas de engenharia', sprint: 1, coluna: 'Concluído', em: '2026-10-02' },
+  { titulo: 'Aba Recursos com orçamento consolidado', descricao: 'Disponível ou a adquirir; cobrança por hora, por mês ou valor único.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-09', requisito: 'RF18', modulo: 'Recursos e orçamento', sprint: 1, coluna: 'Concluído', em: '2026-10-02' },
+  { titulo: 'Componentes classificados como hardware ou software', prioridade: 'Média', responsavel: 'Silvio', prazo: '2026-10-09', requisito: 'RF12', modulo: 'Componentes', sprint: 1, coluna: 'Concluído', em: '2026-10-02' },
+  { titulo: 'Filtros do relatório por sprint, responsável e funcionalidade', prioridade: 'Média', responsavel: 'Silvio', prazo: '2026-10-09', requisito: 'RF13', modulo: 'Relatórios e Indicadores', sprint: 1, coluna: 'Concluído', em: '2026-10-02' },
+  { titulo: 'Relatório em PDF no formato de documento (A4)', descricao: 'Cabeçalho, rodapé com número de página e tabelas que repetem o cabeçalho.', prioridade: 'Média', responsavel: 'Silvio', prazo: '2026-10-09', requisito: 'RF15', modulo: 'Relatórios e Indicadores', sprint: 1, coluna: 'Concluído', em: '2026-10-02' },
+  { titulo: 'Guia do participante e questionário SUS dentro da plataforma', descricao: 'Painel lateral com termo, tarefas detectadas automaticamente e questionário.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RNF01', modulo: 'Avaliação na plataforma', sprint: 1, coluna: 'Concluído', em: '2026-10-02' },
+  { titulo: 'Painel de resultados da avaliação para o admin', descricao: 'Nota SUS, conclusão e tempo por tarefa, perfil, respostas abertas anônimas e CSV.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RNF01', modulo: 'Avaliação na plataforma', sprint: 1, coluna: 'Concluído', em: '2026-10-02' },
+  { titulo: 'Convite para a avaliação por link e por e-mail', descricao: 'Link sempre com o domínio publicado; convite por e-mail exato, sem listar contas.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RNF01', modulo: 'Avaliação na plataforma', sprint: 1, coluna: 'Concluído', em: '2026-10-03' },
+  { titulo: 'Central de tutoriais por tela', descricao: 'Tutorial de 11 telas, tour para iniciantes e tutorial completo; progresso salvo por usuário.', prioridade: 'Média', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RNF01', modulo: 'Central de tutoriais', sprint: 1, coluna: 'Concluído', em: '2026-10-02' },
+  { titulo: 'Recuperação de senha por e-mail', descricao: 'Link de uso único por 1 hora; vale também para contas criadas com o Google.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RNF05', modulo: 'Autenticação e Onboarding', sprint: 1, coluna: 'Concluído', em: '2026-10-04' },
+  { titulo: 'Associar login com Google a conta criada com senha', descricao: 'Tela "Você já tem uma conta"; associa depois de confirmar a senha da conta existente.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RNF05', modulo: 'Autenticação e Onboarding', sprint: 1, coluna: 'Concluído', em: '2026-10-04' },
+  { titulo: 'Projeto do FlowBot gerenciado dentro do FlowBot', prioridade: 'Baixa', responsavel: 'Silvio', prazo: '2026-10-09', requisito: 'RF16', modulo: 'Gestão de Requisitos', sprint: 1, coluna: 'Concluído', em: '2026-10-02' },
+  { titulo: 'Configurar SMTP na Vercel para enviar os e-mails de recuperação', descricao: 'SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS e MAIL_FROM (Gmail com senha de app ou Brevo).', prioridade: 'Alta', prazo: '2026-10-09', requisito: 'RNF05', modulo: 'Autenticação e Onboarding', sprint: 1, coluna: 'Backlog' },
+  { titulo: 'Atualizar a lista de convites automaticamente na tela do admin', prioridade: 'Média', prazo: '2026-10-14', requisito: 'RNF01', modulo: 'Avaliação na plataforma', sprint: 1, coluna: 'Backlog' },
+  { titulo: 'Normalizar e-mails para evitar contas duplicadas por maiúsculas', prioridade: 'Média', prazo: '2026-10-14', requisito: 'RNF05', modulo: 'Autenticação e Onboarding', sprint: 1, coluna: 'Backlog' },
+  { titulo: 'Remover a participação de teste do admin na avaliação', descricao: 'Para não entrar nos resultados do SUS.', prioridade: 'Alta', prazo: '2026-10-23', requisito: 'RNF01', modulo: 'Avaliação na plataforma', sprint: 1, coluna: 'Backlog' },
+  { titulo: 'Registrar RF17, RF18 e os módulos novos na documentação técnica', descricao: 'Diagramas, Recursos, avaliação na plataforma, tutoriais, recuperação de senha e associação de contas.', prioridade: 'Alta', prazo: '2026-10-23', requisito: 'RF17', sprint: 1, coluna: 'Backlog' },
   { titulo: 'Homologação da Sprint 2 com o orientador', prioridade: 'Alta', prazo: '2026-10-23', requisito: 'RNF01', modulo: 'Qualidade e testes', sprint: 1, coluna: 'Em Revisão', em: '2026-10-01' },
   // Sprint 3
-  { titulo: 'Preparar roteiro de tarefas e questionário SUS', prioridade: 'Alta', prazo: '2026-10-27', requisito: 'RNF01', modulo: 'Validação com usuários', sprint: 2, coluna: 'Backlog' },
-  { titulo: 'Recrutar de 8 a 12 participantes', prioridade: 'Alta', prazo: '2026-10-28', requisito: 'RNF01', modulo: 'Validação com usuários', sprint: 2, coluna: 'Backlog' },
+  { titulo: 'Preparar roteiro de tarefas e questionário SUS', descricao: 'Roteiro de 7 tarefas, SUS em português, perguntas abertas e de perfil, dentro da plataforma.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-27', requisito: 'RNF01', modulo: 'Validação com usuários', sprint: 2, coluna: 'Concluído', em: '2026-10-02' },
+  { titulo: 'Recrutar de 8 a 12 participantes', descricao: 'Convites por link e por e-mail pela área Avaliações de usabilidade.', prioridade: 'Alta', prazo: '2026-10-28', requisito: 'RNF01', modulo: 'Validação com usuários', sprint: 2, coluna: 'Em Progresso', em: '2026-10-04' },
   { titulo: 'Aplicar as sessões de avaliação', prioridade: 'Alta', prazo: '2026-11-03', requisito: 'RNF01', modulo: 'Validação com usuários', sprint: 2, coluna: 'Backlog' },
   { titulo: 'Analisar os resultados do SUS e registrar no TCC', prioridade: 'Alta', prazo: '2026-11-06', requisito: 'RNF01', modulo: 'Validação com usuários', sprint: 2, coluna: 'Backlog' },
-  { titulo: 'Separar a visão de hardware e de software do projeto', descricao: 'Campo de domínio (HW/SW) e ciclo de vida do componente: Sugerido, Aprovado, Comprado.', prioridade: 'Média', prazo: '2026-11-05', requisito: 'RF12', modulo: 'Visão hardware × software', sprint: 2, coluna: 'Backlog' },
+  { titulo: 'Separar a visão de hardware e de software do projeto', descricao: 'Componentes já são marcados como hardware ou software e há a aba Recursos; falta o ciclo de vida do componente (Sugerido, Aprovado, Comprado).', prioridade: 'Média', prazo: '2026-11-05', requisito: 'RF12', modulo: 'Visão hardware × software', sprint: 2, coluna: 'Em Progresso', em: '2026-10-02' },
   // Sem sprint (trabalhos futuros)
   { titulo: 'Times e hierarquias de acesso por projeto', descricao: 'Previsto como trabalho futuro do TCC.', prioridade: 'Baixa', requisito: 'RNF05', coluna: 'Backlog' },
 ];
 
+const ORDEM_COLUNAS: Coluna[] = ['Backlog', 'Em Progresso', 'Em Revisão', 'Concluído'];
+const ORDEM_STATUS = ['Planejada', 'Em desenvolvimento', 'Concluída'];
+
+/**
+ * Sincroniza um projeto existente com as listas acima sem apagar nada e sem desfazer o que a
+ * equipe mudou: cria o que falta, avança o que ficou pronto e redesenha os diagramas de dados.
+ */
+async function atualizar(projectId: string) {
+  const resumo = { requisitos: 0, modulos: 0, modulosAvancados: 0, tarefas: 0, tarefasAvancadas: 0, diagramas: 0 };
+
+  const requisitos = await db.requirement.findMany({ where: { projectId }, select: { id: true, code: true } });
+  const requisitoId = new Map(requisitos.map((r) => [r.code, r.id]));
+  for (const [code, description, category, priority, status, level] of REQUISITOS) {
+    if (requisitoId.has(code)) continue;
+    const r = await db.requirement.create({ data: { code, description, category, priority, status, level, projectId }, select: { id: true } });
+    requisitoId.set(code, r.id);
+    resumo.requisitos++;
+  }
+
+  // O módulo de componentes mudou de nome junto com a aba.
+  await db.feature.updateMany({ where: { projectId, name: 'Componentes e Custos' }, data: { name: 'Componentes' } });
+  const modulos = await db.feature.findMany({ where: { projectId }, select: { id: true, name: true, status: true } });
+  const moduloId = new Map(modulos.map((m) => [m.name, m.id]));
+  for (const [name, description, status, req] of MODULOS) {
+    const atual = modulos.find((m) => m.name === name);
+    if (!atual) {
+      const f = await db.feature.create({ data: { name, description, status, projectId, requirementId: requisitoId.get(req) }, select: { id: true } });
+      moduloId.set(name, f.id);
+      resumo.modulos++;
+    } else if (ORDEM_STATUS.indexOf(status) > ORDEM_STATUS.indexOf(atual.status)) {
+      await db.feature.update({ where: { id: atual.id }, data: { status, description } });
+      resumo.modulosAvancados++;
+    }
+  }
+
+  const colunas = await db.kanbanColumn.findMany({ where: { projectId } });
+  const colunaPorNome = new Map(colunas.map((c) => [c.name, c]));
+  const sprints = await db.sprint.findMany({ where: { projectId }, orderBy: { startDate: 'asc' }, select: { id: true } });
+  const tarefas = await db.task.findMany({ where: { projectId }, select: { id: true, title: true, column: { select: { name: true } } } });
+  const porTitulo = new Map(tarefas.map((t) => [t.title, t]));
+
+  for (const t of TAREFAS) {
+    const destino = colunaPorNome.get(t.coluna);
+    if (!destino) continue;
+    const existente = porTitulo.get(t.titulo);
+
+    if (!existente) {
+      const caminho = ORDEM_COLUNAS.slice(0, ORDEM_COLUNAS.indexOf(t.coluna) + 1).filter((c) => colunaPorNome.has(c));
+      const chegada = t.em ? dia(t.em) : new Date();
+      const ordem = await db.task.count({ where: { projectId, columnId: destino.id } });
+      await db.task.create({
+        data: {
+          title: t.titulo,
+          description: t.descricao,
+          priority: t.prioridade,
+          assignee: t.responsavel ?? null,
+          dueDate: t.prazo ? dia(t.prazo) : null,
+          order: ordem,
+          columnId: destino.id,
+          projectId,
+          requirementId: t.requisito ? requisitoId.get(t.requisito) ?? null : null,
+          featureId: t.modulo ? moduloId.get(t.modulo) ?? null : null,
+          sprintId: t.sprint === undefined ? null : sprints[t.sprint]?.id ?? null,
+          history: {
+            create: caminho.map((toColumn, i) => ({
+              fromColumn: i === 0 ? null : caminho[i - 1],
+              toColumn,
+              changedAt: new Date(chegada.getTime() - (caminho.length - 1 - i) * 24 * 60 * 60 * 1000),
+            })),
+          },
+        },
+      });
+      resumo.tarefas++;
+      continue;
+    }
+
+    // Só avança: uma tarefa que a equipe moveu adiante (ou para outra coluna) não volta.
+    const atual = ORDEM_COLUNAS.indexOf(existente.column.name as Coluna);
+    if (atual >= 0 && ORDEM_COLUNAS.indexOf(t.coluna) > atual) {
+      await db.task.update({
+        where: { id: existente.id },
+        data: {
+          columnId: destino.id,
+          ...(t.descricao ? { description: t.descricao } : {}),
+          ...(t.responsavel ? { assignee: t.responsavel } : {}),
+          history: { create: { fromColumn: existente.column.name, toColumn: t.coluna, changedAt: t.em ? dia(t.em) : new Date() } },
+        },
+      });
+      resumo.tarefasAvancadas++;
+    }
+  }
+
+  // Rastreabilidade e cronograma saem dos dados: redesenha para incluir o que mudou.
+  const { generateDiagram } = await import('../lib/diagrams-server');
+  const project = await db.project.findUnique({ where: { id: projectId }, select: { userId: true } });
+  const diagramas = await db.diagram.findMany({ where: { projectId, type: { in: ['traceability', 'gantt'] } } });
+  for (const d of diagramas) {
+    const { code } = await generateDiagram({ type: d.type, projectId, userId: project!.userId });
+    await db.diagram.update({ where: { id: d.id }, data: { code, source: 'dados' } });
+    resumo.diagramas++;
+  }
+
+  await db.project.update({ where: { id: projectId }, data: { updatedAt: new Date() } });
+  return resumo;
+}
+
 async function main() {
   const email = process.argv.find((arg) => arg.includes('@'));
   const recriar = process.argv.includes('--recriar');
+  const atualizarProjeto = process.argv.includes('--atualizar');
   if (!email) {
     console.error('Informe o e-mail da conta: npm run script:seed-flowbot-project -- usuario@email.com');
     process.exitCode = 1;
@@ -176,8 +313,16 @@ async function main() {
   }
 
   const existente = await db.project.findFirst({ where: { userId: user.id, name: PROJECT_NAME }, select: { id: true } });
+  if (existente && atualizarProjeto) {
+    const resumo = await atualizar(existente.id);
+    console.log(`Projeto "${PROJECT_NAME}" atualizado para ${user.name ?? email}.`);
+    console.log(`  novos: ${resumo.requisitos} requisito(s), ${resumo.modulos} módulo(s), ${resumo.tarefas} tarefa(s)`);
+    console.log(`  avançados: ${resumo.modulosAvancados} módulo(s), ${resumo.tarefasAvancadas} tarefa(s); diagramas redesenhados: ${resumo.diagramas}`);
+    console.log(`  /dashboard/projects/${existente.id}`);
+    return;
+  }
   if (existente && !recriar) {
-    console.log(`O projeto já existe (${existente.id}). Use --recriar para apagá-lo e criar de novo.`);
+    console.log(`O projeto já existe (${existente.id}). Use --atualizar para sincronizar ou --recriar para apagar e criar de novo.`);
     return;
   }
   if (existente) {
