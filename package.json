@@ -29,7 +29,8 @@
     "script:create-diagrams-table": "dotenv -e .env -- tsx scripts/create-diagrams-table.ts",
     "script:alter-resources": "dotenv -e .env -- tsx scripts/alter-resources.ts",
     "script:alter-usability-studies": "dotenv -e .env -- tsx scripts/alter-usability-studies.ts",
-    "script:alter-password-reset": "dotenv -e .env -- tsx scripts/alter-password-reset.ts"
+    "script:alter-password-reset": "dotenv -e .env -- tsx scripts/alter-password-reset.ts",
+    "script:alter-account-links": "dotenv -e .env -- tsx scripts/alter-account-links.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

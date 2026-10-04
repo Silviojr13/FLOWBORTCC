@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { tursoDb } from "./lib/turso-db";
 import { compare } from "bcrypt";
+import { routeGoogleSignIn } from "./lib/account-link";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(tursoDb),
@@ -68,6 +69,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
+    // Login com Google num e-mail que já tem conta com senha: em vez do bloqueio genérico
+    // do NextAuth, leva à tela que explica a situação e associa as contas após a pessoa
+    // confirmar a senha. Roda antes da criação/vinculação automática do adaptador.
+    async signIn({ account, profile }) {
+      if (account?.provider !== "google") return true;
+      const destino = await routeGoogleSignIn({
+        email: profile?.email,
+        emailVerified: profile?.email_verified !== false,
+        providerAccountId: account.providerAccountId,
+        type: account.type,
+      });
+      return destino ?? true;
+    },
     async jwt({ token, user }) {
       // Quando o usuário faz login, o objeto user é adicionado ao token
       if (user) {
