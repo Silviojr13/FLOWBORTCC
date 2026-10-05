@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 import {
+  BotIcon,
   CircleHelpIcon,
   ClipboardCheckIcon,
   EllipsisVerticalIcon,
@@ -164,6 +165,12 @@ export function NavUser({
             <DropdownMenuItem onClick={() => openHelpCenter()}>
               <CircleHelpIcon />
               Central de tutoriais
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/minhas-ias">
+                <BotIcon />
+                Minhas IAs
+              </Link>
             </DropdownMenuItem>
             {isAdmin && (
               <DropdownMenuItem asChild>

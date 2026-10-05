@@ -3,12 +3,38 @@ import { getCurrentUser } from "../../../lib/auth";
 import { tursoDb } from "../../../lib/turso-db";
 import { buildProjectContext } from "../../../lib/project-context";
 import { getProjectAccess } from "../../../lib/project-access";
-import { estimateTokens, fitConversation, omittedNote, type ChatMessage } from "../../../lib/chat-budget";
+import { estimateTokens, fitConversation, omittedNote, INPUT_TOKEN_BUDGET, type ChatMessage } from "../../../lib/chat-budget";
+import {
+  AiProviderError,
+  friendlyAiError,
+  openChatStream,
+  readChatStream,
+  type AiTarget,
+} from "../../../lib/ai-client";
+import { AI_PROVIDER_INFO } from "../../../lib/ai-providers";
+import { assistantAiKey } from "../../../lib/user-ai-keys";
 
 export const runtime = "nodejs";
 
-/** Abaixo do limite de 1000 tokens de saída por minuto do plano gratuito do Groq. */
-const MAX_OUTPUT_TOKENS = Number(process.env.GROQ_MAX_OUTPUT_TOKENS) || 900;
+/**
+ * Limites de cada resposta. A IA gratuita do FlowBot (Groq) aceita pouco por minuto: no
+ * máximo 1000 tokens de saída (OTPM) e 7000 de entrada. Com a chave da própria pessoa
+ * ("Minhas IAs"), cabem respostas, conversas e contexto do projeto bem maiores.
+ */
+const FREE_LIMITS = {
+  maxOutputTokens: Number(process.env.GROQ_MAX_OUTPUT_TOKENS) || 900,
+  inputBudget: INPUT_TOKEN_BUDGET,
+  contextChars: 4500,
+  maxActions: 12,
+  explanationLines: 6,
+};
+const OWN_KEY_LIMITS = {
+  maxOutputTokens: 4000,
+  inputBudget: 24000,
+  contextChars: 16000,
+  maxActions: 30,
+  explanationLines: 10,
+};
 
 interface Message {
   role: "user" | "assistant";
@@ -35,17 +61,34 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const apiKey = process.env.GROQ_API_KEY;
-  // O projeto no Groq só libera um modelo por vez (ver console.groq.com) — respeita essa
-  // configuração em vez de aceitar um model vindo do cliente, que falharia contra o allowlist.
-  const model = process.env.GROQ_MODEL_NAME || "qwen/qwen3.8-27b";
-
-  if (!apiKey) {
+  // Quem responde: a IA que a pessoa escolheu em "Minhas IAs" ou a IA gratuita do FlowBot.
+  const ownKey = await assistantAiKey(user.id);
+  if (ownKey && !ownKey.target) {
     return new Response(
-      JSON.stringify({ error: "GROQ_API_KEY não configurada no servidor." }),
-      { status: 503, headers: { "Content-Type": "application/json" } }
+      JSON.stringify({ error: "Não foi possível abrir a chave da IA escolhida. Conecte-a de novo em Minhas IAs ou volte para a IA gratuita do FlowBot." }),
+      { status: 422, headers: { "Content-Type": "application/json" } }
     );
   }
+  let target: AiTarget;
+  if (ownKey?.target) {
+    target = ownKey.target;
+  } else {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: "GROQ_API_KEY não configurada no servidor." }),
+        { status: 503, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    // O projeto no Groq só libera um modelo por vez (ver console.groq.com) — respeita essa
+    // configuração em vez de aceitar um model vindo do cliente, que falharia contra o allowlist.
+    target = { provider: "groq", apiKey, model: process.env.GROQ_MODEL_NAME || "qwen/qwen3.8-27b" };
+  }
+  const usingOwnKey = Boolean(ownKey?.target);
+  // Uma chave própria do Groq pode estar no plano gratuito, com os mesmos limites por minuto:
+  // fica no tamanho compacto (o ganho é uma cota só da pessoa, sem dividir com o FlowBot).
+  const limits = usingOwnKey && target.provider !== "groq" ? OWN_KEY_LIMITS : FREE_LIMITS;
+  const providerLabel = usingOwnKey ? `${AI_PROVIDER_INFO[target.provider].label} (chave própria)` : "FlowBot (Groq)";
 
   const lastUserMsg: Message = messages[messages.length - 1];
 
@@ -101,7 +144,7 @@ export async function POST(req: NextRequest) {
 
   console.log("\n─────────────────────────────────────");
   console.log(`[${new Date().toLocaleTimeString("pt-BR")}] USUÁRIO → ${lastUserMsg.content}`);
-  console.log(`Modelo: ${model}`);
+  console.log(`Modelo: ${target.model} · ${providerLabel}`);
   console.log("─────────────────────────────────────");
 
   const BASE_INSTRUCTION = `Voce e o FlowBot, assistente de projetos de robotica, sistemas embarcados, IoT e software
@@ -195,7 +238,7 @@ RNF01 – ...
   // O acesso é conferido de novo: a pessoa pode ter saído do projeto ou mudado de cargo.
   const projectAccess = resolvedProjectId ? await getProjectAccess(resolvedProjectId, user.id) : null;
   if (resolvedProjectId && projectAccess?.canEdit.assistente) {
-    const context = await buildProjectContext(resolvedProjectId, projectAccess.ownerId);
+    const context = await buildProjectContext(resolvedProjectId, projectAccess.ownerId, limits.contextChars);
     if (context) {
       inProject = true;
       const today = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
@@ -223,9 +266,9 @@ PROPOE; a pessoa revisa num card e confirma com um clique. Seja proativo e entre
   precisa atender), **Funcionalidades** (as capacidades que entregam isso), **Sprints e tarefas**
   (o trabalho em etapas), cada um com 1 ou 2 linhas dizendo o porque. Termine com uma linha
   "**Proximo passo:** ..." sugerindo o que fazer depois.
-- Sua resposta tem um limite curto de tamanho. Por isso: no maximo 12 acoes por mensagem,
+- Sua resposta tem um limite de tamanho. Por isso: no maximo ${limits.maxActions} acoes por mensagem,
   JSON enxuto (sem campos vazios, descricoes de tarefa com ate 8 palavras) e explicacao de no
-  maximo 6 linhas. Se o pacote for maior, entregue a primeira parte (ex.: funcionalidades e
+  maximo ${limits.explanationLines} linhas. Se o pacote for maior, entregue a primeira parte (ex.: funcionalidades e
   as tarefas da primeira sprint) e diga que, depois de confirmar, voce monta o resto.
 - Itens criados no mesmo bloco podem ser referenciados pelos seguintes: use o codigo que o
   requisito novo vai receber (o proximo numero livre: se existem RF01 a RF03, o novo e RF04) e
@@ -265,96 +308,46 @@ exato do contexto; so use responsavel (assignee) com nomes que aparecem no proje
   // primeira mensagem e as mais recentes, e a IA é avisada do que ficou de fora.
   const conversation = fitConversation(
     messages.map((m: Message) => ({ role: m.role, content: String(m.content ?? "") }) as ChatMessage),
-    estimateTokens(systemContent)
+    estimateTokens(systemContent),
+    limits.inputBudget
   );
   if (conversation.omitted > 0) systemContent += omittedNote(conversation.omitted);
 
-  const body = {
-    model,
-    stream: true,
-    // O plano gratuito do Groq limita a SAÍDA a 1000 tokens por minuto (OTPM) e recusa o
-    // pedido cujo max_tokens passe disso: as respostas ficam abaixo do limite, e pacotes
-    // grandes de ações vêm em partes.
-    max_tokens: MAX_OUTPUT_TOKENS,
-    messages: [{ role: "system", content: systemContent }, ...conversation.messages],
-  };
-
   console.log("[PAYLOAD]", JSON.stringify({
-    model: body.model,
-    messagesCount: body.messages.length,
+    model: target.model,
+    provider: target.provider,
+    ownKey: usingOwnKey,
+    messagesCount: conversation.messages.length + 1,
     omitted: conversation.omitted,
-    inputTokensEstimate: body.messages.reduce((sum, m) => sum + estimateTokens(m.content), 0),
+    inputTokensEstimate:
+      estimateTokens(systemContent) + conversation.messages.reduce((sum, m) => sum + estimateTokens(m.content), 0),
   }, null, 2));
 
-  const MAX_RETRIES = 2;
-  const RETRY_DELAY_MS = 2000;
-  let groqRes: Response | undefined;
-
-  const apiUrl = "https://api.groq.com/openai/v1/chat/completions";
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      groqRes = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(body),
-      });
-    } catch {
-      if (attempt === MAX_RETRIES) {
-        return new Response(
-          JSON.stringify({ error: "Não foi possível conectar à API do Groq." }),
-          { status: 503, headers: { "Content-Type": "application/json" } }
-        );
-      }
-      console.log(`[RETRY] Fetch falhou, tentativa ${attempt + 1}/${MAX_RETRIES}...`);
-      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-      continue;
+  const logTag = usingOwnKey ? target.provider.toUpperCase() : "GROQ";
+  let providerRes: Response;
+  try {
+    // Na IA gratuita, o limite de saída fica abaixo do OTPM do Groq, que recusa pedidos com
+    // max_tokens acima dele: pacotes grandes de ações vêm em partes.
+    providerRes = await openChatStream(
+      target,
+      { system: systemContent, messages: conversation.messages, maxTokens: limits.maxOutputTokens },
+      { logLabel: logTag }
+    );
+  } catch (error) {
+    if (!(error instanceof AiProviderError)) {
+      console.error("[ERRO] Falha ao chamar a IA:", error);
+      return new Response(
+        JSON.stringify({ error: "Erro desconhecido ao conectar à IA.", chatId }),
+        { status: 500, headers: { "Content-Type": "application/json", "X-Chat-Id": chatId } }
+      );
     }
-
-    if (groqRes.ok) break;
-
-    const isTransient = groqRes.status === 500 || groqRes.status === 503;
-    if (isTransient && attempt < MAX_RETRIES) {
-      console.log(`[RETRY] HTTP ${groqRes.status}, tentativa ${attempt + 1}/${MAX_RETRIES}...`);
-      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-      continue;
-    }
-
-    // Limite por minuto: se o Groq pede para esperar poucos segundos, espera e tenta de novo.
-    const retryAfter = Number(groqRes.headers.get("retry-after"));
-    if (groqRes.status === 429 && attempt < MAX_RETRIES && retryAfter > 0 && retryAfter <= 12) {
-      console.log(`[RETRY] Limite por minuto; aguardando ${retryAfter}s...`);
-      await new Promise((r) => setTimeout(r, retryAfter * 1000));
-      continue;
-    }
-
-    // O erro bruto do provedor (com ids internos da conta) fica só no log do servidor.
-    const text = await groqRes.text();
-    console.log(`[ERROR] Resposta de erro da API do Groq:`, text);
-
-    const friendly =
-      groqRes.status === 413
-        ? "A conversa ficou grande demais para o limite da IA. Comece uma nova conversa ou resuma o que já foi definido."
-        : groqRes.status === 429
-          ? "A IA atingiu o limite de uso por minuto. Aguarde cerca de um minuto e envie de novo."
-          : "A IA não conseguiu responder agora. Tente de novo em instantes.";
-    // Quanto esperar: o cabeçalho retry-after ou o "try again in 23.5s" da mensagem do Groq.
-    const waitSeconds =
-      groqRes.status === 429 ? Math.ceil(retryAfter > 0 ? retryAfter : parseRetrySeconds(text) ?? 30) : null;
+    const friendly = friendlyAiError(error, { providerOf: AI_PROVIDER_INFO[target.provider].of, ownKey: usingOwnKey });
+    // 429 com retryAfter faz a interface esperar e reenviar sozinha; sem crédito não adianta.
+    const status = error.kind === "rate" ? 429 : error.kind === "quota" ? 402 : error.status >= 400 ? error.status : 502;
     // O chatId vai junto: a interface reenvia na mesma conversa, sem criar outra.
-    return new Response(JSON.stringify({ error: friendly, retryAfter: waitSeconds, chatId }), {
-      status: groqRes.status,
-      headers: { "Content-Type": "application/json", "X-Chat-Id": chatId },
-    });
-  }
-
-  if (!groqRes) {
     return new Response(
-      JSON.stringify({ error: "Erro desconhecido ao conectar à API." }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      JSON.stringify({ error: friendly, retryAfter: error.kind === "rate" ? error.retryAfter : null, chatId }),
+      { status, headers: { "Content-Type": "application/json", "X-Chat-Id": chatId } }
     );
   }
 
@@ -362,42 +355,19 @@ exato do contexto; so use responsavel (assignee) com nomes que aparecem no proje
 
   const stream = new ReadableStream({
     async start(controller) {
-      const reader = groqRes.body!.getReader();
-      const decoder = new TextDecoder();
-      process.stdout.write("[GROQ] ");
+      process.stdout.write(`[${logTag}] `);
       let fullResponse = "";
       let cutByLength = false;
 
-      // Uma linha do SSE pode chegar partida em dois pedaços da rede: o pedaço incompleto
-      // fica guardado até o próximo. (Antes ele era descartado, e a resposta perdia trechos.)
-      let pending = "";
-      const handleLine = (line: string) => {
-        if (!line.startsWith("data: ")) return;
-        const json = line.slice("data: ".length).trim();
-        if (!json || json === "[DONE]") return;
-        try {
-          const parsed = JSON.parse(json);
-          if (parsed.choices?.[0]?.finish_reason === "length") cutByLength = true;
-          const token: string | undefined = parsed.choices?.[0]?.delta?.content;
-          if (token) {
-            process.stdout.write(token);
-            fullResponse += token;
-            controller.enqueue(encoder.encode(token));
-          }
-        } catch { /* linha que não é JSON (comentário do SSE) */ }
-      };
-
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          pending += decoder.decode(value, { stream: true });
-          const lines = pending.split("\n");
-          pending = lines.pop() ?? "";
-          for (const line of lines) handleLine(line);
+        for await (const piece of readChatStream(target.provider, providerRes)) {
+          if (piece.cutByLength) cutByLength = true;
+          if (piece.text) {
+            process.stdout.write(piece.text);
+            fullResponse += piece.text;
+            controller.enqueue(encoder.encode(piece.text));
+          }
         }
-        pending += decoder.decode();
-        if (pending) handleLine(pending);
 
         // Resposta cortada pelo limite de tamanho: avisa como continuar (a interface aproveita
         // as ações que chegaram inteiras).
@@ -423,14 +393,12 @@ exato do contexto; so use responsavel (assignee) com nomes que aparecem no proje
           });
         }
 
-        console.log("\n[GROQ] ✓ Resposta completa");
+        console.log(`\n[${logTag}] ✓ Resposta completa`);
         console.log("─────────────────────────────────────\n");
         controller.close();
       } catch (err) {
         console.error("\n[ERRO] Stream interrompido:", err);
         controller.error(err);
-      } finally {
-        reader.releaseLock();
       }
     },
   });
@@ -444,13 +412,8 @@ exato do contexto; so use responsavel (assignee) com nomes que aparecem no proje
       "X-Chat-Id": chatId,
       // Quantas mensagens antigas não foram enviadas à IA (a interface pode avisar).
       "X-Chat-Omitted": String(conversation.omitted),
+      // Quem respondeu: a IA gratuita do FlowBot ou a chave da própria pessoa.
+      "X-Chat-Provider": encodeURIComponent(`${providerLabel} · ${target.model}`),
     },
   });
-}
-
-/** "Please try again in 23.45s" ou "in 1m2.5s" -> segundos. */
-function parseRetrySeconds(message: string): number | null {
-  const match = /try again in (?:(\d+)m)?([\d.]+)s/i.exec(message);
-  if (!match) return null;
-  return Number(match[1] ?? 0) * 60 + Number(match[2]);
 }

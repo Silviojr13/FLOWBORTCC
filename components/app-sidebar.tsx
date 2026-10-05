@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { FolderIcon, PlusIcon } from "lucide-react"
+import { BotIcon, FolderIcon, PlusIcon } from "lucide-react"
 
 import { FlowbotBrandLogo, FlowbotMark } from "@/components/flowbot-brand-logo"
 import { NavUser, type SidebarUser } from "@/components/nav-user"
@@ -47,6 +47,7 @@ export function AppSidebar({
   const inProject = extractActiveProjectId(pathname) !== null
   const projectsActive =
     pathname === "/dashboard/projects" || pathname.startsWith("/dashboard/projects/new")
+  const aiKeysActive = pathname === "/dashboard/minhas-ias"
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -107,6 +108,23 @@ export function AppSidebar({
                   >
                     <FolderIcon />
                     <span>Projetos</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={aiKeysActive}
+                  tooltip="Minhas IAs"
+                  className={cn(navItemClass, aiKeysActive && navItemActiveClass)}
+                >
+                  <Link
+                    href="/dashboard/minhas-ias"
+                    onClick={dismissMobile}
+                    aria-current={aiKeysActive ? "page" : undefined}
+                  >
+                    <BotIcon />
+                    <span>Minhas IAs</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

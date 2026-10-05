@@ -32,7 +32,8 @@
     "script:alter-password-reset": "dotenv -e .env -- tsx scripts/alter-password-reset.ts",
     "script:alter-account-links": "dotenv -e .env -- tsx scripts/alter-account-links.ts",
     "script:alter-task-participants": "dotenv -e .env -- tsx scripts/alter-task-participants.ts",
-    "script:alter-project-sharing": "dotenv -e .env -- tsx scripts/alter-project-sharing.ts"
+    "script:alter-project-sharing": "dotenv -e .env -- tsx scripts/alter-project-sharing.ts",
+    "script:alter-user-ai-keys": "dotenv -e .env -- tsx scripts/alter-user-ai-keys.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

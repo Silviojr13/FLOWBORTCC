@@ -42,6 +42,7 @@ model User {
   studyParticipations StudyParticipant[]
   passwordResetTokens PasswordResetToken[]
   projectMemberships  ProjectMember[]
+  aiKeys              UserAiKey[]
 
   @@map("users")
 }
@@ -514,4 +515,28 @@ model PendingAccountLink {
   createdAt         DateTime @default(now())
 
   @@map("pending_account_links")
+}
+
+// Chave de API de uma IA que a pessoa já paga (OpenAI, Anthropic, Gemini, Groq, OpenRouter).
+// A chave fica criptografada (AES-256-GCM, lib/ai-keys-crypto.ts) e nunca volta para o
+// navegador: a interface só mostra o final dela (keyHint).
+// provider: "openai" | "anthropic" | "gemini" | "groq" | "openrouter"
+model UserAiKey {
+  id             String    @id @default(cuid())
+  userId         String
+  provider       String
+  label          String?
+  model          String
+  encryptedKey   String
+  keyHint        String
+  // A chave que responde no assistente do FlowBot no lugar da IA gratuita (no máximo uma).
+  useInAssistant Boolean   @default(false)
+  lastTestedAt   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_ai_keys")
 }
