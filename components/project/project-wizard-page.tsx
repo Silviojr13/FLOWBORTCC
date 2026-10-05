@@ -54,7 +54,6 @@ export function ProjectWizardPage({
   const router = useRouter()
   const { project, notFound, isLoading } = useProject(projectId)
   const [componentsRefreshKey, setComponentsRefreshKey] = useState(0)
-  const [requirementsCount, setRequirementsCount] = useState(0)
   const [localRequirementsSkipped, setLocalRequirementsSkipped] = useState(false)
   const requirementsSkipped =
     localRequirementsSkipped || isRequirementsSkipped(projectId)
@@ -74,7 +73,6 @@ export function ProjectWizardPage({
         const data = await res.json()
         if (!res.ok || cancelled) return
         const count = data.requirements?.length ?? 0
-        setRequirementsCount(count)
         if (count > 0 && isRequirementsSkipped(projectId)) {
           setRequirementsSkipped(projectId, false)
           setLocalRequirementsSkipped(false)
@@ -122,13 +120,8 @@ export function ProjectWizardPage({
     )
   }
 
-  const railContext = {
-    requirementsCount,
-    requirementsSkipped,
-  }
-
   return (
-    <ProjectCreationLayout currentStep={step} railContext={railContext}>
+    <ProjectCreationLayout>
       <div className="flex w-full flex-col gap-10">
         <div className="flex flex-col gap-6">
           <ProjectContextNav projectId={project.id} projectName={project.name} />
@@ -159,7 +152,6 @@ export function ProjectWizardPage({
             <RequirementsTable
               projectId={project.id}
               onCountChange={(count) => {
-                setRequirementsCount(count)
                 if (count > 0) {
                   setRequirementsSkipped(projectId, false)
                   setLocalRequirementsSkipped(false)

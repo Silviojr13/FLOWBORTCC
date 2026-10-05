@@ -385,7 +385,7 @@ export default function ChatPage() {
   );
 
   return (
-    <ProjectCreationLayout currentStep="requisitos">
+    <ProjectCreationLayout>
       {chatContent}
     </ProjectCreationLayout>
   );
