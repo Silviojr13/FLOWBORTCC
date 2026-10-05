@@ -55,6 +55,7 @@ import { PriorityIndicator } from "@/components/project-manual/requirement-indic
 import { KanbanColumnsDialog } from "@/components/project/kanban-columns-dialog"
 import { TaskDialog } from "@/components/project/task-dialog"
 import { useProjectPermissions } from "@/components/project/project-permissions-context"
+import { canEditTask, canManageBoard } from "@/lib/project-permissions"
 import { TaskHistorySheet } from "@/components/project/task-history-sheet"
 import {
   TASK_PRIORITIES,
@@ -182,7 +183,10 @@ function TaskCardContent({
   onHistory: (task: Task) => void
   onDelete: (task: Task) => void
 }) {
-  const editable = useProjectPermissions().canEdit.kanban
+  const permissions = useProjectPermissions()
+  // Estagiário: só as próprias tarefas; excluir é de quem gerencia o quadro inteiro.
+  const editable = canEditTask(permissions, task)
+  const deletable = canManageBoard(permissions)
   const overdue = isTaskOverdue(task, isDone)
   const requirementDiscarded = task.requirement?.status === "Descartado"
   const draggedRef = useRef(false)
@@ -288,7 +292,7 @@ function TaskCardContent({
                 <HistoryIcon className="size-4" />
                 Histórico
               </DropdownMenuItem>
-              {editable && (
+              {deletable && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onClick={() => onDelete(task)}>
@@ -372,7 +376,7 @@ function TaskCardContent({
 
 function DraggableTaskCard(props: Parameters<typeof TaskCardContent>[0]) {
   const { task } = props
-  const editable = useProjectPermissions().canEdit.kanban
+  const editable = canEditTask(useProjectPermissions(), task)
   const { listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
     id: task.id,
     data: { type: "task", task },
@@ -414,7 +418,7 @@ function KanbanColumnView({
   cardProps: Omit<Parameters<typeof TaskCardContent>[0], "task" | "columns" | "isDone">
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { type: "column" } })
-  const editable = useProjectPermissions().canEdit.kanban
+  const editable = canManageBoard(useProjectPermissions())
   const overLimit = column.wipLimit !== null && tasks.length > column.wipLimit
 
   return (
@@ -487,7 +491,9 @@ function KanbanColumnView({
 /* ------------------------------------------------------------------ */
 
 export function KanbanBoard({ projectId }: { projectId: string }) {
-  const editable = useProjectPermissions().canEdit.kanban
+  const permissions = useProjectPermissions()
+  // Criar tarefas, colunas e excluir: o quadro inteiro (o estagiário não).
+  const editable = canManageBoard(permissions)
   const [columns, setColumns] = useState<KanbanColumn[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [sprints, setSprints] = useState<Sprint[]>([])
@@ -552,6 +558,28 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
     () =>
       Array.from(new Set(tasks.flatMap((t) => taskPeople(t)))).sort((a, b) => a.localeCompare(b, "pt-BR")),
     [tasks]
+  )
+
+  // Pessoas do projeto (dono e membros), sugeridas como responsáveis: com o nome da conta na
+  // tarefa, o estagiário a reconhece como sua.
+  const [memberNames, setMemberNames] = useState<string[]>([])
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/projects/${projectId}/sharing`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { owner: { name: string | null }; members: { name: string | null }[] } | null) => {
+        if (cancelled || !data) return
+        const names = [data.owner.name, ...data.members.map((m) => m.name)].filter((n): n is string => !!n?.trim())
+        setMemberNames(names)
+      })
+      .catch(console.error)
+    return () => {
+      cancelled = true
+    }
+  }, [projectId])
+  const people = useMemo(
+    () => Array.from(new Set([...memberNames, ...assignees])).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [memberNames, assignees]
   )
 
   const hasActiveFilter = Object.values(filters).some((v) => v !== ALL)
@@ -908,14 +936,14 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
         features={features}
         sprints={sprints}
         defaultColumnId={dialogColumnId}
-        people={assignees}
+        people={people}
         onSaved={(task) => {
           upsertTask(task)
           load()
         }}
         onHistory={setHistoryTask}
         onDelete={editable ? deleteTask : undefined}
-        readOnly={!editable}
+        readOnly={dialogTask ? !canEditTask(permissions, dialogTask) : !editable}
       />
 
       <TaskHistorySheet

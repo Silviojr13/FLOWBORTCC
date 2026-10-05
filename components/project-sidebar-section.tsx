@@ -25,6 +25,7 @@ import {
   getProjectModuleKey,
   type ProjectModuleKey,
 } from "@/lib/project-nav"
+import { isMemberRole, permissionsFor } from "@/lib/project-permissions"
 import { useProjectLocalMeta } from "@/lib/use-project-local-meta"
 import { cn } from "@/lib/utils"
 
@@ -221,7 +222,9 @@ export function ProjectSidebarSection() {
                 const navItem = PROJECT_MODULES.find((item) => item.key === key)
                 if (!navItem) return null
                 // Recursos trazem custos: some para o visitante que não pode vê-los.
-                if (key === "resources" && project?.role === "visitante" && !project.canSeeCosts) return null
+                if (key === "resources" && project?.role && !permissionsFor(isMemberRole(project.role) ? project.role : "visitante", project.canSeeCosts).canSeeCosts) {
+                  return null
+                }
                 return (
                   <ModuleLink
                     key={navItem.key}

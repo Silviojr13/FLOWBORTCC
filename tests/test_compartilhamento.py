@@ -39,7 +39,9 @@ class SessaoHttp:
             self.opener.open(pedido, timeout=120)
         except urllib.error.URLError:
             pass  # o redirecionamento pós-login pode apontar para outra origem; o cookie já veio
-        assert self.chamar("GET", "/api/auth/session")["data"].get("user"), "Login do visitante falhou"
+        usuario = self.chamar("GET", "/api/auth/session")["data"].get("user")
+        assert usuario, "Login do visitante falhou"
+        self.nome = usuario.get("name")
 
     def chamar(self, method: str, path: str, body: dict | None = None) -> dict:
         dados = json.dumps(body).encode() if body is not None else None
@@ -198,3 +200,91 @@ def test_aba_compartilhamento_mostra_o_visitante(autenticado, base_url, comparti
     texto = corpo(driver)
     assert "Visitante" in texto
     assert "Link de convite" in texto
+
+
+def _membro(autenticado, projeto_id, email):
+    pessoas = api(autenticado, "GET", f"/api/projects/{projeto_id}/sharing")["data"]
+    return next(m for m in pessoas["members"] if m["email"] == email)
+
+
+def _mudar_cargo(autenticado, projeto_id, membro_id, cargo):
+    resposta = api(autenticado, "PATCH", f"/api/projects/{projeto_id}/sharing/members/{membro_id}", {"role": cargo})
+    assert resposta["status"] == 200, resposta
+
+
+def test_dono_promove_a_gestor(autenticado, compartilhado, visitante):
+    """RF20: o gestor edita o projeto e convida pessoas, mas não exclui o projeto."""
+    base = f"/api/projects/{compartilhado['id']}"
+    membro = _membro(autenticado, compartilhado["id"], visitante.email)
+    _mudar_cargo(autenticado, compartilhado["id"], membro["id"], "gestor")
+
+    acesso = visitante.chamar("GET", base)["data"]["access"]
+    assert acesso["role"] == "gestor" and acesso["canManagePeople"] and not acesso["readOnly"]
+
+    requisito = visitante.chamar(
+        "POST", f"{base}/requirements", {"description": "Requisito do gestor.", "category": "Funcional", "priority": "Alta"}
+    )
+    assert requisito["status"] == 201, requisito
+    assert visitante.chamar("POST", f"{base}/tasks", {"title": "Tarefa do gestor"})["status"] == 201
+    assert visitante.chamar("POST", f"{base}/sharing/invitations", {"email": "convite.gestor@flowbot.test"})["status"] == 201
+    assert visitante.chamar("GET", f"{base}/resources")["status"] == 200
+
+    # Não muda o próprio cargo nem exclui o projeto.
+    eu = _membro(autenticado, compartilhado["id"], visitante.email)
+    assert visitante.chamar("PATCH", f"{base}/sharing/members/{eu['id']}", {"role": "visitante"})["status"] == 403
+    assert visitante.chamar("DELETE", base)["status"] in (403, 404)
+
+
+def test_funcionario_edita_tarefas_e_componentes(autenticado, compartilhado, visitante):
+    """RF20: o funcionário cria tarefas e componentes, mas não mexe nos requisitos."""
+    base = f"/api/projects/{compartilhado['id']}"
+    membro = _membro(autenticado, compartilhado["id"], visitante.email)
+    _mudar_cargo(autenticado, compartilhado["id"], membro["id"], "funcionario")
+
+    assert visitante.chamar("POST", f"{base}/tasks", {"title": "Tarefa do funcionário"})["status"] == 201
+    assert visitante.chamar("POST", f"{base}/components", {"name": "Motor", "quantity": 1, "unitPrice": 10})["status"] == 201
+    assert visitante.chamar(
+        "POST", f"{base}/requirements", {"description": "x", "category": "Funcional", "priority": "Alta"}
+    )["status"] == 403
+    assert visitante.chamar("POST", f"{base}/sharing/link")["status"] == 403
+    assert visitante.chamar("GET", f"{base}/components")["data"]["totalCost"] == 10
+
+
+def test_estagiario_so_altera_as_proprias_tarefas(autenticado, compartilhado, visitante):
+    """RF20: o estagiário edita e move só as tarefas em que é responsável ou participante."""
+    base = f"/api/projects/{compartilhado['id']}"
+    assert visitante.nome, "A conta do visitante precisa de nome para reconhecer as próprias tarefas"
+    minha = api(autenticado, "POST", f"{base}/tasks", {"title": "Tarefa do estagiário", "assignee": "Outra Pessoa", "participants": [visitante.nome]})
+    alheia = api(autenticado, "POST", f"{base}/tasks", {"title": "Tarefa de outra pessoa", "assignee": "Outra Pessoa"})
+    assert minha["status"] == 201 and alheia["status"] == 201
+    minha_id, alheia_id = minha["data"]["task"]["id"], alheia["data"]["task"]["id"]
+
+    membro = _membro(autenticado, compartilhado["id"], visitante.email)
+    _mudar_cargo(autenticado, compartilhado["id"], membro["id"], "estagiario")
+    acesso = visitante.chamar("GET", base)["data"]["access"]
+    assert acesso["role"] == "estagiario" and acesso["ownTasksOnly"] and not acesso["canSeeCosts"]
+
+    colunas = visitante.chamar("GET", f"{base}/kanban")["data"]["columns"]
+    outra_coluna = colunas[1]["id"]
+
+    assert visitante.chamar("PATCH", f"{base}/tasks/{minha_id}", {"columnId": outra_coluna})["status"] == 200
+    assert visitante.chamar("PATCH", f"{base}/tasks/{alheia_id}", {"columnId": outra_coluna})["status"] == 403
+    assert visitante.chamar(
+        "POST", f"{base}/tasks/reorder", {"columnId": outra_coluna, "taskIds": [minha_id, alheia_id]}
+    )["status"] == 403
+    assert visitante.chamar("POST", f"{base}/tasks", {"title": "x"})["status"] == 403
+    assert visitante.chamar("DELETE", f"{base}/tasks/{minha_id}")["status"] == 403
+    assert visitante.chamar("POST", f"{base}/columns", {"name": "x"})["status"] == 403
+    assert visitante.chamar("GET", f"{base}/resources")["status"] == 403
+
+
+def test_quem_nao_gerencia_nao_muda_cargos(autenticado, compartilhado, visitante):
+    """Só o dono e o gestor mudam cargos; o visitante não muda nem o próprio."""
+    membro = _membro(autenticado, compartilhado["id"], visitante.email)
+    resposta = visitante.chamar(
+        "PATCH", f"/api/projects/{compartilhado['id']}/sharing/members/{membro['id']}", {"role": "gestor"}
+    )
+    assert resposta["status"] == 403
+    assert api(
+        autenticado, "PATCH", f"/api/projects/{compartilhado['id']}/sharing/members/{membro['id']}", {"role": "chefe"}
+    )["status"] == 400

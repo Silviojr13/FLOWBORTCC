@@ -8,8 +8,10 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { notifyProjectsChanged } from "@/lib/projects-changed"
 import {
+  COSTS_ON_REQUEST,
   MEMBER_ROLES,
   ROLE_DESCRIPTIONS,
   ROLE_LABELS,
@@ -284,8 +286,40 @@ export function SharingPanel({ projectId }: { projectId: string }) {
         <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
           <PersonRow person={data.owner} role="dono" />
           {data.members.map((member) => (
-            <PersonRow key={member.id} person={member} role={roleOf(member)}>
-              {manage && roleOf(member) === "visitante" && (
+            <PersonRow
+              key={member.id}
+              person={member}
+              role={roleOf(member)}
+              roleControl={
+                // Quem gerencia muda o cargo dos outros; o próprio cargo não muda por aqui.
+                manage && !member.isYou ? (
+                  <Select
+                    value={roleOf(member)}
+                    disabled={busy !== null}
+                    onValueChange={(role) =>
+                      void call(
+                        `role-${member.id}`,
+                        `/api/projects/${projectId}/sharing/members/${member.id}`,
+                        { method: "PATCH", body: JSON.stringify({ role }) },
+                        `${member.name ?? "A pessoa"} agora é ${ROLE_LABELS[role as ProjectRole].toLowerCase()}.`
+                      )
+                    }
+                  >
+                    <SelectTrigger size="sm" className="w-36" aria-label={`Cargo de ${member.name ?? member.email ?? "membro"}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MEMBER_ROLES.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {ROLE_LABELS[role]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : undefined
+              }
+            >
+              {manage && COSTS_ON_REQUEST.includes(roleOf(member)) && (
                 <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
                   <Checkbox
                     checked={member.canSeeCosts ?? false}
@@ -370,10 +404,13 @@ export function SharingPanel({ projectId }: { projectId: string }) {
 function PersonRow({
   person,
   role,
+  roleControl,
   children,
 }: {
   person: Person
   role: ProjectRole
+  /** Seletor de cargo no lugar do selo, para quem pode mudar o cargo. */
+  roleControl?: React.ReactNode
   children?: React.ReactNode
 }) {
   return (
@@ -389,9 +426,11 @@ function PersonRow({
           </p>
           {person.email && <p className="truncate text-xs text-muted-foreground">{person.email}</p>}
         </div>
-        <Badge variant={role === "dono" ? "default" : "secondary"} className="ml-auto shrink-0 sm:ml-2">
-          {ROLE_LABELS[role]}
-        </Badge>
+        <div className="ml-auto shrink-0 sm:ml-2">
+          {roleControl ?? (
+            <Badge variant={role === "dono" ? "default" : "secondary"}>{ROLE_LABELS[role]}</Badge>
+          )}
+        </div>
       </div>
       {children && <div className="flex flex-wrap items-center gap-2 sm:justify-end">{children}</div>}
     </li>

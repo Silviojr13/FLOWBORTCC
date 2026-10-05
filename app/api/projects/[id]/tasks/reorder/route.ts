@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { authorizeProject } from "../../../../../../lib/project-access";
+import { isOwnTask } from "../../../../../../lib/project-permissions";
 import { tursoDb } from "../../../../../../lib/turso-db";
 import { json, jsonError } from "../../../../../../lib/kanban-server";
 import { emitProjectEvent, type ProjectEffect } from "../../../../../../lib/project-events";
@@ -32,10 +33,17 @@ export async function POST(
 
   const tasks = await tursoDb.task.findMany({
     where: { id: { in: taskIds }, projectId },
-    include: { column: { select: { name: true } } },
+    include: { column: { select: { name: true } }, participants: { select: { name: true } } },
   });
   if (tasks.length !== taskIds.length) {
     return jsonError("Alguma tarefa não pertence a este projeto", 400);
+  }
+  // Estagiário: só move de coluna as tarefas em que é responsável ou participante.
+  if (
+    gate.access.ownTasksOnly &&
+    tasks.some((t) => t.columnId !== column.id && !isOwnTask(gate.access.viewerName, t))
+  ) {
+    return jsonError("Seu cargo só permite mover as tarefas em que você é responsável ou participante.", 403);
   }
 
   try {

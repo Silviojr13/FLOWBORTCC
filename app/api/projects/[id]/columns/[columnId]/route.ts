@@ -13,7 +13,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; columnId: string }> }
 ) {
   const { id: projectId, columnId } = await params;
-  const gate = await authorizeProject(projectId, { edit: "kanban" });
+  const gate = await authorizeProject(projectId, { edit: "kanban", board: true });
   if (gate instanceof Response) return gate;
 
   const existing = await tursoDb.kanbanColumn.findUnique({ where: { id: columnId, projectId } });
@@ -61,7 +61,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; columnId: string }> }
 ) {
   const { id: projectId, columnId } = await params;
-  const gate = await authorizeProject(projectId, { edit: "kanban" });
+  const gate = await authorizeProject(projectId, { edit: "kanban", board: true });
   if (gate instanceof Response) return gate;
 
   const existing = await tursoDb.kanbanColumn.findUnique({

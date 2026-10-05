@@ -32,7 +32,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const gate = await authorizeProject(projectId, { edit: "kanban" });
+  const gate = await authorizeProject(projectId, { edit: "kanban", board: true });
   if (gate instanceof Response) return gate;
 
   const { name, isDone, wipLimit } = await req.json();
@@ -75,7 +75,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const gate = await authorizeProject(projectId, { edit: "kanban" });
+  const gate = await authorizeProject(projectId, { edit: "kanban", board: true });
   if (gate instanceof Response) return gate;
 
   const { columnIds } = await req.json();

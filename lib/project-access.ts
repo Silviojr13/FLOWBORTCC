@@ -32,13 +32,15 @@ export async function getProjectAccess(projectId: string, userId: string): Promi
 
 /** Só as permissões, sem ids internos, para enviar à interface. */
 export function publicPermissions(access: ProjectAccess): ProjectPermissions {
-  const { role, canSeeCosts, canEdit, canManagePeople, canDelete, readOnly } = access;
-  return { role, canSeeCosts, canEdit, canManagePeople, canDelete, readOnly };
+  const { role, canSeeCosts, canEdit, canManagePeople, canDelete, readOnly, ownTasksOnly, viewerName } = access;
+  return { role, canSeeCosts, canEdit, canManagePeople, canDelete, readOnly, ownTasksOnly, viewerName };
 }
 
 export interface ProjectRequirement {
   /** Área que a ação altera; sem ela, basta poder ver o projeto. */
   edit?: ProjectArea;
+  /** Ação sobre o Kanban inteiro (criar ou excluir tarefa, colunas): o estagiário não pode. */
+  board?: boolean;
   /** A resposta tem custos (preços, orçamento, recursos). */
   costs?: boolean;
   managePeople?: boolean;
@@ -66,11 +68,13 @@ export async function authorizeProject(
   const user = await getCurrentUser();
   if (!user) return deny("Usuário não autenticado", 401);
 
-  const access = await getProjectAccess(projectId, user.id);
-  if (!access) return deny("Projeto não encontrado", 404);
+  const found = await getProjectAccess(projectId, user.id);
+  if (!found) return deny("Projeto não encontrado", 404);
+  const access = { ...found, viewerName: user.name };
 
   const forbidden =
     (need.edit && !access.canEdit[need.edit]) ||
+    (need.board && (!access.canEdit.kanban || access.ownTasksOnly)) ||
     (need.costs && !access.canSeeCosts) ||
     (need.managePeople && !access.canManagePeople) ||
     (need.owner && access.role !== "dono");

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getCurrentUser } from "../../../lib/auth";
 import { tursoDb } from "../../../lib/turso-db";
 import { buildProjectContext } from "../../../lib/project-context";
+import { getProjectAccess } from "../../../lib/project-access";
 
 export const runtime = "nodejs";
 
@@ -63,13 +64,9 @@ export async function POST(req: NextRequest) {
     } else {
       const title = lastUserMsg.content.slice(0, 60).trim() || "Nova conversa";
       // Vincula a conversa ao projeto quando ela é aberta de dentro dele (assistente flutuante).
-      const linkedProject =
-        typeof projectId === "string" && projectId
-          ? await tursoDb.project.findUnique({
-              where: { id: projectId, userId: user.id },
-              select: { id: true },
-            })
-          : null;
+      // Só para quem pode usar o assistente no projeto (dono e cargos que editam).
+      const access = typeof projectId === "string" && projectId ? await getProjectAccess(projectId, user.id) : null;
+      const linkedProject = access?.canEdit.assistente ? { id: access.projectId } : null;
 
       const chat = await tursoDb.chat.create({
         data: { title, userId: user.id, projectId: linkedProject?.id ?? null },
@@ -179,8 +176,10 @@ RNF01 – ...
   // MODO C: dentro de um projeto, o assistente recebe o estado atual e pode propor
   // alterações. Quem executa é a interface, e só depois da confirmação do usuário.
   let systemContent = SYSTEM_INSTRUCTION;
-  if (resolvedProjectId) {
-    const context = await buildProjectContext(resolvedProjectId, user.id);
+  // O acesso é conferido de novo: a pessoa pode ter saído do projeto ou mudado de cargo.
+  const projectAccess = resolvedProjectId ? await getProjectAccess(resolvedProjectId, user.id) : null;
+  if (resolvedProjectId && projectAccess?.canEdit.assistente) {
+    const context = await buildProjectContext(resolvedProjectId, projectAccess.ownerId);
     if (context) {
       systemContent += `
 
