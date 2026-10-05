@@ -7,6 +7,8 @@ no código:
     FLOWBOT_BASE_URL       URL da aplicação (padrão: http://localhost:3000)
     FLOWBOT_TEST_EMAIL     e-mail da conta de teste
     FLOWBOT_TEST_PASSWORD  senha da conta de teste
+    FLOWBOT_VISITOR_EMAIL / FLOWBOT_VISITOR_PASSWORD
+                           segunda conta, usada como visitante nos testes de compartilhamento
     FLOWBOT_BROWSER        chrome | edge (padrão: chrome, com edge como alternativa)
     FLOWBOT_HEADLESS       0 para acompanhar a execução na tela (padrão: 1)
 

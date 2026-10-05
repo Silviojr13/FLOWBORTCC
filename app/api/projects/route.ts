@@ -13,15 +13,39 @@ export async function GET() {
   }
 
   try {
-    const projects = await tursoDb.project.findMany({
-      where: { userId: user.id },
-      orderBy: { updatedAt: "desc" },
-      include: {
-        _count: { select: { requirements: true, tasks: true, components: true } },
-      },
-    });
+    const [projects, memberships] = await Promise.all([
+      tursoDb.project.findMany({
+        where: { userId: user.id },
+        orderBy: { updatedAt: "desc" },
+        include: {
+          _count: { select: { requirements: true, tasks: true, components: true } },
+        },
+      }),
+      tursoDb.projectMember.findMany({
+        where: { userId: user.id },
+        orderBy: { project: { updatedAt: "desc" } },
+        select: {
+          role: true,
+          canSeeCosts: true,
+          project: {
+            include: {
+              _count: { select: { requirements: true, tasks: true, components: true } },
+              user: { select: { name: true } },
+            },
+          },
+        },
+      }),
+    ]);
 
-    return new Response(JSON.stringify({ projects }), {
+    // Projetos de outras pessoas em que esta é membro, com o cargo e o nome do dono.
+    const shared = memberships.map(({ role, canSeeCosts, project: { user: owner, ...project } }) => ({
+      ...project,
+      role,
+      canSeeCosts,
+      ownerName: owner.name,
+    }));
+
+    return new Response(JSON.stringify({ projects, shared }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

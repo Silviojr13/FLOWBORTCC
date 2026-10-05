@@ -2,12 +2,12 @@
 
 import { HELP, HelpLabel } from "@/components/help-tooltip"
 import {
-  REPORT_SECTIONS,
   REPORT_TYPE_LABELS,
   formatCurrency,
   formatReportDate,
   formatReportDateTime,
   formatTaskTeam,
+  reportSections,
   filtersLabel,
   periodLabel,
   type ProjectReport,
@@ -120,7 +120,7 @@ function Stat({ label, value, hint, tone }: { label: React.ReactNode; value: Rea
 // Renderização do relatório consolidado (RF13). Usada na tela do dashboard e na rota de
 // impressão (PDF pelo navegador).
 export function ReportView({ report }: { report: ProjectReport }) {
-  const sections = new Set(REPORT_SECTIONS[report.type])
+  const sections = reportSections(report)
   const s = report.summary
 
   return (
@@ -190,20 +190,26 @@ export function ReportView({ report }: { report: ProjectReport }) {
             <Stat label="Progresso" value={`${s.progressPct}%`} hint="tarefas concluídas" />
             <Stat label="Tarefas em atraso" value={s.tasksOverdue} tone={s.tasksOverdue > 0 ? "danger" : undefined} />
             <Stat label="Sprints" value={s.sprintsTotal} />
-            <Stat
-              label="Componentes e recursos"
-              value={`${s.componentsTotal} · ${s.resourcesTotal}`}
-              hint={`${formatCurrency(s.totalCost)} · ${formatCurrency(s.resourcesCost)}`}
-            />
-            <Stat
-              label={
-                <HelpLabel label="Custo estimado" content={HELP.estimatedCost}>
-                  Orçamento total
-                </HelpLabel>
-              }
-              value={formatCurrency(s.budgetTotal)}
-              hint={`desembolso: ${formatCurrency(report.budget.toSpend)}`}
-            />
+            {report.costsHidden ? (
+              <Stat label="Componentes" value={s.componentsTotal} />
+            ) : (
+              <>
+                <Stat
+                  label="Componentes e recursos"
+                  value={`${s.componentsTotal} · ${s.resourcesTotal}`}
+                  hint={`${formatCurrency(s.totalCost)} · ${formatCurrency(s.resourcesCost)}`}
+                />
+                <Stat
+                  label={
+                    <HelpLabel label="Custo estimado" content={HELP.estimatedCost}>
+                      Orçamento total
+                    </HelpLabel>
+                  }
+                  value={formatCurrency(s.budgetTotal)}
+                  hint={`desembolso: ${formatCurrency(report.budget.toSpend)}`}
+                />
+              </>
+            )}
           </div>
           {Object.keys(s.requirementsByStatus).length > 0 && (
             <p className="text-xs text-muted-foreground">

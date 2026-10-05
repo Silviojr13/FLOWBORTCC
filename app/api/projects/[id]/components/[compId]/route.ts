@@ -1,15 +1,15 @@
 import { NextRequest } from "next/server";
-import { getCurrentUser } from "../../../../../../lib/auth";
+import { authorizeProject } from "../../../../../../lib/project-access";
 import { tursoDb } from "../../../../../../lib/turso-db";
 import { isComponentDomain } from "../../../../../../lib/resources";
 
-async function findOwnedComponent(projectId: string, compId: string, userId: string) {
+async function findProjectComponent(projectId: string, compId: string) {
   const component = await tursoDb.hardwareComponent.findUnique({
     where: { id: compId, projectId },
     include: { project: true },
   });
 
-  if (!component || component.project.userId !== userId) {
+  if (!component) {
     return null;
   }
 
@@ -21,16 +21,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; compId: string }> }
 ) {
   const { id: projectId, compId } = await params;
-  const user = await getCurrentUser();
+  const gate = await authorizeProject(projectId, { edit: "componentes" });
+  if (gate instanceof Response) return gate;
 
-  if (!user) {
-    return new Response(
-      JSON.stringify({ error: "Usuário não autenticado" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const existing = await findOwnedComponent(projectId, compId, user.id);
+  const existing = await findProjectComponent(projectId, compId);
   if (!existing) {
     return new Response(
       JSON.stringify({ error: "Componente não encontrado" }),
@@ -118,16 +112,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; compId: string }> }
 ) {
   const { id: projectId, compId } = await params;
-  const user = await getCurrentUser();
+  const gate = await authorizeProject(projectId, { edit: "componentes" });
+  if (gate instanceof Response) return gate;
 
-  if (!user) {
-    return new Response(
-      JSON.stringify({ error: "Usuário não autenticado" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const existing = await findOwnedComponent(projectId, compId, user.id);
+  const existing = await findProjectComponent(projectId, compId);
   if (!existing) {
     return new Response(
       JSON.stringify({ error: "Componente não encontrado" }),

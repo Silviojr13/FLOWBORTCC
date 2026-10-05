@@ -38,7 +38,14 @@ export default function ProjectResourcesPage() {
       description="Pessoas, equipamentos, software e espaços que o projeto usa, com o orçamento consolidado."
       width="wide"
     >
-      <ResourcesPanel projectId={id} />
+      {project.access.canSeeCosts ? (
+        <ResourcesPanel projectId={id} />
+      ) : (
+        <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+          Os recursos ficam ocultos para o seu cargo, porque trazem custos e o valor da hora das
+          pessoas. Se precisar vê-los, peça a quem compartilhou o projeto.
+        </p>
+      )}
     </ProjectShell>
   )
 }

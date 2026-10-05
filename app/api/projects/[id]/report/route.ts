@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { getCurrentUser } from "../../../../../lib/auth";
-import { findOwnedProject, json, jsonError, parseDateInput } from "../../../../../lib/kanban-server";
+import { authorizeProject } from "../../../../../lib/project-access";
+import { tursoDb } from "../../../../../lib/turso-db";
+import { json, jsonError, parseDateInput } from "../../../../../lib/kanban-server";
 import { buildProjectReport } from "../../../../../lib/report-server";
 import {
   isCsvTable,
@@ -19,10 +20,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
-  if (!user) return jsonError("Usuário não autenticado", 401);
-
-  const project = await findOwnedProject(projectId, user.id);
+  const gate = await authorizeProject(projectId);
+  if (gate instanceof Response) return gate;
+  const project = await tursoDb.project.findUnique({ where: { id: projectId } });
   if (!project) return jsonError("Projeto não encontrado", 404);
 
   const q = req.nextUrl.searchParams;
@@ -30,6 +30,10 @@ export async function GET(
   const typeParam = q.get("type") ?? "completo";
   if (!isReportType(typeParam)) {
     return jsonError("Tipo de relatório inválido (completo, progresso, requisitos ou custos)", 400);
+  }
+  const hideCosts = !gate.access.canSeeCosts;
+  if (hideCosts && typeParam === "custos") {
+    return jsonError("Seu cargo neste projeto não permite ver custos.", 403);
   }
 
   const from = parseDateInput(q.get("from"));
@@ -48,10 +52,14 @@ export async function GET(
   if (format === "csv" && !isCsvTable(table)) {
     return jsonError("Tabela inválida (tasks, requirements, components, resources ou sprints)", 400);
   }
+  if (hideCosts && format === "csv" && (table === "components" || table === "resources")) {
+    return jsonError("Seu cargo neste projeto não permite ver custos.", 403);
+  }
 
   try {
     const report = await buildProjectReport(project, {
       type: typeParam,
+      hideCosts,
       from,
       to,
       filters: {

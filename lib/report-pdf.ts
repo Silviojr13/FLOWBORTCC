@@ -2,13 +2,13 @@
 
 import type { Content, ContextPageSize, TableCell, TDocumentDefinitions } from "pdfmake/interfaces"
 import {
-  REPORT_SECTIONS,
   REPORT_TYPE_LABELS,
   filtersLabel,
   formatCurrency,
   formatReportDate,
   formatReportDateTime,
   formatTaskTeam,
+  reportSections,
   periodLabel,
   reportFileStem,
   type ProjectReport,
@@ -120,7 +120,7 @@ function indicatorGrid(items: { label: string; value: string; hint?: string; col
 }
 
 function buildDocument(report: ProjectReport): TDocumentDefinitions {
-  const sections = new Set(REPORT_SECTIONS[report.type])
+  const sections = reportSections(report)
   const s = report.summary
   const filters = filtersLabel(report.filters)
   const generated = formatReportDateTime(report.generatedAt)
@@ -198,17 +198,21 @@ function buildDocument(report: ProjectReport): TDocumentDefinitions {
           color: s.tasksOverdue > 0 ? COLOR.danger : undefined,
         },
         { label: "Sprints", value: String(s.sprintsTotal), hint: `${s.featuresTotal} funcionalidade(s)` },
-        {
-          label: "Componentes · recursos",
-          value: `${s.componentsTotal} · ${s.resourcesTotal}`,
-          hint: `${formatCurrency(s.totalCost)} · ${formatCurrency(s.resourcesCost)}`,
-        },
-        {
-          label: "Orçamento total",
-          value: formatCurrency(s.budgetTotal),
-          hint: `desembolso: ${formatCurrency(report.budget.toSpend)}`,
-          color: COLOR.primary,
-        },
+        ...(report.costsHidden
+          ? [{ label: "Componentes", value: String(s.componentsTotal) }]
+          : [
+              {
+                label: "Componentes · recursos",
+                value: `${s.componentsTotal} · ${s.resourcesTotal}`,
+                hint: `${formatCurrency(s.totalCost)} · ${formatCurrency(s.resourcesCost)}`,
+              },
+              {
+                label: "Orçamento total",
+                value: formatCurrency(s.budgetTotal),
+                hint: `desembolso: ${formatCurrency(report.budget.toSpend)}`,
+                color: COLOR.primary,
+              },
+            ]),
       ])
     )
     const statuses = Object.entries(s.requirementsByStatus)

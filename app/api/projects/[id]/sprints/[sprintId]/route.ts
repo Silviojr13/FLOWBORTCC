@@ -1,18 +1,15 @@
 import { NextRequest } from "next/server";
-import { getCurrentUser } from "../../../../../../lib/auth";
+import { authorizeProject } from "../../../../../../lib/project-access";
 import { tursoDb } from "../../../../../../lib/turso-db";
 import { getSprintStatus } from "../../../../../../lib/kanban";
 import {
-  findOwnedProject,
   json,
   jsonError,
   parseDateInput,
   taskInclude,
 } from "../../../../../../lib/kanban-server";
 
-async function findOwnedSprint(projectId: string, sprintId: string, userId: string) {
-  const project = await findOwnedProject(projectId, userId);
-  if (!project) return null;
+async function findProjectSprint(projectId: string, sprintId: string) {
   return tursoDb.sprint.findUnique({ where: { id: sprintId, projectId } });
 }
 
@@ -22,10 +19,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string; sprintId: string }> }
 ) {
   const { id: projectId, sprintId } = await params;
-  const user = await getCurrentUser();
-  if (!user) return jsonError("Usuário não autenticado", 401);
+  const gate = await authorizeProject(projectId);
+  if (gate instanceof Response) return gate;
 
-  const sprint = await findOwnedSprint(projectId, sprintId, user.id);
+  const sprint = await findProjectSprint(projectId, sprintId);
   if (!sprint) return jsonError("Sprint não encontrada", 404);
 
   try {
@@ -65,10 +62,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; sprintId: string }> }
 ) {
   const { id: projectId, sprintId } = await params;
-  const user = await getCurrentUser();
-  if (!user) return jsonError("Usuário não autenticado", 401);
+  const gate = await authorizeProject(projectId, { edit: "sprints" });
+  if (gate instanceof Response) return gate;
 
-  const existing = await findOwnedSprint(projectId, sprintId, user.id);
+  const existing = await findProjectSprint(projectId, sprintId);
   if (!existing) return jsonError("Sprint não encontrada", 404);
 
   const { name, goal, startDate, endDate, taskIds } = await req.json();
@@ -148,10 +145,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; sprintId: string }> }
 ) {
   const { id: projectId, sprintId } = await params;
-  const user = await getCurrentUser();
-  if (!user) return jsonError("Usuário não autenticado", 401);
+  const gate = await authorizeProject(projectId, { edit: "sprints" });
+  if (gate instanceof Response) return gate;
 
-  const existing = await findOwnedSprint(projectId, sprintId, user.id);
+  const existing = await findProjectSprint(projectId, sprintId);
   if (!existing) return jsonError("Sprint não encontrada", 404);
 
   try {

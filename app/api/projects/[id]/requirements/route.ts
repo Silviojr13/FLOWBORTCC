@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getCurrentUser } from "../../../../../lib/auth";
+import { authorizeProject } from "../../../../../lib/project-access";
 import { tursoDb } from "../../../../../lib/turso-db";
 
 const CATEGORY_PREFIX: Record<string, string> = {
@@ -10,10 +10,6 @@ const CATEGORY_PREFIX: Record<string, string> = {
 const VALID_CATEGORIES = Object.keys(CATEGORY_PREFIX);
 const VALID_PRIORITIES = ["Alta", "Média", "Baixa"];
 const VALID_STATUSES = ["Em Aberto", "Validado", "Descartado"];
-
-async function assertProjectOwnership(projectId: string, userId: string) {
-  return tursoDb.project.findUnique({ where: { id: projectId, userId } });
-}
 
 async function nextRequirementCode(projectId: string, category: string) {
   const prefix = CATEGORY_PREFIX[category];
@@ -35,22 +31,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
-
-  if (!user) {
-    return new Response(
-      JSON.stringify({ error: "Usuário não autenticado" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const project = await assertProjectOwnership(projectId, user.id);
-  if (!project) {
-    return new Response(
-      JSON.stringify({ error: "Projeto não encontrado" }),
-      { status: 404, headers: { "Content-Type": "application/json" } }
-    );
-  }
+  const gate = await authorizeProject(projectId);
+  if (gate instanceof Response) return gate;
 
   try {
     const rows = await tursoDb.requirement.findMany({
@@ -71,7 +53,10 @@ export async function GET(
       tasksDone: tasks.filter((t) => t.column.isDone).length,
       featuresTotal: _count.features,
       componentsTotal: components.length,
-      estimatedCost: components.reduce((sum, c) => sum + c.quantity * c.unitPrice, 0),
+      // Quem não vê custos (visitante) recebe o campo vazio, não o valor.
+      estimatedCost: gate.access.canSeeCosts
+        ? components.reduce((sum, c) => sum + c.quantity * c.unitPrice, 0)
+        : null,
     }));
 
     return new Response(JSON.stringify({ requirements }), {
@@ -92,22 +77,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
-
-  if (!user) {
-    return new Response(
-      JSON.stringify({ error: "Usuário não autenticado" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const project = await assertProjectOwnership(projectId, user.id);
-  if (!project) {
-    return new Response(
-      JSON.stringify({ error: "Projeto não encontrado" }),
-      { status: 404, headers: { "Content-Type": "application/json" } }
-    );
-  }
+  const gate = await authorizeProject(projectId, { edit: "requisitos" });
+  if (gate instanceof Response) return gate;
 
   const { description, category, priority, status, level } = await req.json();
 

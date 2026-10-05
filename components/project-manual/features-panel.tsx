@@ -10,6 +10,7 @@ import {
   CheckIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useProjectPermissions } from "@/components/project/project-permissions-context"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -62,6 +63,7 @@ const EMPTY_DRAFT: DraftFields = {
 }
 
 export function FeaturesPanel({ projectId }: { projectId: string }) {
+  const editable = useProjectPermissions().canEdit.funcionalidades
   const [features, setFeatures] = useState<Feature[]>([])
   const [requirements, setRequirements] = useState<RequirementOption[]>([])
   const [reqMap, setReqMap] = useState<Record<string, string[]>>({})
@@ -303,21 +305,23 @@ export function FeaturesPanel({ projectId }: { projectId: string }) {
                   )}
                 </div>
               </CardContent>
-              <CardFooter className="justify-end gap-1 pt-0">
-                <Button size="sm" variant="ghost" onClick={() => startEdit(feature)}>
-                  <PencilIcon className="size-4" />
-                  Editar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => deleteFeature(feature.id)}
-                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <Trash2Icon className="size-4" />
-                  Excluir
-                </Button>
-              </CardFooter>
+              {editable && (
+                <CardFooter className="justify-end gap-1 pt-0">
+                  <Button size="sm" variant="ghost" onClick={() => startEdit(feature)}>
+                    <PencilIcon className="size-4" />
+                    Editar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => deleteFeature(feature.id)}
+                    className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2Icon className="size-4" />
+                    Excluir
+                  </Button>
+                </CardFooter>
+              )}
             </Card>
           )
         })}
@@ -326,7 +330,7 @@ export function FeaturesPanel({ projectId }: { projectId: string }) {
 
       {editingId === NEW_ROW_ID && renderDraftForm()}
 
-      {editingId !== NEW_ROW_ID && (
+      {editable && editingId !== NEW_ROW_ID && (
         <Button variant="outline" size="sm" className="w-fit gap-1.5" onClick={startCreate} data-tour="features-add">
           <PlusIcon className="size-4" />
           Adicionar funcionalidade

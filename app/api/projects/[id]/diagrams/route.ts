@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { authorizeProject } from "@/lib/project-access";
 import { tursoDb } from "@/lib/turso-db";
 import { getDiagramType } from "@/lib/diagrams";
 import { DiagramGenerationError, generateDiagram } from "@/lib/diagrams-server";
@@ -10,18 +10,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Usuário não autenticado" }, { status: 401 });
-  }
-
-  const project = await tursoDb.project.findUnique({
-    where: { id: projectId, userId: user.id },
-    select: { id: true },
-  });
-  if (!project) {
-    return NextResponse.json({ error: "Projeto não encontrado" }, { status: 404 });
-  }
+  const gate = await authorizeProject(projectId);
+  if (gate instanceof Response) return gate;
 
   const diagrams = await tursoDb.diagram.findMany({
     where: { projectId },
@@ -36,18 +26,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Usuário não autenticado" }, { status: 401 });
-  }
-
-  const project = await tursoDb.project.findUnique({
-    where: { id: projectId, userId: user.id },
-    select: { id: true },
-  });
-  if (!project) {
-    return NextResponse.json({ error: "Projeto não encontrado" }, { status: 404 });
-  }
+  const gate = await authorizeProject(projectId, { edit: "diagramas" });
+  if (gate instanceof Response) return gate;
 
   const { type, instructions } = await req.json();
   const info = typeof type === "string" ? getDiagramType(type) : undefined;
@@ -64,7 +44,7 @@ export async function POST(
     const { code, source } = await generateDiagram({
       type: info.key,
       projectId,
-      userId: user.id,
+      userId: gate.access.ownerId,
       instructions: focus ?? undefined,
     });
     const diagram = await tursoDb.diagram.create({

@@ -54,6 +54,7 @@ import {
 import { PriorityIndicator } from "@/components/project-manual/requirement-indicators"
 import { KanbanColumnsDialog } from "@/components/project/kanban-columns-dialog"
 import { TaskDialog } from "@/components/project/task-dialog"
+import { useProjectPermissions } from "@/components/project/project-permissions-context"
 import { TaskHistorySheet } from "@/components/project/task-history-sheet"
 import {
   TASK_PRIORITIES,
@@ -181,6 +182,7 @@ function TaskCardContent({
   onHistory: (task: Task) => void
   onDelete: (task: Task) => void
 }) {
+  const editable = useProjectPermissions().canEdit.kanban
   const overdue = isTaskOverdue(task, isDone)
   const requirementDiscarded = task.requirement?.status === "Descartado"
   const draggedRef = useRef(false)
@@ -207,7 +209,8 @@ function TaskCardContent({
   return (
     <div
       className={cn(
-        "cursor-grab rounded-lg border border-border bg-card p-3 shadow-sm transition-shadow active:cursor-grabbing",
+        "rounded-lg border border-border bg-card p-3 shadow-sm transition-shadow",
+        editable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
         isDragging && "cursor-grabbing opacity-40 shadow-md",
         overdue && "border-destructive/50",
         requirementDiscarded && "border-amber-400/70 bg-amber-50/40 dark:bg-amber-950/20"
@@ -230,13 +233,18 @@ function TaskCardContent({
         </p>
       )}
       <div className="flex items-start gap-2">
-        <span className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden>
-          <GripVerticalIcon className="size-4" />
-        </span>
+        {editable && (
+          <span className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden>
+            <GripVerticalIcon className="size-4" />
+          </span>
+        )}
 
         <button
           type="button"
-          className="min-w-0 flex-1 cursor-grab text-left active:cursor-grabbing"
+          className={cn(
+            "min-w-0 flex-1 text-left",
+            editable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+          )}
           onClick={(event) => {
             event.stopPropagation()
             if (draggedRef.current) {
@@ -280,11 +288,15 @@ function TaskCardContent({
                 <HistoryIcon className="size-4" />
                 Histórico
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => onDelete(task)}>
-                <Trash2Icon className="size-4" />
-                Excluir
-              </DropdownMenuItem>
+              {editable && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onClick={() => onDelete(task)}>
+                    <Trash2Icon className="size-4" />
+                    Excluir
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -331,36 +343,40 @@ function TaskCardContent({
         </p>
       )}
 
-      <div
-        className="mt-3 pl-6"
-        data-card-control
-        onPointerDown={isolateCardControl}
-        onTouchStart={isolateCardControl}
-        onClick={isolateCardControl}
-        onKeyDown={isolateCardControl}
-      >
-        <Select value={task.columnId} onValueChange={(columnId) => onMove(task.id, columnId)}>
-          <SelectTrigger size="sm" className="w-full min-w-[10rem] cursor-pointer" aria-label="Mover para coluna">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {columns.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {editable && (
+        <div
+          className="mt-3 pl-6"
+          data-card-control
+          onPointerDown={isolateCardControl}
+          onTouchStart={isolateCardControl}
+          onClick={isolateCardControl}
+          onKeyDown={isolateCardControl}
+        >
+          <Select value={task.columnId} onValueChange={(columnId) => onMove(task.id, columnId)}>
+            <SelectTrigger size="sm" className="w-full min-w-[10rem] cursor-pointer" aria-label="Mover para coluna">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {columns.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
     </div>
   )
 }
 
 function DraggableTaskCard(props: Parameters<typeof TaskCardContent>[0]) {
   const { task } = props
+  const editable = useProjectPermissions().canEdit.kanban
   const { listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
     id: task.id,
     data: { type: "task", task },
+    disabled: !editable,
   })
   // O card também é área de soltura: soltar sobre ele insere a tarefa arrastada na posição dele.
   const { setNodeRef: setDropRef } = useDroppable({ id: task.id, data: { type: "task", task } })
@@ -398,6 +414,7 @@ function KanbanColumnView({
   cardProps: Omit<Parameters<typeof TaskCardContent>[0], "task" | "columns" | "isDone">
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { type: "column" } })
+  const editable = useProjectPermissions().canEdit.kanban
   const overLimit = column.wipLimit !== null && tasks.length > column.wipLimit
 
   return (
@@ -427,15 +444,17 @@ function KanbanColumnView({
             {tasks.length}
             {column.wipLimit ? `/${column.wipLimit}` : ""}
           </span>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="size-6 text-muted-foreground"
-            aria-label={`Nova tarefa em ${column.name}`}
-            onClick={() => onAdd(column.id)}
-          >
-            <PlusIcon className="size-3.5" />
-          </Button>
+          {editable && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-6 text-muted-foreground"
+              aria-label={`Nova tarefa em ${column.name}`}
+              onClick={() => onAdd(column.id)}
+            >
+              <PlusIcon className="size-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -468,6 +487,7 @@ function KanbanColumnView({
 /* ------------------------------------------------------------------ */
 
 export function KanbanBoard({ projectId }: { projectId: string }) {
+  const editable = useProjectPermissions().canEdit.kanban
   const [columns, setColumns] = useState<KanbanColumn[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [sprints, setSprints] = useState<Sprint[]>([])
@@ -732,14 +752,18 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
     <div className="flex flex-col gap-4">
       {/* Barra de ações e filtros */}
       <div className="flex flex-wrap items-center gap-2" data-tour="kanban-toolbar">
-        <Button size="sm" className="gap-1.5" onClick={() => openCreate()}>
-          <PlusIcon className="size-4" />
-          Nova tarefa
-        </Button>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setIsColumnsDialogOpen(true)}>
-          <Settings2Icon className="size-4" />
-          Colunas
-        </Button>
+        {editable && (
+          <>
+            <Button size="sm" className="gap-1.5" onClick={() => openCreate()}>
+              <PlusIcon className="size-4" />
+              Nova tarefa
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setIsColumnsDialogOpen(true)}>
+              <Settings2Icon className="size-4" />
+              Colunas
+            </Button>
+          </>
+        )}
         <Button size="sm" variant="outline" className="gap-1.5" asChild>
           <Link href={`/dashboard/projects/${projectId}/sprints`}>
             <CalendarIcon className="size-4" />
@@ -890,7 +914,8 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
           load()
         }}
         onHistory={setHistoryTask}
-        onDelete={deleteTask}
+        onDelete={editable ? deleteTask : undefined}
+        readOnly={!editable}
       />
 
       <TaskHistorySheet

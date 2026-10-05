@@ -8,6 +8,7 @@ import {
   LayoutDashboardIcon,
   NetworkIcon,
   SparklesIcon,
+  UsersIcon,
   WalletIcon,
 } from "lucide-react"
 
@@ -21,6 +22,7 @@ export type ProjectModuleKey =
   | "resources"
   | "requirements"
   | "diagrams"
+  | "sharing"
 
 export type ProjectModule = {
   key: ProjectModuleKey
@@ -94,6 +96,13 @@ export const PROJECT_MODULES: ProjectModule[] = [
     icon: NetworkIcon,
     href: (projectId) => `/dashboard/projects/${projectId}/diagrams`,
   },
+  {
+    key: "sharing",
+    label: "Compartilhamento",
+    description: "Quem participa do projeto e com qual cargo.",
+    icon: UsersIcon,
+    href: (projectId) => `/dashboard/projects/${projectId}/sharing`,
+  },
 ]
 
 export const PROJECT_MODULE_GROUPS = [
@@ -106,6 +115,11 @@ export const PROJECT_MODULE_GROUPS = [
     id: "structure",
     label: "Estrutura do projeto",
     keys: ["features", "components", "resources", "requirements", "diagrams"] as const,
+  },
+  {
+    id: "team",
+    label: "Equipe",
+    keys: ["sharing"] as const,
   },
 ]
 
@@ -157,6 +171,7 @@ export function getProjectModuleKey(
   if (matchesPath(pathname, `${base}/resources`)) return "resources"
   if (matchesPath(pathname, `${base}/requirements`)) return "requirements"
   if (matchesPath(pathname, `${base}/diagrams`)) return "diagrams"
+  if (matchesPath(pathname, `${base}/sharing`)) return "sharing"
   return null
 }
 

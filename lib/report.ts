@@ -72,6 +72,8 @@ export interface ProjectReport {
     features: { id: string; name: string }[]
   }
   hasDataInPeriod: boolean
+  /** Gerado para quem não vê custos (visitante): sem preços, recursos nem orçamento. */
+  costsHidden: boolean
   project: {
     id: string
     name: string
@@ -236,8 +238,18 @@ function mdTable(headers: string[], rows: (string | number | null | undefined)[]
   return lines.join("\n") + "\n"
 }
 
-export function reportToMarkdown(report: ProjectReport): string {
+/** Seções que o relatório mostra: sem custos, componentes e recursos ficam de fora. */
+export function reportSections(report: Pick<ProjectReport, "type" | "costsHidden">): Set<ReportSection> {
   const sections = new Set(REPORT_SECTIONS[report.type])
+  if (report.costsHidden) {
+    sections.delete("components")
+    sections.delete("resources")
+  }
+  return sections
+}
+
+export function reportToMarkdown(report: ProjectReport): string {
+  const sections = reportSections(report)
   const s = report.summary
   const out: string[] = []
 
@@ -273,9 +285,13 @@ export function reportToMarkdown(report: ProjectReport): string {
         ["Tarefas", `${s.tasksTotal} (${s.tasksDone} concluídas · ${s.progressPct}%)`],
         ["Tarefas em atraso", s.tasksOverdue],
         ["Sprints", s.sprintsTotal],
-        ["Componentes", `${s.componentsTotal} (${formatCurrency(s.totalCost)})`],
-        ["Recursos", `${s.resourcesTotal} (${formatCurrency(s.resourcesCost)})`],
-        ["Orçamento total", formatCurrency(s.budgetTotal)],
+        ...(report.costsHidden
+          ? [["Componentes", s.componentsTotal]]
+          : [
+              ["Componentes", `${s.componentsTotal} (${formatCurrency(s.totalCost)})`],
+              ["Recursos", `${s.resourcesTotal} (${formatCurrency(s.resourcesCost)})`],
+              ["Orçamento total", formatCurrency(s.budgetTotal)],
+            ]),
       ]
     ))
     out.push("")

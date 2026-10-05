@@ -1,26 +1,25 @@
 import { NextRequest } from "next/server";
 import { getCurrentUser } from "../../../../lib/auth";
+import { authorizeProject, publicPermissions } from "../../../../lib/project-access";
 import { tursoDb } from "../../../../lib/turso-db";
 
+// GET: o projeto e o acesso de quem pede (cargo e permissões), que a interface usa para
+// esconder o que a pessoa não pode fazer. O bloqueio de verdade fica em cada rota.
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
-
-  if (!user) {
-    return new Response(
-      JSON.stringify({ error: "Usuário não autenticado" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
+  const gate = await authorizeProject(projectId);
+  if (gate instanceof Response) return gate;
+  const access = publicPermissions(gate.access);
 
   try {
     const project = await tursoDb.project.findUnique({
-      where: { id: projectId, userId: user.id },
+      where: { id: projectId },
       include: {
         requirements: { orderBy: { code: "asc" } },
+        user: { select: { name: true } },
       },
     });
 
@@ -31,7 +30,8 @@ export async function GET(
       );
     }
 
-    return new Response(JSON.stringify({ project }), {
+    const { user: owner, ...rest } = project;
+    return new Response(JSON.stringify({ project: { ...rest, ownerName: owner.name }, access }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

@@ -39,6 +39,7 @@ import {
 } from "@/lib/report"
 import { reportQueryString, useProjectReport, type ReportQuery } from "@/lib/use-project-report"
 import { markStudyTaskDone } from "@/lib/use-study-me"
+import { useProjectPermissions } from "@/components/project/project-permissions-context"
 
 // O Select não aceita valor vazio: "__all__" representa "todos" na interface.
 const ALL = "__all__"
@@ -82,6 +83,10 @@ function FilterSelect({
 
 // Tela de relatórios (UC11): escolhe tipo, período e filtros, visualiza e exporta (RF15).
 export function ReportPanel({ projectId }: { projectId: string }) {
+  // Sem acesso a custos, o tipo "Custos" some da lista (e o servidor também o recusa).
+  const reportTypes = useProjectPermissions().canSeeCosts
+    ? REPORT_TYPES
+    : REPORT_TYPES.filter((t) => t !== "custos")
   const [draft, setDraft] = useState<ReportQuery>(EMPTY_QUERY)
   const [query, setQuery] = useState<ReportQuery>(draft)
   const { report, error, isLoading } = useProjectReport(projectId, query)
@@ -137,7 +142,7 @@ export function ReportPanel({ projectId }: { projectId: string }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {REPORT_TYPES.map((t) => (
+                {reportTypes.map((t) => (
                   <SelectItem key={t} value={t}>
                     {REPORT_TYPE_LABELS[t]}
                   </SelectItem>

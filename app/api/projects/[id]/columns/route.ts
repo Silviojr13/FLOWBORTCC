@@ -1,10 +1,9 @@
 import { NextRequest } from "next/server";
-import { getCurrentUser } from "../../../../../lib/auth";
+import { authorizeProject } from "../../../../../lib/project-access";
 import { tursoDb } from "../../../../../lib/turso-db";
 import {
   MAX_COLUMNS,
   ensureKanbanColumns,
-  findOwnedProject,
   json,
   jsonError,
   parseWipLimit,
@@ -15,11 +14,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
-  if (!user) return jsonError("Usuário não autenticado", 401);
-
-  const project = await findOwnedProject(projectId, user.id);
-  if (!project) return jsonError("Projeto não encontrado", 404);
+  const gate = await authorizeProject(projectId);
+  if (gate instanceof Response) return gate;
 
   try {
     const columns = await ensureKanbanColumns(projectId);
@@ -36,11 +32,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
-  if (!user) return jsonError("Usuário não autenticado", 401);
-
-  const project = await findOwnedProject(projectId, user.id);
-  if (!project) return jsonError("Projeto não encontrado", 404);
+  const gate = await authorizeProject(projectId, { edit: "kanban" });
+  if (gate instanceof Response) return gate;
 
   const { name, isDone, wipLimit } = await req.json();
 
@@ -82,11 +75,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
-  if (!user) return jsonError("Usuário não autenticado", 401);
-
-  const project = await findOwnedProject(projectId, user.id);
-  if (!project) return jsonError("Projeto não encontrado", 404);
+  const gate = await authorizeProject(projectId, { edit: "kanban" });
+  if (gate instanceof Response) return gate;
 
   const { columnIds } = await req.json();
   if (!Array.isArray(columnIds) || columnIds.some((id) => typeof id !== "string")) {

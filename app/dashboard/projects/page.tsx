@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { PlusIcon } from "lucide-react"
 import { FlowbotMark } from "@/components/flowbot-brand-logo"
 import { ProjectCard, type ProjectCardData } from "@/components/project/project-card"
+import { PendingInvitations } from "@/components/sharing/pending-invitations"
 import { Button } from "@/components/ui/button"
 import { Workspace } from "@/components/layout/workspace"
 import { useProjectLocalMeta } from "@/lib/use-project-local-meta"
@@ -28,6 +29,7 @@ function ProjectCardWithImage({
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectCardData[]>([])
+  const [shared, setShared] = useState<ProjectCardData[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -36,6 +38,7 @@ export default function ProjectsPage() {
       .then((data) => {
         if (data.error) throw new Error(data.error)
         setProjects(data.projects)
+        setShared(data.shared ?? [])
       })
       .catch((error) => {
         console.error(error)
@@ -61,6 +64,8 @@ export default function ProjectsPage() {
           </Link>
         </Button>
       </div>
+
+      <PendingInvitations />
 
       {isLoading && (
         <p className="text-sm text-muted-foreground">Carregando projetos...</p>
@@ -96,6 +101,17 @@ export default function ProjectsPage() {
             />
           ))}
         </div>
+      )}
+
+      {!isLoading && shared.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-medium text-foreground">Compartilhados comigo</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {shared.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        </section>
       )}
     </Workspace>
   )

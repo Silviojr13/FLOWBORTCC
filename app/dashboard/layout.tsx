@@ -8,6 +8,7 @@ import { TourLauncher } from "@/components/tour/tour-launcher"
 import { ParticipantPanel } from "@/components/study/participant-panel"
 import { HelpCenter } from "@/components/tutorials/help-center"
 import { PageTutorialRunner } from "@/components/tutorials/page-tutorial-runner"
+import { PendingInviteRedirect } from "@/components/sharing/pending-invite-redirect"
 import BackgroundAnimation from "@/components/background-animation"
 import { tursoDb } from "@/lib/turso-db"
 
@@ -52,6 +53,9 @@ export default async function DashboardLayout({
           </div>
         </div>
       </SidebarInset>
+
+      {/* Convite de projeto aberto antes do login: leva de volta a ele. */}
+      <PendingInviteRedirect />
 
       {/* Tour guiado da primeira sessão (só aparece para quem ainda não o concluiu). */}
       <TourLauncher />

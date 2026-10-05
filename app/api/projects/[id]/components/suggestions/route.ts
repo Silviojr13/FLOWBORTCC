@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getCurrentUser } from "../../../../../../lib/auth";
+import { authorizeProject } from "../../../../../../lib/project-access";
 import { tursoDb } from "../../../../../../lib/turso-db";
 
 export const runtime = "nodejs";
@@ -11,16 +11,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
+  // Sugestões usam a IA (e a cota) do projeto: só para quem edita componentes.
+  const gate = await authorizeProject(projectId, { edit: "componentes" });
+  if (gate instanceof Response) return gate;
 
-  if (!user) {
-    return new Response(
-      JSON.stringify({ error: "Usuário não autenticado" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const project = await tursoDb.project.findUnique({ where: { id: projectId, userId: user.id } });
+  const project = await tursoDb.project.findUnique({ where: { id: projectId } });
   if (!project) {
     return new Response(
       JSON.stringify({ error: "Projeto não encontrado" }),

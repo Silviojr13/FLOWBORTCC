@@ -1,11 +1,7 @@
 import { NextRequest } from "next/server";
-import { getCurrentUser } from "../../../../../lib/auth";
+import { authorizeProject } from "../../../../../lib/project-access";
 import { tursoDb } from "../../../../../lib/turso-db";
 import { isComponentDomain } from "../../../../../lib/resources";
-
-async function assertProjectOwnership(projectId: string, userId: string) {
-  return tursoDb.project.findUnique({ where: { id: projectId, userId } });
-}
 
 function totalCost(components: { quantity: number; unitPrice: number }[]) {
   return components.reduce((sum, c) => sum + c.quantity * c.unitPrice, 0);
@@ -16,22 +12,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
-
-  if (!user) {
-    return new Response(
-      JSON.stringify({ error: "Usuário não autenticado" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const project = await assertProjectOwnership(projectId, user.id);
-  if (!project) {
-    return new Response(
-      JSON.stringify({ error: "Projeto não encontrado" }),
-      { status: 404, headers: { "Content-Type": "application/json" } }
-    );
-  }
+  const gate = await authorizeProject(projectId);
+  if (gate instanceof Response) return gate;
 
   try {
     const components = await tursoDb.hardwareComponent.findMany({
@@ -39,10 +21,15 @@ export async function GET(
       orderBy: { createdAt: "asc" },
     });
 
-    return new Response(
-      JSON.stringify({ components, totalCost: totalCost(components) }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
-    );
+    // Quem não vê custos (visitante) recebe a lista sem preços nem total.
+    const body = gate.access.canSeeCosts
+      ? { components, totalCost: totalCost(components) }
+      : { components: components.map((c) => ({ ...c, unitPrice: null })), totalCost: null };
+
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Erro ao buscar componentes:", error);
     return new Response(
@@ -57,22 +44,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
-
-  if (!user) {
-    return new Response(
-      JSON.stringify({ error: "Usuário não autenticado" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const project = await assertProjectOwnership(projectId, user.id);
-  if (!project) {
-    return new Response(
-      JSON.stringify({ error: "Projeto não encontrado" }),
-      { status: 404, headers: { "Content-Type": "application/json" } }
-    );
-  }
+  const gate = await authorizeProject(projectId, { edit: "componentes" });
+  if (gate instanceof Response) return gate;
 
   const { name, description, quantity, unitPrice, requirementId, domain } = await req.json();
 

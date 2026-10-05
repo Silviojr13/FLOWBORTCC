@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
-import { getCurrentUser } from "../../../../../../lib/auth";
+import { authorizeProject } from "../../../../../../lib/project-access";
 import { tursoDb } from "../../../../../../lib/turso-db";
 import {
-  findOwnedProject,
   json,
   jsonError,
   parseWipLimit,
@@ -14,11 +13,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; columnId: string }> }
 ) {
   const { id: projectId, columnId } = await params;
-  const user = await getCurrentUser();
-  if (!user) return jsonError("Usuário não autenticado", 401);
-
-  const project = await findOwnedProject(projectId, user.id);
-  if (!project) return jsonError("Projeto não encontrado", 404);
+  const gate = await authorizeProject(projectId, { edit: "kanban" });
+  if (gate instanceof Response) return gate;
 
   const existing = await tursoDb.kanbanColumn.findUnique({ where: { id: columnId, projectId } });
   if (!existing) return jsonError("Coluna não encontrada", 404);
@@ -65,11 +61,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; columnId: string }> }
 ) {
   const { id: projectId, columnId } = await params;
-  const user = await getCurrentUser();
-  if (!user) return jsonError("Usuário não autenticado", 401);
-
-  const project = await findOwnedProject(projectId, user.id);
-  if (!project) return jsonError("Projeto não encontrado", 404);
+  const gate = await authorizeProject(projectId, { edit: "kanban" });
+  if (gate instanceof Response) return gate;
 
   const existing = await tursoDb.kanbanColumn.findUnique({
     where: { id: columnId, projectId },

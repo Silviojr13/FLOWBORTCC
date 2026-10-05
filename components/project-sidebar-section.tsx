@@ -33,6 +33,9 @@ interface ProjectListItem {
   name: string
   description: string | null
   updatedAt: string
+  /** Só nos projetos compartilhados com a pessoa. */
+  role?: string
+  canSeeCosts?: boolean
 }
 
 const RECENT_LIMIT = 5
@@ -143,7 +146,8 @@ export function ProjectSidebarSection() {
       .then(async (res) => {
         const data = await res.json()
         if (!res.ok || cancelled) return
-        const sorted = [...data.projects].sort(
+        // Os próprios e os compartilhados com a pessoa, do mais recente ao mais antigo.
+        const sorted = [...data.projects, ...(data.shared ?? [])].sort(
           (a: ProjectListItem, b: ProjectListItem) =>
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         )
@@ -216,6 +220,8 @@ export function ProjectSidebarSection() {
               {group.keys.map((key) => {
                 const navItem = PROJECT_MODULES.find((item) => item.key === key)
                 if (!navItem) return null
+                // Recursos trazem custos: some para o visitante que não pode vê-los.
+                if (key === "resources" && project?.role === "visitante" && !project.canSeeCosts) return null
                 return (
                   <ModuleLink
                     key={navItem.key}

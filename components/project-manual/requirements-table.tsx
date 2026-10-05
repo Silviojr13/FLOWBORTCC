@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table"
 import { PencilIcon, PlusIcon, Trash2Icon, XIcon, CheckIcon } from "lucide-react"
 import { HELP, HelpLabel } from "@/components/help-tooltip"
+import { useProjectPermissions } from "@/components/project/project-permissions-context"
 import {
   CategoryIndicator,
   PriorityIndicator,
@@ -79,6 +80,9 @@ export function RequirementsTable({
   initialRequirements?: { description: string; category: Requirement["category"] }[]
   onCountChange?: (count: number) => void
 }) {
+  const { canEdit, canSeeCosts } = useProjectPermissions()
+  const editable = canEdit.requisitos
+  const columnCount = 6 + (canSeeCosts ? 1 : 0) + (editable ? 1 : 0)
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -285,22 +289,26 @@ export function RequirementsTable({
                   <span className="uppercase">Cobertura</span>
                 </HelpLabel>
               </TableHead>
-              <TableHead className="w-28 bg-muted text-xs font-medium tracking-wide text-muted-foreground">
-                <span className="flex justify-end">
-                  <HelpLabel label="Custo" content={HELP.requirementCost}>
-                    <span className="uppercase">Custo</span>
-                  </HelpLabel>
-                </span>
-              </TableHead>
-              <TableHead className="w-20 bg-muted text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Ações
-              </TableHead>
+              {canSeeCosts && (
+                <TableHead className="w-28 bg-muted text-xs font-medium tracking-wide text-muted-foreground">
+                  <span className="flex justify-end">
+                    <HelpLabel label="Custo" content={HELP.requirementCost}>
+                      <span className="uppercase">Custo</span>
+                    </HelpLabel>
+                  </span>
+                </TableHead>
+              )}
+              {editable && (
+                <TableHead className="w-20 bg-muted text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Ações
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={8} className="py-6 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={columnCount} className="py-6 text-center text-sm text-muted-foreground">
                   Carregando requisitos...
                 </TableCell>
               </TableRow>
@@ -308,7 +316,7 @@ export function RequirementsTable({
 
             {!isLoading && requirements.length === 0 && editingId !== NEW_ROW_ID && (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center">
+                <TableCell colSpan={columnCount} className="py-8 text-center">
                   <p className="text-sm font-medium text-foreground">Nenhum requisito ainda.</p>
                 </TableCell>
               </TableRow>
@@ -404,36 +412,40 @@ export function RequirementsTable({
                       done={requirement.tasksDone ?? 0}
                     />
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {requirement.componentsTotal ? (
-                      <span title={`${requirement.componentsTotal} componente(s) vinculado(s)`}>
-                        {currency.format(requirement.estimatedCost ?? 0)}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => startEdit(requirement)}
-                        aria-label="Editar requisito"
-                      >
-                        <PencilIcon className="size-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => deleteRequirement(requirement.id)}
-                        aria-label="Excluir requisito"
-                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2Icon className="size-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                  {canSeeCosts && (
+                    <TableCell className="text-right tabular-nums">
+                      {requirement.componentsTotal ? (
+                        <span title={`${requirement.componentsTotal} componente(s) vinculado(s)`}>
+                          {currency.format(requirement.estimatedCost ?? 0)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  )}
+                  {editable && (
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => startEdit(requirement)}
+                          aria-label="Editar requisito"
+                        >
+                          <PencilIcon className="size-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => deleteRequirement(requirement.id)}
+                          aria-label="Excluir requisito"
+                          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2Icon className="size-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               )
             )}
@@ -512,7 +524,7 @@ export function RequirementsTable({
         </Table>
       </div>
 
-      {editingId !== NEW_ROW_ID && (
+      {editable && editingId !== NEW_ROW_ID && (
         <Button size="sm" className="w-fit gap-1.5" onClick={startCreate} data-tour="requirements-add">
           <PlusIcon className="size-4" />
           Adicionar requisito
