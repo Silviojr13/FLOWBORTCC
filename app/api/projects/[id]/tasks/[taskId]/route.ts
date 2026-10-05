@@ -1,10 +1,9 @@
 import { NextRequest } from "next/server";
-import { getCurrentUser } from "../../../../../../lib/auth";
+import { authorizeProject } from "../../../../../../lib/project-access";
 import { tursoDb } from "../../../../../../lib/turso-db";
 import { emitProjectEvent } from "../../../../../../lib/project-events";
 import { isTaskPriority } from "../../../../../../lib/kanban";
 import {
-  findOwnedProject,
   json,
   jsonError,
   MAX_TASK_PARTICIPANTS,
@@ -16,9 +15,7 @@ import {
   taskInclude,
 } from "../../../../../../lib/kanban-server";
 
-async function findOwnedTask(projectId: string, taskId: string, userId: string) {
-  const project = await findOwnedProject(projectId, userId);
-  if (!project) return null;
+async function findProjectTask(projectId: string, taskId: string) {
   return tursoDb.task.findUnique({
     where: { id: taskId, projectId },
     include: { column: { select: { id: true, name: true } } },
@@ -32,10 +29,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; taskId: string }> }
 ) {
   const { id: projectId, taskId } = await params;
-  const user = await getCurrentUser();
-  if (!user) return jsonError("Usuário não autenticado", 401);
+  const gate = await authorizeProject(projectId, { edit: "kanban" });
+  if (gate instanceof Response) return gate;
 
-  const existing = await findOwnedTask(projectId, taskId, user.id);
+  const existing = await findProjectTask(projectId, taskId);
   if (!existing) return jsonError("Tarefa não encontrada", 404);
 
   const {
@@ -186,10 +183,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; taskId: string }> }
 ) {
   const { id: projectId, taskId } = await params;
-  const user = await getCurrentUser();
-  if (!user) return jsonError("Usuário não autenticado", 401);
+  const gate = await authorizeProject(projectId, { edit: "kanban" });
+  if (gate instanceof Response) return gate;
 
-  const existing = await findOwnedTask(projectId, taskId, user.id);
+  const existing = await findProjectTask(projectId, taskId);
   if (!existing) return jsonError("Tarefa não encontrada", 404);
 
   try {

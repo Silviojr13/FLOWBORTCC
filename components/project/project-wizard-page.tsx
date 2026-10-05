@@ -17,6 +17,7 @@ import { CostSummary } from "@/components/project-manual/cost-summary"
 import { ProjectCreationSummary } from "@/components/project-manual/project-creation-summary"
 import { ProjectCreationLayout } from "@/components/project-steps/project-creation-layout"
 import { FlowbotAssistant } from "@/components/project/flowbot-assistant"
+import { useProjectPermissions } from "@/components/project/project-permissions-context"
 import { Button } from "@/components/ui/button"
 import { MANUAL_STEP_CONTENT } from "@/lib/manual-step-content"
 import {
@@ -86,6 +87,12 @@ export function ProjectWizardPage({
     }
   }, [projectId, step])
 
+  // As etapas são a criação do projeto: quem foi convidado vai direto para a visão geral.
+  const isOwner = project?.access.canDelete ?? true
+  useEffect(() => {
+    if (!isOwner) router.replace(`/dashboard/projects/${projectId}`)
+  }, [isOwner, projectId, router])
+
   function goToStep(nextStep: ProjectStep) {
     router.push(`/dashboard/projects/${projectId}?step=${nextStep}`)
   }
@@ -107,7 +114,7 @@ export function ProjectWizardPage({
     )
   }
 
-  if (isLoading || !project) {
+  if (isLoading || !project || !isOwner) {
     return (
       <div className={`flex w-full py-12 text-sm text-muted-foreground ${workspaceGutter}`}>
         Carregando...
@@ -218,6 +225,7 @@ export function ProjectWizardPage({
 }
 
 export function ProjectOverviewContent({ projectId }: { projectId: string }) {
+  const { canEdit, canSeeCosts } = useProjectPermissions()
   const [stats, setStats] = useState<{
     requirementsCount: number
     requirementsUncovered: string[]
@@ -349,7 +357,9 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
           })}
         </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          {PROJECT_SECONDARY_SHORTCUTS.map((shortcut) => {
+          {PROJECT_SECONDARY_SHORTCUTS.filter(
+            (shortcut) => canSeeCosts || shortcut.key !== "resources"
+          ).map((shortcut) => {
             const Icon = shortcut.icon
             return (
               <Link
@@ -411,14 +421,16 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
               <p className="text-xs text-muted-foreground">Componentes</p>
               <p className="mt-1 text-2xl font-semibold">{stats.componentsCount}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card px-4 py-3">
-              <div className="text-xs text-muted-foreground">
-                <HelpLabel label="Custo estimado" content={HELP.estimatedCost}>
-                  Custo estimado
-                </HelpLabel>
+            {canSeeCosts && (
+              <div className="rounded-xl border border-border bg-card px-4 py-3">
+                <div className="text-xs text-muted-foreground">
+                  <HelpLabel label="Custo estimado" content={HELP.estimatedCost}>
+                    Custo estimado
+                  </HelpLabel>
+                </div>
+                <p className="mt-1 text-2xl font-semibold">{currency.format(stats.totalCost)}</p>
               </div>
-              <p className="mt-1 text-2xl font-semibold">{currency.format(stats.totalCost)}</p>
-            </div>
+            )}
           </div>
 
           {stats.tasksByColumn.length > 0 && (
@@ -458,12 +470,14 @@ export function ProjectOverviewContent({ projectId }: { projectId: string }) {
                 {stats.requirementsSkipped
                   ? "Requisitos não foram definidos na criação."
                   : "Nenhum requisito registrado ainda."}{" "}
-                <Link
-                  href={`/dashboard/projects/${projectId}/requirements`}
-                  className="font-medium text-primary underline-offset-4 hover:underline"
-                >
-                  Definir requisitos
-                </Link>
+                {canEdit.requisitos && (
+                  <Link
+                    href={`/dashboard/projects/${projectId}/requirements`}
+                    className="font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    Definir requisitos
+                  </Link>
+                )}
               </p>
             </div>
           )}

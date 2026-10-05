@@ -45,7 +45,9 @@ export default function ProjectDetailPage() {
     <ProjectShell
       project={project}
       title="Visão geral"
-      headerAction={<ProjectIdentityCard project={project} variant="action" />}
+      headerAction={
+        project.access.canDelete ? <ProjectIdentityCard project={project} variant="action" /> : undefined
+      }
     >
       <ProjectOverviewContent projectId={id} />
     </ProjectShell>

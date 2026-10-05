@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getCurrentUser } from "../../../../../../lib/auth";
+import { authorizeProject } from "../../../../../../lib/project-access";
 import { tursoDb } from "../../../../../../lib/turso-db";
 import { emitProjectEvent } from "../../../../../../lib/project-events";
 
@@ -7,13 +7,13 @@ const VALID_CATEGORIES = ["Funcional", "Não Funcional"];
 const VALID_PRIORITIES = ["Alta", "Média", "Baixa"];
 const VALID_STATUSES = ["Em Aberto", "Validado", "Descartado"];
 
-async function findOwnedRequirement(projectId: string, reqId: string, userId: string) {
+async function findProjectRequirement(projectId: string, reqId: string) {
   const requirement = await tursoDb.requirement.findUnique({
     where: { id: reqId, projectId },
     include: { project: true },
   });
 
-  if (!requirement || requirement.project.userId !== userId) {
+  if (!requirement) {
     return null;
   }
 
@@ -25,16 +25,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; reqId: string }> }
 ) {
   const { id: projectId, reqId } = await params;
-  const user = await getCurrentUser();
+  const gate = await authorizeProject(projectId, { edit: "requisitos" });
+  if (gate instanceof Response) return gate;
 
-  if (!user) {
-    return new Response(
-      JSON.stringify({ error: "Usuário não autenticado" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const existing = await findOwnedRequirement(projectId, reqId, user.id);
+  const existing = await findProjectRequirement(projectId, reqId);
   if (!existing) {
     return new Response(
       JSON.stringify({ error: "Requisito não encontrado" }),
@@ -124,16 +118,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; reqId: string }> }
 ) {
   const { id: projectId, reqId } = await params;
-  const user = await getCurrentUser();
+  const gate = await authorizeProject(projectId, { edit: "requisitos" });
+  if (gate instanceof Response) return gate;
 
-  if (!user) {
-    return new Response(
-      JSON.stringify({ error: "Usuário não autenticado" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const existing = await findOwnedRequirement(projectId, reqId, user.id);
+  const existing = await findProjectRequirement(projectId, reqId);
   if (!existing) {
     return new Response(
       JSON.stringify({ error: "Requisito não encontrado" }),

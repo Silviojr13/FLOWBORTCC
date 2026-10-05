@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useProjectPermissions } from "@/components/project/project-permissions-context"
 import { ResourceDialog } from "@/components/resources/resource-dialog"
 import {
   RESOURCE_AVAILABILITY_LABELS,
@@ -63,6 +64,7 @@ function SummaryCard({
 }
 
 export function ResourcesPanel({ projectId }: { projectId: string }) {
+  const editable = useProjectPermissions().canEdit.recursos
   const [resources, setResources] = useState<Resource[]>([])
   const [components, setComponents] = useState<ComponentItem[]>([])
   const [requirements, setRequirements] = useState<RequirementOption[]>([])
@@ -235,10 +237,12 @@ export function ResourcesPanel({ projectId }: { projectId: string }) {
                 </button>
               ))}
             </div>
-            <Button size="sm" onClick={openNew} data-tour="resources-add">
-              <PlusIcon />
-              Adicionar recurso
-            </Button>
+            {editable && (
+              <Button size="sm" onClick={openNew} data-tour="resources-add">
+                <PlusIcon />
+                Adicionar recurso
+              </Button>
+            )}
           </div>
         </div>
 
@@ -251,10 +255,12 @@ export function ResourcesPanel({ projectId }: { projectId: string }) {
               recurso tem um custo por hora, por mês ou único, e pode ser algo que a organização já tem
               ou que precisa adquirir.
             </p>
-            <Button size="sm" onClick={openNew}>
-              <PlusIcon />
-              Adicionar o primeiro recurso
-            </Button>
+            {editable && (
+              <Button size="sm" onClick={openNew}>
+                <PlusIcon />
+                Adicionar o primeiro recurso
+              </Button>
+            )}
           </div>
         ) : visible.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
@@ -307,29 +313,31 @@ export function ResourcesPanel({ projectId }: { projectId: string }) {
                       {r.requirementId ? requirementCode.get(r.requirementId) ?? "—" : "—"}
                     </td>
                     <td className="px-2 py-2">
-                      <div className="flex justify-end gap-0.5">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-8"
-                          aria-label={`Editar ${r.name}`}
-                          onClick={() => {
-                            setEditing(r)
-                            setDialogOpen(true)
-                          }}
-                        >
-                          <PencilIcon className="size-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-8 text-muted-foreground hover:text-destructive"
-                          aria-label={`Excluir ${r.name}`}
-                          onClick={() => void remove(r)}
-                        >
-                          <Trash2Icon className="size-4" />
-                        </Button>
-                      </div>
+                      {editable && (
+                        <div className="flex justify-end gap-0.5">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-8"
+                            aria-label={`Editar ${r.name}`}
+                            onClick={() => {
+                              setEditing(r)
+                              setDialogOpen(true)
+                            }}
+                          >
+                            <PencilIcon className="size-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-8 text-muted-foreground hover:text-destructive"
+                            aria-label={`Excluir ${r.name}`}
+                            onClick={() => void remove(r)}
+                          >
+                            <Trash2Icon className="size-4" />
+                          </Button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

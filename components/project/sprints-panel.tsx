@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useProjectPermissions } from "@/components/project/project-permissions-context"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { PriorityIndicator } from "@/components/project-manual/requirement-indicators"
 import { SprintDialog } from "@/components/project/sprint-dialog"
@@ -53,6 +54,7 @@ function ProgressBar({ done, total, className }: { done: number; total: number; 
 
 // Planejamento e acompanhamento de sprints (RF08, UC07, UC13).
 export function SprintsPanel({ projectId }: { projectId: string }) {
+  const editable = useProjectPermissions().canEdit.sprints
   const [sprints, setSprints] = useState<Sprint[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [columns, setColumns] = useState<KanbanColumn[]>([])
@@ -126,10 +128,12 @@ export function SprintsPanel({ projectId }: { projectId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" className="gap-1.5" onClick={openCreate} data-tour="sprints-new">
-          <PlusIcon className="size-4" />
-          Planejar sprint
-        </Button>
+        {editable && (
+          <Button size="sm" className="gap-1.5" onClick={openCreate} data-tour="sprints-new">
+            <PlusIcon className="size-4" />
+            Planejar sprint
+          </Button>
+        )}
         <span className="text-xs text-muted-foreground">
           {backlogCount} tarefa(s) sem sprint
         </span>
@@ -177,20 +181,22 @@ export function SprintsPanel({ projectId }: { projectId: string }) {
                     </p>
                   )}
                 </div>
-                <div className="flex shrink-0 gap-1">
-                  <Button size="icon" variant="ghost" className="size-8" aria-label="Editar sprint" onClick={() => openEdit(sprint)}>
-                    <PencilIcon className="size-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    aria-label="Excluir sprint"
-                    onClick={() => deleteSprint(sprint)}
-                  >
-                    <Trash2Icon className="size-4" />
-                  </Button>
-                </div>
+                {editable && (
+                  <div className="flex shrink-0 gap-1">
+                    <Button size="icon" variant="ghost" className="size-8" aria-label="Editar sprint" onClick={() => openEdit(sprint)}>
+                      <PencilIcon className="size-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      aria-label="Excluir sprint"
+                      onClick={() => deleteSprint(sprint)}
+                    >
+                      <Trash2Icon className="size-4" />
+                    </Button>
+                  </div>
+                )}
               </CardHeader>
 
               <CardContent className="flex flex-col gap-3 pt-0">

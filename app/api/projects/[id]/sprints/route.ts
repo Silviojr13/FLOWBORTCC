@@ -1,9 +1,8 @@
 import { NextRequest } from "next/server";
-import { getCurrentUser } from "../../../../../lib/auth";
+import { authorizeProject } from "../../../../../lib/project-access";
 import { tursoDb } from "../../../../../lib/turso-db";
 import { getSprintStatus } from "../../../../../lib/kanban";
 import {
-  findOwnedProject,
   json,
   jsonError,
   listSprintsWithProgress,
@@ -15,11 +14,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
-  if (!user) return jsonError("Usuário não autenticado", 401);
-
-  const project = await findOwnedProject(projectId, user.id);
-  if (!project) return jsonError("Projeto não encontrado", 404);
+  const gate = await authorizeProject(projectId);
+  if (gate instanceof Response) return gate;
 
   try {
     const sprints = await listSprintsWithProgress(projectId);
@@ -37,11 +33,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
-  if (!user) return jsonError("Usuário não autenticado", 401);
-
-  const project = await findOwnedProject(projectId, user.id);
-  if (!project) return jsonError("Projeto não encontrado", 404);
+  const gate = await authorizeProject(projectId, { edit: "sprints" });
+  if (gate instanceof Response) return gate;
 
   const { name, goal, startDate, endDate, taskIds } = await req.json();
 

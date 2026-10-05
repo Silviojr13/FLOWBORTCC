@@ -11,6 +11,7 @@ import {
   Trash2Icon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useProjectPermissions } from "@/components/project/project-permissions-context"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -32,7 +33,8 @@ interface HardwareComponentItem {
   name: string
   description: string | null
   quantity: number
-  unitPrice: number
+  /** Nulo para quem não vê custos. */
+  unitPrice: number | null
   domain?: string
   requirementId: string | null
 }
@@ -52,6 +54,8 @@ export function ComponentsTable({
   projectId: string
   onChange?: () => void
 }) {
+  const { canEdit, canSeeCosts } = useProjectPermissions()
+  const editable = canEdit.componentes
   const [components, setComponents] = useState<HardwareComponentItem[]>([])
   const [requirements, setRequirements] = useState<RequirementOption[]>([])
   const [origins, setOrigins] = useState<Record<string, ComponentOrigin>>({})
@@ -138,25 +142,27 @@ export function ComponentsTable({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <Button className="gap-1.5 sm:flex-1" onClick={() => setSearchOpen(true)}>
-          <SearchIcon className="size-4" />
-          Buscar componentes
-        </Button>
-        <Button
-          variant="outline"
-          className="gap-1.5 sm:w-auto"
-          onClick={() => {
-            setEditingComponent(null)
-            setAddOpen(true)
-          }}
-        >
-          <PlusIcon className="size-4" />
-          Adicionar manualmente
-        </Button>
-      </div>
+      {editable && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Button className="gap-1.5 sm:flex-1" onClick={() => setSearchOpen(true)}>
+            <SearchIcon className="size-4" />
+            Buscar componentes
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-1.5 sm:w-auto"
+            onClick={() => {
+              setEditingComponent(null)
+              setAddOpen(true)
+            }}
+          >
+            <PlusIcon className="size-4" />
+            Adicionar manualmente
+          </Button>
+        </div>
+      )}
 
-      <div className="flex flex-col gap-1 border-t border-border pt-4">
+      <div className={editable ? "flex flex-col gap-1 border-t border-border pt-4" : "flex flex-col gap-1"}>
         <h3 className="text-sm font-medium text-foreground">Componentes adicionados ao projeto</h3>
         <p className="text-xs text-muted-foreground">
           Itens confirmados para este projeto — distintos das sugestões da IA acima.
@@ -179,7 +185,7 @@ export function ComponentsTable({
       <div className="grid gap-4 @xl:grid-cols-2">
         {components.map((component) => {
           const req = requirementInfo(component.requirementId)
-          const subtotal = component.quantity * component.unitPrice
+          const subtotal = component.quantity * (component.unitPrice ?? 0)
           const origin = origins[component.id]
 
           return (
@@ -212,14 +218,18 @@ export function ComponentsTable({
                     <span className="text-xs text-muted-foreground">Quantidade</span>
                     <p className="font-medium">{component.quantity}</p>
                   </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground">Preço unit.</span>
-                    <p className="font-medium">{currency.format(component.unitPrice)}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-xs text-muted-foreground">Subtotal</span>
-                    <p className="font-semibold">{currency.format(subtotal)}</p>
-                  </div>
+                  {canSeeCosts && (
+                    <>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Preço unit.</span>
+                        <p className="font-medium">{currency.format(component.unitPrice ?? 0)}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-xs text-muted-foreground">Subtotal</span>
+                        <p className="font-semibold">{currency.format(subtotal)}</p>
+                      </div>
+                    </>
+                  )}
                 </div>
                 {req && (
                   <div className="flex flex-col gap-1">
@@ -231,28 +241,30 @@ export function ComponentsTable({
                   </div>
                 )}
               </CardContent>
-              <CardFooter className="justify-end gap-1 pt-0">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setEditingComponent(component)
-                    setAddOpen(true)
-                  }}
-                >
-                  <PencilIcon className="size-4" />
-                  Editar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => deleteComponent(component.id)}
-                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <Trash2Icon className="size-4" />
-                  Excluir
-                </Button>
-              </CardFooter>
+              {editable && (
+                <CardFooter className="justify-end gap-1 pt-0">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setEditingComponent(component)
+                      setAddOpen(true)
+                    }}
+                  >
+                    <PencilIcon className="size-4" />
+                    Editar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => deleteComponent(component.id)}
+                    className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2Icon className="size-4" />
+                    Excluir
+                  </Button>
+                </CardFooter>
+              )}
             </Card>
           )
         })}
@@ -271,7 +283,7 @@ export function ComponentsTable({
                 name: editingComponent.name,
                 description: editingComponent.description ?? "",
                 quantity: String(editingComponent.quantity),
-                unitPrice: String(editingComponent.unitPrice),
+                unitPrice: String(editingComponent.unitPrice ?? 0),
                 domain: editingComponent.domain === "Software" ? "Software" : "Hardware",
                 requirementId: editingComponent.requirementId ?? "__none__",
               }

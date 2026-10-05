@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { authorizeProject } from "@/lib/project-access";
 import { tursoDb } from "@/lib/turso-db";
 import { parseResourceInput } from "@/lib/resources-server";
 
 type Params = { params: Promise<{ id: string; resourceId: string }> };
 
-async function ownedResource(projectId: string, resourceId: string, userId: string) {
+async function findProjectResource(projectId: string, resourceId: string) {
   return tursoDb.resource.findFirst({
-    where: { id: resourceId, projectId, project: { userId } },
+    where: { id: resourceId, projectId },
     select: { id: true },
   });
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { id: projectId, resourceId } = await params;
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Usuário não autenticado" }, { status: 401 });
-  if (!(await ownedResource(projectId, resourceId, user.id))) {
+  const gate = await authorizeProject(projectId, { edit: "recursos" });
+  if (gate instanceof Response) return gate;
+  if (!(await findProjectResource(projectId, resourceId))) {
     return NextResponse.json({ error: "Recurso não encontrado" }, { status: 404 });
   }
 
@@ -34,9 +34,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const { id: projectId, resourceId } = await params;
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Usuário não autenticado" }, { status: 401 });
-  if (!(await ownedResource(projectId, resourceId, user.id))) {
+  const gate = await authorizeProject(projectId, { edit: "recursos" });
+  if (gate instanceof Response) return gate;
+  if (!(await findProjectResource(projectId, resourceId))) {
     return NextResponse.json({ error: "Recurso não encontrado" }, { status: 404 });
   }
 

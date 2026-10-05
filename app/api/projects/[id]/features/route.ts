@@ -1,34 +1,16 @@
 import { NextRequest } from "next/server";
-import { getCurrentUser } from "../../../../../lib/auth";
+import { authorizeProject } from "../../../../../lib/project-access";
 import { tursoDb } from "../../../../../lib/turso-db";
 
 const VALID_STATUSES = ["Planejada", "Em desenvolvimento", "Concluída"];
-
-async function assertProjectOwnership(projectId: string, userId: string) {
-  return tursoDb.project.findUnique({ where: { id: projectId, userId } });
-}
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
-
-  if (!user) {
-    return new Response(
-      JSON.stringify({ error: "Usuário não autenticado" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const project = await assertProjectOwnership(projectId, user.id);
-  if (!project) {
-    return new Response(
-      JSON.stringify({ error: "Projeto não encontrado" }),
-      { status: 404, headers: { "Content-Type": "application/json" } }
-    );
-  }
+  const gate = await authorizeProject(projectId);
+  if (gate instanceof Response) return gate;
 
   try {
     const features = await tursoDb.feature.findMany({
@@ -54,22 +36,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await params;
-  const user = await getCurrentUser();
-
-  if (!user) {
-    return new Response(
-      JSON.stringify({ error: "Usuário não autenticado" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const project = await assertProjectOwnership(projectId, user.id);
-  if (!project) {
-    return new Response(
-      JSON.stringify({ error: "Projeto não encontrado" }),
-      { status: 404, headers: { "Content-Type": "application/json" } }
-    );
-  }
+  const gate = await authorizeProject(projectId, { edit: "funcionalidades" });
+  if (gate instanceof Response) return gate;
 
   const { name, description, status, requirementId } = await req.json();
 

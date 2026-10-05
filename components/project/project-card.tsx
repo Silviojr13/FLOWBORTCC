@@ -3,8 +3,10 @@
 import Link from "next/link"
 import { useState } from "react"
 import { toast } from "sonner"
-import { ArrowRightIcon, Link2Icon, MoreHorizontalIcon, Trash2Icon } from "lucide-react"
+import { ArrowRightIcon, Link2Icon, MoreHorizontalIcon, Trash2Icon, UsersIcon } from "lucide-react"
 import { DeleteProjectDialog } from "@/components/project/delete-project-dialog"
+import { Badge } from "@/components/ui/badge"
+import { ROLE_LABELS, isMemberRole } from "@/lib/project-permissions"
 import { ProjectCover } from "@/components/project/project-cover"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -22,6 +24,9 @@ export interface ProjectCardData {
   description: string | null
   updatedAt: string
   _count: { requirements: number; tasks: number; components: number }
+  /** Só em projetos compartilhados com a pessoa: o cargo dela e o dono. */
+  role?: string
+  ownerName?: string | null
 }
 
 function plural(count: number, singular: string, pluralLabel: string) {
@@ -79,6 +84,8 @@ export function ProjectCard({
   const href = `/dashboard/projects/${project.id}`
   const metrics = metricsLine(project)
   const updated = formatUpdated(project.updatedAt)
+  const shared = Boolean(project.role)
+  const roleLabel = project.role && isMemberRole(project.role) ? ROLE_LABELS[project.role] : "Visitante"
 
   return (
     <Card className="relative h-full gap-0 overflow-hidden py-0 transition-shadow hover:border-primary/40 hover:shadow-md">
@@ -122,18 +129,35 @@ export function ProjectCard({
                   <Link2Icon />
                   Copiar link do projeto
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  className="gap-2 py-2"
-                  onSelect={() => setDeleteOpen(true)}
-                >
-                  <Trash2Icon />
-                  Excluir projeto
+                <DropdownMenuItem className="gap-2 py-2" asChild>
+                  <Link href={`/dashboard/projects/${project.id}/sharing`}>
+                    <UsersIcon />
+                    {shared ? "Pessoas do projeto" : "Compartilhar"}
+                  </Link>
                 </DropdownMenuItem>
+                {!shared && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      className="gap-2 py-2"
+                      onSelect={() => setDeleteOpen(true)}
+                    >
+                      <Trash2Icon />
+                      Excluir projeto
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+
+          {shared && (
+            <p className="-mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="secondary">{roleLabel}</Badge>
+              {project.ownerName ? <span className="truncate">de {project.ownerName}</span> : null}
+            </p>
+          )}
 
           <p className="line-clamp-2 min-h-10 text-sm text-muted-foreground">
             {project.description}
@@ -151,12 +175,14 @@ export function ProjectCard({
         </div>
       </div>
 
-      <DeleteProjectDialog
-        projectId={project.id}
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        onDeleted={() => onDeleted?.(project.id)}
-      />
+      {!shared && (
+        <DeleteProjectDialog
+          projectId={project.id}
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          onDeleted={() => onDeleted?.(project.id)}
+        />
+      )}
     </Card>
   )
 }

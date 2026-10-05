@@ -136,6 +136,8 @@ interface TaskDialogProps {
   onSaved: (task: Task) => void
   onHistory?: (task: Task) => void
   onDelete?: (task: Task) => void
+  /** Só leitura: campos travados e sem salvar (visitante). */
+  readOnly?: boolean
 }
 
 const quietControl =
@@ -160,6 +162,7 @@ function TaskDialogSession({
   onSaved,
   onHistory,
   onDelete,
+  readOnly = false,
 }: TaskDialogProps) {
   const fallbackColumn = defaultColumnId ?? columns[0]?.id ?? ""
   const initial = draftFromTask(task, fallbackColumn)
@@ -246,7 +249,9 @@ function TaskDialogSession({
           {isEditing ? "Detalhe da tarefa" : "Nova tarefa"}
         </DialogTitle>
         <DialogDescription className="sr-only">
-          {isEditing
+          {readOnly
+            ? "Consulte o conteúdo e as propriedades desta tarefa."
+            : isEditing
             ? "Consulte e edite o conteúdo e as propriedades desta tarefa."
             : "Preencha o conteúdo e as propriedades da nova tarefa."}
         </DialogDescription>
@@ -279,6 +284,8 @@ function TaskDialogSession({
                 }}
                 className="mt-1 w-full bg-transparent text-xl font-semibold tracking-tight text-foreground outline-none placeholder:text-muted-foreground sm:text-2xl"
               />
+            ) : readOnly ? (
+              <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{draft.title}</h2>
             ) : (
               <button
                 type="button"
@@ -330,25 +337,30 @@ function TaskDialogSession({
         </header>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
-          <TaskMainContent
-            draft={draft}
-            requirements={requirements}
-            features={features}
-            selectedRequirement={selectedRequirement}
-            selectedFeature={selectedFeature}
-            onChange={update}
-          />
-          <TaskProperties
-            draft={draft}
-            columns={columns}
-            sprints={sprints}
-            people={people}
-            overdue={overdue}
-            onChange={update}
-          />
+          {/* Só leitura: o fieldset desativado trava todos os campos de uma vez. */}
+          <fieldset disabled={readOnly} className="contents">
+            <TaskMainContent
+              draft={draft}
+              requirements={requirements}
+              features={features}
+              selectedRequirement={selectedRequirement}
+              selectedFeature={selectedFeature}
+              readOnly={readOnly}
+              onChange={update}
+            />
+            <TaskProperties
+              draft={draft}
+              columns={columns}
+              sprints={sprints}
+              people={people}
+              overdue={overdue}
+              readOnly={readOnly}
+              onChange={update}
+            />
+          </fieldset>
         </div>
 
-        {(!isEditing || dirty) && (
+        {!readOnly && (!isEditing || dirty) && (
           <footer className="flex flex-col-reverse gap-2 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-6">
             {isEditing ? (
               <p className="mr-auto text-xs text-muted-foreground">Alterações não salvas</p>
@@ -381,6 +393,7 @@ function TaskMainContent({
   features,
   selectedRequirement,
   selectedFeature,
+  readOnly,
   onChange,
 }: {
   draft: TaskDraft
@@ -388,6 +401,7 @@ function TaskMainContent({
   features: { id: string; name: string }[]
   selectedRequirement: TaskRequirementRef | null
   selectedFeature: { id: string; name: string } | null
+  readOnly: boolean
   onChange: (patch: Partial<TaskDraft>) => void
 }) {
   return (
@@ -398,7 +412,7 @@ function TaskMainContent({
           aria-label="Descrição"
           value={draft.description}
           rows={8}
-          placeholder="Adicione uma descrição..."
+          placeholder={readOnly ? "Sem descrição." : "Adicione uma descrição..."}
           onChange={(event) => onChange({ description: event.target.value })}
           className="min-h-40 w-full resize-y rounded-lg border border-transparent bg-transparent px-3 py-2.5 text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground hover:bg-muted/50 focus-visible:border-ring focus-visible:bg-background focus-visible:ring-3 focus-visible:ring-ring/40"
         />
@@ -478,6 +492,7 @@ function TaskProperties({
   sprints,
   people,
   overdue,
+  readOnly,
   onChange,
 }: {
   draft: TaskDraft
@@ -485,6 +500,7 @@ function TaskProperties({
   sprints: Sprint[]
   people: string[]
   overdue: boolean
+  readOnly: boolean
   onChange: (patch: Partial<TaskDraft>) => void
 }) {
   const dueLabel = draft.dueDate ? formatDate(`${draft.dueDate}T00:00:00.000Z`) : ""
@@ -542,7 +558,7 @@ function TaskProperties({
         </Select>
       </PropertyField>
 
-      <TaskTeamFields draft={draft} people={people} onChange={onChange} />
+      <TaskTeamFields draft={draft} people={people} readOnly={readOnly} onChange={onChange} />
 
       <PropertyField label="Prazo">
         <label
@@ -603,10 +619,12 @@ const sameName = (a: string, b: string) =>
 function TaskTeamFields({
   draft,
   people,
+  readOnly,
   onChange,
 }: {
   draft: TaskDraft
   people: string[]
+  readOnly: boolean
   onChange: (patch: Partial<TaskDraft>) => void
 }) {
   const [newName, setNewName] = useState("")
@@ -667,41 +685,49 @@ function TaskTeamFields({
                   {initials(name)}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm text-foreground">{name}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  title="Tornar responsável principal"
-                  aria-label={`Tornar ${name} responsável principal`}
-                  className="text-muted-foreground opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
-                  onClick={() => makeLead(index)}
-                >
-                  <CrownIcon className="size-3.5" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Remover ${name}`}
-                  className="text-muted-foreground opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
-                  onClick={() => onChange({ participants: draft.participants.filter((_, i) => i !== index) })}
-                >
-                  <XIcon className="size-3.5" />
-                </Button>
+                {!readOnly && (
+                  <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    title="Tornar responsável principal"
+                    aria-label={`Tornar ${name} responsável principal`}
+                    className="text-muted-foreground opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
+                    onClick={() => makeLead(index)}
+                  >
+                    <CrownIcon className="size-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Remover ${name}`}
+                    className="text-muted-foreground opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
+                    onClick={() => onChange({ participants: draft.participants.filter((_, i) => i !== index) })}
+                  >
+                    <XIcon className="size-3.5" />
+                  </Button>
+                  </>
+                )}
               </li>
             ))}
           </ul>
         )}
-        <NameCombobox
-          label="Adicionar participante"
-          placeholder="Adicionar pessoa"
-          value={newName}
-          suggestions={suggestions}
-          onChange={setNewName}
-          onPick={addParticipant}
-          onCommit={() => addParticipant()}
-          icon={<PlusIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
-        />
+        {readOnly ? (
+          draft.participants.length === 0 && <p className="px-2 text-sm text-muted-foreground">Ninguém além do responsável.</p>
+        ) : (
+          <NameCombobox
+            label="Adicionar participante"
+            placeholder="Adicionar pessoa"
+            value={newName}
+            suggestions={suggestions}
+            onChange={setNewName}
+            onPick={addParticipant}
+            onCommit={() => addParticipant()}
+            icon={<PlusIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
+          />
+        )}
       </PropertyField>
     </>
   )

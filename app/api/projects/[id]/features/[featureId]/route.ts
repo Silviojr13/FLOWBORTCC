@@ -1,16 +1,16 @@
 import { NextRequest } from "next/server";
-import { getCurrentUser } from "../../../../../../lib/auth";
+import { authorizeProject } from "../../../../../../lib/project-access";
 import { tursoDb } from "../../../../../../lib/turso-db";
 
 const VALID_STATUSES = ["Planejada", "Em desenvolvimento", "Concluída"];
 
-async function findOwnedFeature(projectId: string, featureId: string, userId: string) {
+async function findProjectFeature(projectId: string, featureId: string) {
   const feature = await tursoDb.feature.findUnique({
     where: { id: featureId, projectId },
     include: { project: true },
   });
 
-  if (!feature || feature.project.userId !== userId) {
+  if (!feature) {
     return null;
   }
 
@@ -22,16 +22,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; featureId: string }> }
 ) {
   const { id: projectId, featureId } = await params;
-  const user = await getCurrentUser();
+  const gate = await authorizeProject(projectId, { edit: "funcionalidades" });
+  if (gate instanceof Response) return gate;
 
-  if (!user) {
-    return new Response(
-      JSON.stringify({ error: "Usuário não autenticado" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const existing = await findOwnedFeature(projectId, featureId, user.id);
+  const existing = await findProjectFeature(projectId, featureId);
   if (!existing) {
     return new Response(
       JSON.stringify({ error: "Funcionalidade não encontrada" }),
@@ -101,16 +95,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; featureId: string }> }
 ) {
   const { id: projectId, featureId } = await params;
-  const user = await getCurrentUser();
+  const gate = await authorizeProject(projectId, { edit: "funcionalidades" });
+  if (gate instanceof Response) return gate;
 
-  if (!user) {
-    return new Response(
-      JSON.stringify({ error: "Usuário não autenticado" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const existing = await findOwnedFeature(projectId, featureId, user.id);
+  const existing = await findProjectFeature(projectId, featureId);
   if (!existing) {
     return new Response(
       JSON.stringify({ error: "Funcionalidade não encontrada" }),

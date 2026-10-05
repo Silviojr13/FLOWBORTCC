@@ -41,6 +41,7 @@ model User {
   studiesCreated      Study[]            @relation("StudiesCreated")
   studyParticipations StudyParticipant[]
   passwordResetTokens PasswordResetToken[]
+  projectMemberships  ProjectMember[]
 
   @@map("users")
 }
@@ -132,8 +133,54 @@ model Project {
   sprints      Sprint[]
   chats        Chat[]
   diagrams     Diagram[]
+  members      ProjectMember[]
+  invitations  ProjectInvitation[]
 
   @@map("projects")
+}
+
+// Pessoa com acesso a um projeto que não é dela. O dono não entra aqui: é Project.userId.
+model ProjectMember {
+  id          String   @id @default(cuid())
+  projectId   String
+  userId      String
+  // "gestor" | "funcionario" | "estagiario" | "visitante" (lib/project-permissions.ts).
+  // Quem aceita um convite entra como visitante, só com leitura.
+  role        String   @default("visitante")
+  // Visitante: libera custos, preços e a aba Recursos. Os demais cargos já veem.
+  canSeeCosts Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+// Convite para um projeto. Por e-mail vale só para aquela conta e uma vez; por link vale
+// para qualquer conta até expirar ou ser revogado.
+model ProjectInvitation {
+  id          String    @id @default(cuid())
+  projectId   String
+  // Usado no link /convite/[code]
+  code        String    @unique
+  // Em minúsculas; nulo no convite por link
+  email       String?
+  invitedById String
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  declinedAt  DateTime?
+  revokedAt   DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([email])
+  @@map("project_invitations")
 }
 
 // Status possíveis: "Em Aberto" | "Validado" | "Descartado" (RF01)

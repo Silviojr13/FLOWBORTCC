@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getCurrentUser } from "../../../../../../../lib/auth";
+import { authorizeProject } from "../../../../../../../lib/project-access";
 import { tursoDb } from "../../../../../../../lib/turso-db";
 
 export async function GET(
@@ -7,21 +7,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string; reqId: string }> }
 ) {
   const { id: projectId, reqId } = await params;
-  const user = await getCurrentUser();
-
-  if (!user) {
-    return new Response(
-      JSON.stringify({ error: "Usuário não autenticado" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
+  const gate = await authorizeProject(projectId);
+  if (gate instanceof Response) return gate;
 
   const requirement = await tursoDb.requirement.findUnique({
     where: { id: reqId, projectId },
-    include: { project: true },
+    select: { id: true },
   });
 
-  if (!requirement || requirement.project.userId !== user.id) {
+  if (!requirement) {
     return new Response(
       JSON.stringify({ error: "Requisito não encontrado" }),
       { status: 404, headers: { "Content-Type": "application/json" } }

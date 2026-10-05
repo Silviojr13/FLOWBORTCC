@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { authorizeProject } from "@/lib/project-access";
 import { tursoDb } from "@/lib/turso-db";
 import { DiagramGenerationError, generateDiagram } from "@/lib/diagrams-server";
 
@@ -14,14 +14,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string; diagramId: string }> }
 ) {
   const { id: projectId, diagramId } = await params;
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Usuário não autenticado" }, { status: 401 });
-  }
+  const gate = await authorizeProject(projectId, { edit: "diagramas" });
+  if (gate instanceof Response) return gate;
 
-  const diagram = await tursoDb.diagram.findFirst({
-    where: { id: diagramId, projectId, project: { userId: user.id } },
-  });
+  const diagram = await tursoDb.diagram.findFirst({ where: { id: diagramId, projectId } });
   if (!diagram) {
     return NextResponse.json({ error: "Diagrama não encontrado" }, { status: 404 });
   }
@@ -32,7 +28,7 @@ export async function POST(
     const { code, source } = await generateDiagram({
       type: diagram.type,
       projectId,
-      userId: user.id,
+      userId: gate.access.ownerId,
       instructions: diagram.instructions ?? undefined,
       repair:
         typeof error === "string" && error

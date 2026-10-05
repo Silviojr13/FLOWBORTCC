@@ -39,6 +39,7 @@ $env:FLOWBOT_BASE_URL="http://localhost:3000"; $env:FLOWBOT_TEST_EMAIL="..."; $e
 |---|---|---|
 | `FLOWBOT_BASE_URL` | `http://localhost:3000` | Pode apontar para o ambiente de homologação |
 | `FLOWBOT_TEST_EMAIL` / `FLOWBOT_TEST_PASSWORD` | — | Sem elas, os testes que exigem login são **pulados**, não falham |
+| `FLOWBOT_VISITOR_EMAIL` / `FLOWBOT_VISITOR_PASSWORD` | — | Segunda conta, que recebe o convite nos testes de compartilhamento; sem elas, esses testes são pulados |
 | `FLOWBOT_BROWSER` | `chrome` | `edge` como alternativa; há fallback automático |
 | `FLOWBOT_HEADLESS` | `1` | `0` para acompanhar a execução na tela |
 

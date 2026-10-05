@@ -24,6 +24,8 @@ export interface ReportOptions {
   to: Date | null;
   /** Sprint, responsável e funcionalidade: "" = todos; REPORT_FILTER_NONE = sem vínculo. */
   filters?: Partial<ReportFilters>;
+  /** Para quem não vê custos: sem preços, recursos nem orçamento. */
+  hideCosts?: boolean;
 }
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -64,7 +66,7 @@ export async function buildProjectReport(
   const featureFilter = options.filters?.feature ?? "";
   const hasFilters = Boolean(sprintFilter || assigneeFilter || featureFilter);
 
-  const [requirements, features, columns, allTasks, allSprints, components, resources] = await Promise.all([
+  const [requirements, features, columns, allTasks, allSprints, componentRows, resourceRows] = await Promise.all([
     tursoDb.requirement.findMany({ where: { projectId }, orderBy: { code: "asc" } }),
     tursoDb.feature.findMany({ where: { projectId }, orderBy: { createdAt: "asc" } }),
     tursoDb.kanbanColumn.findMany({ where: { projectId }, orderBy: { order: "asc" } }),
@@ -176,6 +178,11 @@ export async function buildProjectReport(
     };
   });
 
+  // Sem custos, os valores não saem do servidor: preços zerados e nenhum recurso.
+  const hideCosts = options.hideCosts === true;
+  const components = hideCosts ? componentRows.map((c) => ({ ...c, unitPrice: 0 })) : componentRows;
+  const resources = hideCosts ? [] : resourceRows;
+
   const totalCost = components.reduce((sum, c) => sum + c.quantity * c.unitPrice, 0);
   const budget = buildBudget(components, resources);
   const resourcesCost = resources.reduce((sum, r) => sum + resourceCost(r), 0);
@@ -205,6 +212,7 @@ export async function buildProjectReport(
       features: features.map((f) => ({ id: f.id, name: f.name })),
     },
     hasDataInPeriod: (!hasPeriod && !hasFilters) || tasks.length > 0 || sprints.length > 0,
+    costsHidden: hideCosts,
     project: {
       id: project.id,
       name: project.name,

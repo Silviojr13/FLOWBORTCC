@@ -38,6 +38,7 @@ import {
   type DiagramSource,
 } from "@/lib/diagrams"
 import { cn } from "@/lib/utils"
+import { useProjectPermissions } from "@/components/project/project-permissions-context"
 
 const SOURCE_LABEL: Record<DiagramSource, string> = {
   ia: "Gerado pela IA",
@@ -104,6 +105,8 @@ async function svgToPng(svg: SVGSVGElement): Promise<Blob> {
 }
 
 export function DiagramsWorkspace({ projectId, projectName }: { projectId: string; projectName: string }) {
+  // Quem só vê abre e exporta os diagramas salvos; gerar, corrigir e editar usam a IA e gravam.
+  const editable = useProjectPermissions().canEdit.diagramas
   const [diagrams, setDiagrams] = useState<Diagram[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -233,12 +236,12 @@ export function DiagramsWorkspace({ projectId, projectName }: { projectId: strin
   const handleRenderError = useCallback(
     (message: string, code: string) => {
       setRenderFailure({ code, message })
-      if (!selected || selected.code !== code) return
+      if (!editable || !selected || selected.code !== code) return
       if (selected.source !== "ia" || autoRepaired.current.has(selected.id)) return
       autoRepaired.current.add(selected.id)
       void regenerate(selected, message)
     },
-    [selected, regenerate]
+    [editable, selected, regenerate]
   )
 
   function exportFile(kind: "svg" | "png" | "mmd") {
@@ -271,57 +274,59 @@ export function DiagramsWorkspace({ projectId, projectName }: { projectId: strin
   return (
     <div className="flex flex-col gap-6">
       {/* Novo diagrama */}
-      <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm dark:shadow-none" data-tour="diagrams-new">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-sm font-medium text-foreground">Novo diagrama</h2>
-          <p className="text-xs text-muted-foreground">
-            Escolha o tipo. Rastreabilidade e cronograma saem direto dos dados do projeto; os
-            demais são escritos pela IA a partir dos requisitos, funcionalidades e componentes.
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-          <Select value={newType} onValueChange={setNewType}>
-            <SelectTrigger className="w-full lg:w-64" aria-label="Tipo de diagrama">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {DIAGRAM_GROUPS.map((group) => (
-                <SelectGroup key={group}>
-                  <SelectLabel>{group}</SelectLabel>
-                  {DIAGRAM_TYPES.filter((t) => t.group === group).map((t) => (
-                    <SelectItem key={t.key} value={t.key}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
-          {newTypeInfo?.engine === "ia" && (
-            <Input
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              placeholder={newTypeInfo.placeholder ?? "Instruções opcionais para a IA"}
-              className="lg:flex-1"
-              maxLength={500}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !isGenerating) void generate()
-              }}
-            />
-          )}
-          <Button onClick={() => void generate()} disabled={isGenerating} className="lg:ml-auto">
-            {isGenerating ? (
-              <LoaderCircleIcon className="animate-spin" />
-            ) : newTypeInfo?.engine === "ia" ? (
-              <SparklesIcon />
-            ) : (
-              <DatabaseIcon />
+      {editable && (
+        <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm dark:shadow-none" data-tour="diagrams-new">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-sm font-medium text-foreground">Novo diagrama</h2>
+            <p className="text-xs text-muted-foreground">
+              Escolha o tipo. Rastreabilidade e cronograma saem direto dos dados do projeto; os
+              demais são escritos pela IA a partir dos requisitos, funcionalidades e componentes.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+            <Select value={newType} onValueChange={setNewType}>
+              <SelectTrigger className="w-full lg:w-64" aria-label="Tipo de diagrama">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DIAGRAM_GROUPS.map((group) => (
+                  <SelectGroup key={group}>
+                    <SelectLabel>{group}</SelectLabel>
+                    {DIAGRAM_TYPES.filter((t) => t.group === group).map((t) => (
+                      <SelectItem key={t.key} value={t.key}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+            {newTypeInfo?.engine === "ia" && (
+              <Input
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                placeholder={newTypeInfo.placeholder ?? "Instruções opcionais para a IA"}
+                className="lg:flex-1"
+                maxLength={500}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !isGenerating) void generate()
+                }}
+              />
             )}
-            {isGenerating ? "Gerando…" : "Gerar diagrama"}
-          </Button>
-        </div>
-        {newTypeInfo && <p className="text-xs text-muted-foreground">{newTypeInfo.description}</p>}
-      </section>
+            <Button onClick={() => void generate()} disabled={isGenerating} className="lg:ml-auto">
+              {isGenerating ? (
+                <LoaderCircleIcon className="animate-spin" />
+              ) : newTypeInfo?.engine === "ia" ? (
+                <SparklesIcon />
+              ) : (
+                <DatabaseIcon />
+              )}
+              {isGenerating ? "Gerando…" : "Gerar diagrama"}
+            </Button>
+          </div>
+          {newTypeInfo && <p className="text-xs text-muted-foreground">{newTypeInfo.description}</p>}
+        </section>
+      )}
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         {/* Lista */}
@@ -380,15 +385,17 @@ export function DiagramsWorkspace({ projectId, projectName }: { projectId: strin
                   </Badge>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busy !== null}
-                    onClick={() => void regenerate(selected)}
-                  >
-                    {busy === "regenerar" ? <LoaderCircleIcon className="animate-spin" /> : <RefreshCwIcon />}
-                    {getDiagramType(selected.type)?.engine === "dados" ? "Atualizar" : "Gerar de novo"}
-                  </Button>
+                  {editable && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy !== null}
+                      onClick={() => void regenerate(selected)}
+                    >
+                      {busy === "regenerar" ? <LoaderCircleIcon className="animate-spin" /> : <RefreshCwIcon />}
+                      {getDiagramType(selected.type)?.engine === "dados" ? "Atualizar" : "Gerar de novo"}
+                    </Button>
+                  )}
                   <Button size="sm" variant="outline" onClick={() => exportFile("svg")}>
                     <FileCodeIcon />
                     SVG
@@ -401,15 +408,17 @@ export function DiagramsWorkspace({ projectId, projectName }: { projectId: strin
                     <CopyIcon />
                     Mermaid
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-muted-foreground hover:text-destructive"
-                    aria-label="Excluir diagrama"
-                    onClick={() => void remove()}
-                  >
-                    <Trash2Icon />
-                  </Button>
+                  {editable && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-destructive"
+                      aria-label="Excluir diagrama"
+                      onClick={() => void remove()}
+                    >
+                      <Trash2Icon />
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -419,7 +428,7 @@ export function DiagramsWorkspace({ projectId, projectName }: { projectId: strin
                   A sintaxe gerada tinha um erro; a IA está corrigindo o diagrama…
                 </p>
               )}
-              {renderFailure?.code === selected.code && busy === null && (
+              {editable && renderFailure?.code === selected.code && busy === null && (
                 <div className="flex flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-destructive">O diagrama não pôde ser desenhado.</span>
                   <div className="flex gap-2">
@@ -468,23 +477,26 @@ export function DiagramsWorkspace({ projectId, projectName }: { projectId: strin
                   <Textarea
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
+                    readOnly={!editable}
                     spellCheck={false}
                     className="min-h-80 font-mono text-xs"
                     aria-label="Código Mermaid do diagrama"
                   />
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-muted-foreground">
-                      Sintaxe em mermaid.js.org. Ao salvar, o diagrama passa a ser “Editado à mão”.
-                    </p>
-                    <Button
-                      size="sm"
-                      onClick={() => void saveCode()}
-                      disabled={busy !== null || draft.trim() === "" || draft === selected.code}
-                    >
-                      {busy === "salvar" && <LoaderCircleIcon className="animate-spin" />}
-                      Salvar código
-                    </Button>
-                  </div>
+                  {editable && (
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        Sintaxe em mermaid.js.org. Ao salvar, o diagrama passa a ser “Editado à mão”.
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={() => void saveCode()}
+                        disabled={busy !== null || draft.trim() === "" || draft === selected.code}
+                      >
+                        {busy === "salvar" && <LoaderCircleIcon className="animate-spin" />}
+                        Salvar código
+                      </Button>
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </>
