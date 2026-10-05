@@ -159,7 +159,8 @@ export const PROJECT_SECONDARY_SHORTCUTS = PROJECT_MODULES.filter((item) =>
   item.key === "components" ||
   item.key === "resources" ||
   item.key === "requirements" ||
-  item.key === "diagrams"
+  item.key === "diagrams" ||
+  item.key === "docs"
 )
 
 const WIZARD_CRUMB_LABELS: Record<string, string> = {
