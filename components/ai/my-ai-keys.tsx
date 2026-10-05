@@ -279,11 +279,12 @@ export function MyAiKeys() {
         <div className="flex flex-col gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
           <span className="flex items-center gap-2 text-sm font-medium text-foreground">
             <SparklesIcon className="size-4 text-primary" aria-hidden />
-            Em breve
+            Conselho de IAs
           </span>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            <strong className="font-medium text-foreground">Conselho de IAs:</strong> várias IAs, cada uma com um
-            cargo, analisam sprints e recursos juntas e propõem os próximos passos.
+            Dentro de cada projeto, na aba <strong className="font-medium text-foreground">Conselho de IAs</strong>,
+            as IAs conectadas aqui ganham cargos (gerente, analista de sprints, revisor de requisitos...), discutem o
+            projeto em reunião e propõem os próximos passos numa ata.
           </p>
         </div>
       </section>

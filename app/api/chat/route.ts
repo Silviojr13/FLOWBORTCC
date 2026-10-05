@@ -13,6 +13,7 @@ import {
 } from "../../../lib/ai-client";
 import { AI_PROVIDER_INFO } from "../../../lib/ai-providers";
 import { assistantAiKey } from "../../../lib/user-ai-keys";
+import { FLOWBOT_ACTIONS_FORMAT } from "../../../lib/flowbot-action-prompt";
 
 export const runtime = "nodejs";
 
@@ -286,27 +287,7 @@ PROPOE; a pessoa revisa num card e confirma com um clique. Seja proativo e entre
 - NUNCA diga que a alteracao ja foi feita ou salva: a pessoa ainda vai confirmar.
 - Se a pessoa so fizer uma pergunta, responda normalmente e NAO inclua o bloco.
 
-Formato: ao final da mensagem, UM bloco de codigo assim:
-
-\`\`\`flowbot-actions
-{"actions": [ { "type": "...", ... } ]}
-\`\`\`
-
-Tipos de acao (use exatamente estes nomes de campo; datas no formato AAAA-MM-DD):
-- {"type":"create_requirement","description":"...","category":"Funcional"|"Nao Funcional","priority":"Alta"|"Media"|"Baixa","level":"Sistema"|"Subsistema"|"Componente"}
-- {"type":"update_requirement","code":"RF01","description":"...","priority":"...","status":"Em Aberto"|"Validado"|"Descartado"}
-- {"type":"delete_requirement","code":"RF01"}
-- {"type":"create_feature","name":"...","description":"...","status":"Planejada"|"Em desenvolvimento"|"Concluida","requirementCode":"RF01"}
-- {"type":"update_feature","name":"nome exato","status":"...","description":"..."}
-- {"type":"create_sprint","name":"Sprint 1 — ...","goal":"...","startDate":"AAAA-MM-DD","endDate":"AAAA-MM-DD"}
-- {"type":"create_task","title":"...","description":"...","priority":"Alta"|"Media"|"Baixa","assignee":"...","participants":["..."],"dueDate":"AAAA-MM-DD","requirementCode":"RF01","featureName":"...","sprintName":"...","columnName":"Backlog"}
-- {"type":"update_task","title":"titulo exato","priority":"...","assignee":"...","dueDate":"...","sprintName":"...","columnName":"..."}
-- {"type":"move_task","title":"titulo exato","columnName":"Em Progresso"}
-- {"type":"create_component","name":"...","description":"...","quantity":1,"unitPrice":0,"domain":"Hardware"|"Software","requirementCode":"RF01"}
-
-Regras do bloco: categoria "Funcional" ou "Nao Funcional" (a interface corrige acentos);
-referencie requisitos pelo codigo, funcionalidades e sprints pelo nome e colunas pelo nome
-exato do contexto; so use responsavel (assignee) com nomes que aparecem no projeto.`;
+${FLOWBOT_ACTIONS_FORMAT}`;
     }
   }
 

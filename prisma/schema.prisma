@@ -44,6 +44,7 @@ model User {
   projectMemberships  ProjectMember[]
   aiKeys              UserAiKey[]
   apiTokens           ApiToken[]
+  councilMembers      AiCouncilMember[]
 
   @@map("users")
 }
@@ -138,6 +139,8 @@ model Project {
   members      ProjectMember[]
   invitations  ProjectInvitation[]
   devNotes     DevNote[]
+  councilMembers  AiCouncilMember[]
+  councilMeetings AiCouncilMeeting[]
 
   @@map("projects")
 }
@@ -538,7 +541,8 @@ model UserAiKey {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  councilMembers AiCouncilMember[]
 
   @@index([userId])
   @@map("user_ai_keys")
@@ -582,4 +586,67 @@ model DevNote {
 
   @@index([projectId, createdAt])
   @@map("dev_notes")
+}
+
+// Conselho de IAs: cada pessoa monta, em cada projeto, a sua equipe de IAs com cargos. A IA de
+// cada membro é uma chave de "Minhas IAs" da própria pessoa ou, sem chave, a IA gratuita.
+// role: chave de COUNCIL_ROLES (lib/council.ts)
+model AiCouncilMember {
+  id           String   @id @default(cuid())
+  projectId    String
+  userId       String
+  name         String
+  role         String
+  instructions String?
+  keyId        String?
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key     UserAiKey? @relation(fields: [keyId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, userId])
+  @@map("ai_council_members")
+}
+
+// Reunião do conselho: o tema, as rodadas e os membros como estavam no início (JSON), as falas
+// e a ata do relator (com o bloco de ações proposto). Quem vê o projeto vê as reuniões.
+// status: "running" | "done"
+model AiCouncilMeeting {
+  id             String   @id @default(cuid())
+  projectId      String
+  userId         String
+  topic          String
+  rounds         Int
+  members        String
+  status         String   @default("running")
+  summary        String?
+  appliedSummary String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project  Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages AiCouncilMessage[]
+
+  @@index([projectId, createdAt])
+  @@map("ai_council_meetings")
+}
+
+model AiCouncilMessage {
+  id        String   @id @default(cuid())
+  meetingId String
+  turn      Int
+  round     Int
+  speaker   String
+  role      String
+  model     String
+  content   String
+  createdAt DateTime @default(now())
+
+  meeting AiCouncilMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, turn])
+  @@map("ai_council_messages")
 }
