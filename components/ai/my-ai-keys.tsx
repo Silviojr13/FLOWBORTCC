@@ -36,6 +36,7 @@ import {
   type AiProvider,
 } from "@/lib/ai-providers"
 import { cn } from "@/lib/utils"
+import { ClaudeBridge } from "./claude-bridge"
 
 interface KeysData {
   keys: AiKeySummary[]
@@ -261,6 +262,8 @@ export function MyAiKeys() {
         )}
       </section>
 
+      <ClaudeBridge />
+
       <section className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3">
           <span className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -278,16 +281,10 @@ export function MyAiKeys() {
             <SparklesIcon className="size-4 text-primary" aria-hidden />
             Em breve
           </span>
-          <ul className="flex list-disc flex-col gap-1 pl-5 text-xs leading-relaxed text-muted-foreground">
-            <li>
-              <strong className="font-medium text-foreground">Ponte com o Claude:</strong> o Claude Code lê o projeto,
-              desenvolve o software e devolve o andamento para o quadro.
-            </li>
-            <li>
-              <strong className="font-medium text-foreground">Conselho de IAs:</strong> várias IAs, cada uma com um
-              cargo, analisam sprints e recursos juntas.
-            </li>
-          </ul>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            <strong className="font-medium text-foreground">Conselho de IAs:</strong> várias IAs, cada uma com um
+            cargo, analisam sprints e recursos juntas e propõem os próximos passos.
+          </p>
         </div>
       </section>
 

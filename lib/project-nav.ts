@@ -3,6 +3,7 @@ import {
   BoxIcon,
   CalendarRangeIcon,
   ClipboardListIcon,
+  CodeXmlIcon,
   Columns3Icon,
   FileChartColumnIcon,
   LayoutDashboardIcon,
@@ -17,6 +18,7 @@ export type ProjectModuleKey =
   | "kanban"
   | "sprints"
   | "report"
+  | "development"
   | "features"
   | "components"
   | "resources"
@@ -60,6 +62,13 @@ export const PROJECT_MODULES: ProjectModule[] = [
     description: "Veja a evolução do projeto.",
     icon: FileChartColumnIcon,
     href: (projectId) => `/dashboard/projects/${projectId}/report`,
+  },
+  {
+    key: "development",
+    label: "Desenvolvimento",
+    description: "O que o Claude Code fez e relatou no projeto.",
+    icon: CodeXmlIcon,
+    href: (projectId) => `/dashboard/projects/${projectId}/development`,
   },
   {
     key: "features",
@@ -109,7 +118,7 @@ export const PROJECT_MODULE_GROUPS = [
   {
     id: "tracking",
     label: "Acompanhamento",
-    keys: ["overview", "kanban", "sprints", "report"] as const,
+    keys: ["overview", "kanban", "sprints", "report", "development"] as const,
   },
   {
     id: "structure",
@@ -166,6 +175,7 @@ export function getProjectModuleKey(
   if (matchesPath(pathname, `${base}/kanban`)) return "kanban"
   if (matchesPath(pathname, `${base}/sprints`)) return "sprints"
   if (matchesPath(pathname, `${base}/report`)) return "report"
+  if (matchesPath(pathname, `${base}/development`)) return "development"
   if (matchesPath(pathname, `${base}/features`)) return "features"
   if (matchesPath(pathname, `${base}/components-costs`)) return "components"
   if (matchesPath(pathname, `${base}/resources`)) return "resources"

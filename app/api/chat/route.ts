@@ -25,6 +25,7 @@ const FREE_LIMITS = {
   maxOutputTokens: Number(process.env.GROQ_MAX_OUTPUT_TOKENS) || 900,
   inputBudget: INPUT_TOKEN_BUDGET,
   contextChars: 4500,
+  devNotes: 3,
   maxActions: 12,
   explanationLines: 6,
 };
@@ -32,6 +33,7 @@ const OWN_KEY_LIMITS = {
   maxOutputTokens: 4000,
   inputBudget: 24000,
   contextChars: 16000,
+  devNotes: 8,
   maxActions: 30,
   explanationLines: 10,
 };
@@ -238,7 +240,10 @@ RNF01 – ...
   // O acesso é conferido de novo: a pessoa pode ter saído do projeto ou mudado de cargo.
   const projectAccess = resolvedProjectId ? await getProjectAccess(resolvedProjectId, user.id) : null;
   if (resolvedProjectId && projectAccess?.canEdit.assistente) {
-    const context = await buildProjectContext(resolvedProjectId, projectAccess.ownerId, limits.contextChars);
+    const context = await buildProjectContext(resolvedProjectId, projectAccess.ownerId, limits.contextChars, {
+      hideCosts: !projectAccess.canSeeCosts,
+      devNotes: limits.devNotes,
+    });
     if (context) {
       inProject = true;
       const today = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
@@ -262,6 +267,9 @@ PROPOE; a pessoa revisa num card e confirma com um clique. Seja proativo e entre
   cada funcionalidade com prioridade, prazo e coluna, e componentes quando fizer sentido).
   Liste as suposicoes numa linha; a pessoa ajusta depois.
 - So pergunte antes quando faltar algo impossivel de supor (ex.: o objetivo do projeto).
+- O ANDAMENTO DO DESENVOLVIMENTO (quando houver) vem do Claude Code, que desenvolve o software:
+  use-o para acompanhar o projeto e sugerir a continuidade (ex.: tarefas para os problemas
+  relatados, respostas as perguntas, proximas tarefas da sprint).
 - Explique de forma didatica, curta e agrupada, ANTES do bloco: **Requisitos** (o que o sistema
   precisa atender), **Funcionalidades** (as capacidades que entregam isso), **Sprints e tarefas**
   (o trabalho em etapas), cada um com 1 ou 2 linhas dizendo o porque. Termine com uma linha

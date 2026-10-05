@@ -11,7 +11,7 @@ export default function MyAiKeysPage() {
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-foreground">Minhas IAs</h1>
           <p className="text-sm text-muted-foreground">
-            Conecte as IAs que você já paga para trabalharem junto com o FlowBot.
+            Conecte as IAs que você já paga e o Claude Code para trabalharem junto com o FlowBot.
           </p>
         </div>
         <MyAiKeys />

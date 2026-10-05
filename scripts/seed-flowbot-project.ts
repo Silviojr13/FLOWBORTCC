@@ -4,7 +4,7 @@ import { PrismaLibSql } from '@prisma/adapter-libsql';
 
 /**
  * Cria, na conta indicada, um projeto sobre o próprio FlowBot: os requisitos oficiais da
- * documentação (RF01–RF16, RNF01–RNF06), os módulos, as três sprints do TCC e as tarefas
+ * documentação (RF01–RF23, RNF01–RNF06), os módulos, as três sprints do TCC e as tarefas
  * já entregues e pendentes. Serve para a equipe acompanhar a evolução da plataforma
  * dentro dela mesma — e para testar como a ferramenta lida com um projeto 100% software.
  *
@@ -56,6 +56,8 @@ const REQUISITOS: [string, string, Categoria, string, string, string][] = [
   ['RF19', 'Compartilhar o projeto por convite (e-mail exato ou link); quem aceita entra como visitante, só com leitura.', 'Funcional', 'Alta', 'Validado', 'Sistema'],
   ['RF20', 'Controlar o acesso ao projeto por cargo (dono, gestor, funcionário, estagiário e visitante), com as permissões verificadas no servidor.', 'Funcional', 'Alta', 'Validado', 'Sistema'],
   ['RF21', 'Ocultar custos, preços, orçamento e recursos de quem não pode vê-los, com liberação pelo dono do projeto.', 'Funcional', 'Média', 'Validado', 'Subsistema'],
+  ['RF22', 'Conectar IAs externas (OpenAI, Anthropic, Google Gemini, Groq e OpenRouter) com a chave de API da própria pessoa, guardada criptografada, e escolher qual IA responde no assistente.', 'Funcional', 'Média', 'Validado', 'Subsistema'],
+  ['RF23', 'Integrar o projeto a um agente de desenvolvimento (Claude Code) por MCP: o agente lê o contexto do projeto, desenvolve o software e devolve o andamento para o quadro.', 'Funcional', 'Média', 'Em Aberto', 'Sistema'],
   ['RNF01', 'Atingir pontuação média igual ou superior a 70 no questionário SUS na avaliação com usuários reais.', 'Não Funcional', 'Alta', 'Em Aberto', 'Sistema'],
   ['RNF02', 'Interface responsiva e funcional nas versões recentes do Chrome, Firefox e Edge.', 'Não Funcional', 'Média', 'Em Aberto', 'Sistema'],
   ['RNF03', 'Nenhuma alteração de requisito, tarefa ou componente pode ser perdida em falha inesperada: persistência imediata a cada escrita.', 'Não Funcional', 'Alta', 'Validado', 'Sistema'],
@@ -81,6 +83,7 @@ const MODULOS: [string, string, string, string][] = [
   ['Avaliação na plataforma', 'Convite por link e por e-mail, guia do participante, tarefas detectadas e questionário SUS com resultados no admin.', 'Concluída', 'RNF01'],
   ['Central de tutoriais', 'Tutorial de cada tela, tour para iniciantes e tutorial completo do projeto.', 'Concluída', 'RNF01'],
   ['Compartilhamento e cargos', 'Convite por e-mail ou link, cargos (gestor, funcionário, estagiário, visitante) e custos ocultos; falta o painel de permissões por área.', 'Em desenvolvimento', 'RF19'],
+  ['IAs conectadas', 'Minhas IAs (chave própria de OpenAI, Anthropic, Gemini, Groq e OpenRouter), ponte com o Claude Code por MCP e, depois, o conselho de IAs.', 'Em desenvolvimento', 'RF22'],
 ];
 
 // Serviços que sustentam a plataforma. O módulo foi pensado para peças físicas; aqui ele
@@ -201,6 +204,10 @@ const TAREFAS: Tarefa[] = [
   { titulo: 'Normalizar e-mails para evitar contas duplicadas por maiúsculas', prioridade: 'Média', prazo: '2026-10-14', requisito: 'RNF05', modulo: 'Autenticação e Onboarding', sprint: 1, coluna: 'Backlog' },
   { titulo: 'Remover a participação de teste do admin na avaliação', descricao: 'Para não entrar nos resultados do SUS.', prioridade: 'Alta', prazo: '2026-10-23', requisito: 'RNF01', modulo: 'Avaliação na plataforma', sprint: 1, coluna: 'Backlog' },
   { titulo: 'Registrar RF17, RF18 e os módulos novos na documentação técnica', descricao: 'Diagramas, Recursos, avaliação na plataforma, tutoriais, recuperação de senha e associação de contas.', prioridade: 'Alta', prazo: '2026-10-23', requisito: 'RF17', sprint: 1, coluna: 'Backlog' },
+  { titulo: 'Minhas IAs: conectar IAs pagas com a chave de API própria', descricao: 'OpenAI, Anthropic, Gemini, Groq e OpenRouter; chave criptografada e testada antes de salvar; escolha da IA do assistente, com limites maiores.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RF22', modulo: 'IAs conectadas', sprint: 1, coluna: 'Concluído', em: '2026-10-05' },
+  { titulo: 'Ponte com o Claude: servidor MCP do FlowBot para o Claude Code', descricao: 'Token pessoal; o Claude Code lê requisitos, tarefas e sprints, registra o andamento e move as tarefas no quadro.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-21', requisito: 'RF23', modulo: 'IAs conectadas', sprint: 1, coluna: 'Em Progresso', em: '2026-10-05' },
+  { titulo: 'Conselho de IAs: várias IAs com cargos analisando o projeto', descricao: 'Reunião em rodadas, ata e ações propostas para confirmar. Se não couber antes do congelamento, vira trabalho futuro no TCC.', prioridade: 'Média', prazo: '2026-10-23', requisito: 'RF22', modulo: 'IAs conectadas', sprint: 1, coluna: 'Backlog' },
+  { titulo: 'Registrar RF22, RF23 e o módulo IAs conectadas na documentação', prioridade: 'Alta', prazo: '2026-10-23', requisito: 'RF22', sprint: 1, coluna: 'Backlog' },
   { titulo: 'Homologação da Sprint 2 com o orientador', prioridade: 'Alta', prazo: '2026-10-23', requisito: 'RNF01', modulo: 'Qualidade e testes', sprint: 1, coluna: 'Em Revisão', em: '2026-10-01' },
   // Sprint 3
   { titulo: 'Preparar roteiro de tarefas e questionário SUS', descricao: 'Roteiro de 7 tarefas, SUS em português, perguntas abertas e de perfil, dentro da plataforma.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-27', requisito: 'RNF01', modulo: 'Validação com usuários', sprint: 2, coluna: 'Concluído', em: '2026-10-02' },
