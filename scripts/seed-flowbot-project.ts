@@ -53,6 +53,9 @@ const REQUISITOS: [string, string, Categoria, string, string, string][] = [
   ['RF16', 'Cadastrar projetos com nome, descrição, data de início e data prevista de término.', 'Funcional', 'Alta', 'Validado', 'Sistema'],
   ['RF17', 'Gerar diagramas de engenharia de software (C4, modelo relacional e UML) a partir dos dados do projeto.', 'Funcional', 'Média', 'Validado', 'Subsistema'],
   ['RF18', 'Cadastrar os recursos do projeto (pessoas, equipamentos, software e espaços) com custo e disponibilidade, compondo o orçamento consolidado.', 'Funcional', 'Média', 'Validado', 'Subsistema'],
+  ['RF19', 'Compartilhar o projeto por convite (e-mail exato ou link); quem aceita entra como visitante, só com leitura.', 'Funcional', 'Alta', 'Validado', 'Sistema'],
+  ['RF20', 'Controlar o acesso ao projeto por cargo (dono, gestor, funcionário, estagiário e visitante), com as permissões verificadas no servidor.', 'Funcional', 'Alta', 'Em Aberto', 'Sistema'],
+  ['RF21', 'Ocultar custos, preços, orçamento e recursos de quem não pode vê-los, com liberação pelo dono do projeto.', 'Funcional', 'Média', 'Validado', 'Subsistema'],
   ['RNF01', 'Atingir pontuação média igual ou superior a 70 no questionário SUS na avaliação com usuários reais.', 'Não Funcional', 'Alta', 'Em Aberto', 'Sistema'],
   ['RNF02', 'Interface responsiva e funcional nas versões recentes do Chrome, Firefox e Edge.', 'Não Funcional', 'Média', 'Em Aberto', 'Sistema'],
   ['RNF03', 'Nenhuma alteração de requisito, tarefa ou componente pode ser perdida em falha inesperada: persistência imediata a cada escrita.', 'Não Funcional', 'Alta', 'Validado', 'Sistema'],
@@ -77,6 +80,7 @@ const MODULOS: [string, string, string, string][] = [
   ['Recursos e orçamento', 'Pessoas, equipamentos, software e espaços com custo e disponibilidade; orçamento consolidado.', 'Concluída', 'RF18'],
   ['Avaliação na plataforma', 'Convite por link e por e-mail, guia do participante, tarefas detectadas e questionário SUS com resultados no admin.', 'Concluída', 'RNF01'],
   ['Central de tutoriais', 'Tutorial de cada tela, tour para iniciantes e tutorial completo do projeto.', 'Concluída', 'RNF01'],
+  ['Compartilhamento e cargos', 'Convite por e-mail ou link, visitante só leitura, custos ocultos e, em seguida, troca de cargo e painel de permissões.', 'Em desenvolvimento', 'RF19'],
 ];
 
 // Serviços que sustentam a plataforma. O módulo foi pensado para peças físicas; aqui ele
@@ -175,6 +179,14 @@ const TAREFAS: Tarefa[] = [
   { titulo: 'Projeto do FlowBot gerenciado dentro do FlowBot', prioridade: 'Baixa', responsavel: 'Silvio', prazo: '2026-10-09', requisito: 'RF16', modulo: 'Gestão de Requisitos', sprint: 1, coluna: 'Concluído', em: '2026-10-02' },
   { titulo: 'Aba Requisitos com página própria, fora do assistente de criação', descricao: 'O menu abria o assistente de criação, com a trilha de etapas e Voltar/Continuar; agora Requisitos segue o padrão das outras abas e o assistente fica só na criação.', prioridade: 'Média', responsavel: 'Silvio', prazo: '2026-10-09', requisito: 'RF01', modulo: 'Gestão de Requisitos', sprint: 1, coluna: 'Concluído', em: '2026-10-04' },
   { titulo: 'Vários responsáveis por card: responsável principal e participantes', descricao: 'O responsável principal responde pela tarefa; os participantes a executam junto. Filtros do Kanban e do relatório encontram a pessoa nos dois papéis.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RF06', modulo: 'Kanban e Sprints', sprint: 1, coluna: 'Concluído', em: '2026-10-04' },
+  { titulo: 'Convite para o projeto por e-mail ou link', descricao: 'Aba Compartilhamento: convite por e-mail exato (sem listar contas), link de 7 dias que pode ser trocado ou desativado, página de convite antes e depois do login.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RF19', modulo: 'Compartilhamento e cargos', sprint: 1, coluna: 'Concluído', em: '2026-10-04' },
+  { titulo: 'Visitante só leitura, com as permissões verificadas no servidor', descricao: 'Uma única porta de acesso em todas as rotas do projeto; telas sem botões de edição para quem só vê.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RF20', modulo: 'Compartilhamento e cargos', sprint: 1, coluna: 'Concluído', em: '2026-10-04' },
+  { titulo: 'Custos e recursos ocultos para o visitante, liberáveis pelo dono', descricao: 'Sem preços, orçamento, aba Recursos nem relatório de custos; o dono libera por pessoa.', prioridade: 'Média', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RF21', modulo: 'Compartilhamento e cargos', sprint: 1, coluna: 'Concluído', em: '2026-10-04' },
+  { titulo: 'Testes automatizados do compartilhamento com duas contas', descricao: 'tests/test_compartilhamento.py: convite, só leitura, custos, remover e sair do projeto.', prioridade: 'Média', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RNF02', modulo: 'Qualidade e testes', sprint: 1, coluna: 'Concluído', em: '2026-10-04' },
+  { titulo: 'Trocar o cargo de quem participa (gestor, funcionário, estagiário)', prioridade: 'Alta', prazo: '2026-10-21', requisito: 'RF20', modulo: 'Compartilhamento e cargos', sprint: 1, coluna: 'Backlog' },
+  { titulo: 'Painel de permissões por área do projeto', descricao: 'Oculto / Ver / Editar em cada área, partindo do padrão do cargo.', prioridade: 'Média', prazo: '2026-10-23', requisito: 'RF20', modulo: 'Compartilhamento e cargos', sprint: 1, coluna: 'Backlog' },
+  { titulo: 'Sugerir os membros do projeto como responsáveis das tarefas', prioridade: 'Média', prazo: '2026-10-23', requisito: 'RF06', modulo: 'Compartilhamento e cargos', sprint: 1, coluna: 'Backlog' },
+  { titulo: 'Registrar RF19 a RF21 e os casos de uso com mais de um ator na documentação', prioridade: 'Alta', prazo: '2026-10-23', requisito: 'RF19', sprint: 1, coluna: 'Backlog' },
   { titulo: 'Configurar SMTP na Vercel para enviar os e-mails de recuperação', descricao: 'SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS e MAIL_FROM (Gmail com senha de app ou Brevo).', prioridade: 'Alta', prazo: '2026-10-09', requisito: 'RNF05', modulo: 'Autenticação e Onboarding', sprint: 1, coluna: 'Backlog' },
   { titulo: 'Atualizar a lista de convites automaticamente na tela do admin', prioridade: 'Média', prazo: '2026-10-14', requisito: 'RNF01', modulo: 'Avaliação na plataforma', sprint: 1, coluna: 'Backlog' },
   { titulo: 'Normalizar e-mails para evitar contas duplicadas por maiúsculas', prioridade: 'Média', prazo: '2026-10-14', requisito: 'RNF05', modulo: 'Autenticação e Onboarding', sprint: 1, coluna: 'Backlog' },
@@ -188,7 +200,7 @@ const TAREFAS: Tarefa[] = [
   { titulo: 'Analisar os resultados do SUS e registrar no TCC', prioridade: 'Alta', prazo: '2026-11-06', requisito: 'RNF01', modulo: 'Validação com usuários', sprint: 2, coluna: 'Backlog' },
   { titulo: 'Separar a visão de hardware e de software do projeto', descricao: 'Componentes já são marcados como hardware ou software e há a aba Recursos; falta o ciclo de vida do componente (Sugerido, Aprovado, Comprado).', prioridade: 'Média', prazo: '2026-11-05', requisito: 'RF12', modulo: 'Visão hardware × software', sprint: 2, coluna: 'Em Progresso', em: '2026-10-02' },
   // Sem sprint (trabalhos futuros)
-  { titulo: 'Times e hierarquias de acesso por projeto', descricao: 'Previsto como trabalho futuro do TCC.', prioridade: 'Baixa', requisito: 'RNF05', coluna: 'Backlog' },
+  { titulo: 'Times e hierarquias de acesso por projeto', descricao: 'Base entregue (convite, visitante só leitura, custos ocultos). Falta trocar o cargo e o painel de permissões por área.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-23', requisito: 'RF20', modulo: 'Compartilhamento e cargos', sprint: 1, coluna: 'Em Progresso', em: '2026-10-04' },
 ];
 
 const ORDEM_COLUNAS: Coluna[] = ['Backlog', 'Em Progresso', 'Em Revisão', 'Concluído'];
@@ -199,7 +211,15 @@ const ORDEM_STATUS = ['Planejada', 'Em desenvolvimento', 'Concluída'];
  * equipe mudou: cria o que falta, avança o que ficou pronto e redesenha os diagramas de dados.
  */
 async function atualizar(projectId: string) {
-  const resumo = { requisitos: 0, modulos: 0, modulosAvancados: 0, tarefas: 0, tarefasAvancadas: 0, diagramas: 0 };
+  const resumo = {
+    requisitos: 0,
+    modulos: 0,
+    modulosAvancados: 0,
+    tarefas: 0,
+    tarefasAvancadas: 0,
+    tarefasCompletadas: 0,
+    diagramas: 0,
+  };
 
   const requisitos = await db.requirement.findMany({ where: { projectId }, select: { id: true, code: true } });
   const requisitoId = new Map(requisitos.map((r) => [r.code, r.id]));
@@ -229,7 +249,18 @@ async function atualizar(projectId: string) {
   const colunas = await db.kanbanColumn.findMany({ where: { projectId } });
   const colunaPorNome = new Map(colunas.map((c) => [c.name, c]));
   const sprints = await db.sprint.findMany({ where: { projectId }, orderBy: { startDate: 'asc' }, select: { id: true } });
-  const tarefas = await db.task.findMany({ where: { projectId }, select: { id: true, title: true, column: { select: { name: true } } } });
+  const tarefas = await db.task.findMany({
+    where: { projectId },
+    select: {
+      id: true,
+      title: true,
+      sprintId: true,
+      featureId: true,
+      requirementId: true,
+      dueDate: true,
+      column: { select: { name: true } },
+    },
+  });
   const porTitulo = new Map(tarefas.map((t) => [t.title, t]));
 
   for (const t of TAREFAS) {
@@ -281,6 +312,21 @@ async function atualizar(projectId: string) {
       });
       resumo.tarefasAvancadas++;
     }
+
+    // Completa só o que está vazio (sprint, módulo, requisito, prazo); o que a equipe já
+    // preencheu fica como está.
+    const vazios = {
+      ...(!existente.sprintId && t.sprint !== undefined && sprints[t.sprint] ? { sprintId: sprints[t.sprint].id } : {}),
+      ...(!existente.featureId && t.modulo && moduloId.get(t.modulo) ? { featureId: moduloId.get(t.modulo) } : {}),
+      ...(!existente.requirementId && t.requisito && requisitoId.get(t.requisito)
+        ? { requirementId: requisitoId.get(t.requisito) }
+        : {}),
+      ...(!existente.dueDate && t.prazo ? { dueDate: dia(t.prazo) } : {}),
+    };
+    if (Object.keys(vazios).length > 0) {
+      await db.task.update({ where: { id: existente.id }, data: vazios });
+      resumo.tarefasCompletadas++;
+    }
   }
 
   // Rastreabilidade e cronograma saem dos dados: redesenha para incluir o que mudou.
@@ -320,6 +366,7 @@ async function main() {
     console.log(`Projeto "${PROJECT_NAME}" atualizado para ${user.name ?? email}.`);
     console.log(`  novos: ${resumo.requisitos} requisito(s), ${resumo.modulos} módulo(s), ${resumo.tarefas} tarefa(s)`);
     console.log(`  avançados: ${resumo.modulosAvancados} módulo(s), ${resumo.tarefasAvancadas} tarefa(s); diagramas redesenhados: ${resumo.diagramas}`);
+    console.log(`  campos vazios completados em ${resumo.tarefasCompletadas} tarefa(s)`);
     console.log(`  /dashboard/projects/${existente.id}`);
     return;
   }
