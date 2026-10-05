@@ -1,15 +1,19 @@
 import { tursoDb } from "./turso-db";
 import { formatDate, isTaskOverdue } from "./kanban";
+import { DEV_NOTE_LABELS, isDevNoteKind } from "./dev-notes";
 
 // Monta um resumo textual do estado atual do projeto para ser injetado no prompt do
 // assistente. É o que permite ao FlowBot responder sobre "este projeto" em vez de falar
 // genericamente sobre robótica.
 // O texto respeita um orçamento de caracteres (`maxChars`): o plano gratuito da IA aceita
 // poucos tokens por minuto, e um projeto grande, listado por inteiro, sozinho passaria dele.
+// O andamento registrado pelo Claude Code (aba Desenvolvimento) entra no fim: é com ele que
+// o assistente acompanha o que já foi desenvolvido.
 export async function buildProjectContext(
   projectId: string,
   userId: string,
-  maxChars = 4500
+  maxChars = 4500,
+  { hideCosts = false, devNotes = 5 }: { hideCosts?: boolean; devNotes?: number } = {}
 ): Promise<string | null> {
   const project = await tursoDb.project.findUnique({
     where: { id: projectId, userId },
@@ -17,7 +21,7 @@ export async function buildProjectContext(
   });
   if (!project) return null;
 
-  const [requirements, features, components, columns, tasks, sprints] = await Promise.all([
+  const [requirements, features, components, columns, tasks, sprints, notes] = await Promise.all([
     tursoDb.requirement.findMany({ where: { projectId }, orderBy: { code: "asc" } }),
     tursoDb.feature.findMany({ where: { projectId }, orderBy: { createdAt: "asc" } }),
     tursoDb.hardwareComponent.findMany({
@@ -38,6 +42,14 @@ export async function buildProjectContext(
       },
     }),
     tursoDb.sprint.findMany({ where: { projectId }, orderBy: { startDate: "asc" } }),
+    devNotes > 0
+      ? tursoDb.devNote.findMany({
+          where: { projectId },
+          orderBy: { createdAt: "desc" },
+          take: devNotes,
+          include: { task: { select: { title: true } } },
+        })
+      : Promise.resolve([]),
   ]);
 
   const totalCost = components.reduce((sum, c) => sum + c.quantity * c.unitPrice, 0);
@@ -55,7 +67,7 @@ export async function buildProjectContext(
     lines.push(`Cronograma: ${formatDate(project.startDate)} a ${formatDate(project.endDate)}`);
   }
   lines.push(
-    `Resumo: ${requirements.length} requisito(s), ${features.length} funcionalidade(s), ${tasks.length} tarefa(s) (${tasksDone} concluidas, ${overdue} atrasadas), ${sprints.length} sprint(s), ${components.length} componente(s), custo estimado R$ ${totalCost.toFixed(2)}.`
+    `Resumo: ${requirements.length} requisito(s), ${features.length} funcionalidade(s), ${tasks.length} tarefa(s) (${tasksDone} concluidas, ${overdue} atrasadas), ${sprints.length} sprint(s), ${components.length} componente(s)${hideCosts ? "" : `, custo estimado R$ ${totalCost.toFixed(2)}`}.`
   );
   if (uncovered.length > 0) {
     lines.push(`Requisitos sem tarefa vinculada: ${uncovered.join(", ")}.`);
@@ -115,8 +127,16 @@ export async function buildProjectContext(
     components.length === 0
       ? ["- (nenhum cadastrado)"]
       : components.map(
-          (c) => `- ${c.name} x${c.quantity} a R$ ${c.unitPrice.toFixed(2)}${c.requirement ? ` (${c.requirement.code})` : ""}`
+          (c) =>
+            `- ${c.name} x${c.quantity}${hideCosts ? "" : ` a R$ ${c.unitPrice.toFixed(2)}`}${c.requirement ? ` (${c.requirement.code})` : ""}`
         );
+
+  // Do mais recente ao mais antigo, como chegou do banco.
+  const noteLines = notes.map((n) => {
+    const kind = isDevNoteKind(n.kind) ? DEV_NOTE_LABELS[n.kind] : n.kind;
+    const task = n.task ? ` (tarefa "${n.task.title}")` : "";
+    return `- ${formatDate(n.createdAt)} ${n.source} · ${kind}${task}: ${clip(n.message, 220)}`;
+  });
 
   const assemble = (o: { reqMax: number; featMax: number; openLimit: number; doneTitles: boolean }) =>
     [
@@ -139,6 +159,7 @@ export async function buildProjectContext(
       "",
       "COMPONENTES:",
       ...componentLines,
+      ...(noteLines.length > 0 ? ["", "ANDAMENTO DO DESENVOLVIMENTO (mais recente primeiro):", ...noteLines] : []),
     ].join("\n");
 
   // Do mais completo ao mais enxuto, até caber no orçamento de caracteres.

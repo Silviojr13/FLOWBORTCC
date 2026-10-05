@@ -43,6 +43,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   projectMemberships  ProjectMember[]
   aiKeys              UserAiKey[]
+  apiTokens           ApiToken[]
 
   @@map("users")
 }
@@ -136,6 +137,7 @@ model Project {
   diagrams     Diagram[]
   members      ProjectMember[]
   invitations  ProjectInvitation[]
+  devNotes     DevNote[]
 
   @@map("projects")
 }
@@ -309,6 +311,7 @@ model Task {
   sprint      Sprint?       @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   history     TaskHistory[]
   participants TaskParticipant[]
+  devNotes     DevNote[]
 
   @@map("tasks")
 }
@@ -539,4 +542,44 @@ model UserAiKey {
 
   @@index([userId])
   @@map("user_ai_keys")
+}
+
+// Token pessoal para ferramentas externas (como o Claude Code) acessarem o FlowBot pelo
+// servidor MCP (/api/mcp) em nome da pessoa, com as permissões dela em cada projeto.
+// Só o hash SHA-256 é guardado: o token aparece uma única vez, ao ser gerado.
+model ApiToken {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  tokenHash  String    @unique
+  tokenHint  String
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("api_tokens")
+}
+
+// Andamento do desenvolvimento registrado por um agente (Claude Code) pelo servidor MCP:
+// o que foi feito, problemas e perguntas. Aparece na aba Desenvolvimento e entra no
+// contexto do assistente do FlowBot, que segue o planejamento a partir dele.
+// kind: "progresso" | "concluido" | "problema" | "pergunta"
+model DevNote {
+  id        String   @id @default(cuid())
+  projectId String
+  taskId    String?
+  authorId  String?
+  source    String   @default("Claude Code")
+  kind      String
+  message   String
+  link      String?
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task    Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, createdAt])
+  @@map("dev_notes")
 }
