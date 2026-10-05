@@ -76,9 +76,18 @@ export async function POST(req: NextRequest) {
       resolvedProjectId = linkedProject?.id ?? null;
     }
 
-    await tursoDb.message.create({
-      data: { chatId, role: "user", content: lastUserMsg.content },
+    // Reenvio automático (depois de esperar o limite por minuto) ou clique repetido: a mesma
+    // fala não é gravada duas vezes seguidas.
+    const previous = await tursoDb.message.findFirst({
+      where: { chatId },
+      orderBy: { createdAt: "desc" },
+      select: { role: true, content: true },
     });
+    if (!(previous?.role === "user" && previous.content === lastUserMsg.content)) {
+      await tursoDb.message.create({
+        data: { chatId, role: "user", content: lastUserMsg.content },
+      });
+    }
   } catch (error) {
     console.error("Erro ao registrar a conversa:", error);
     return new Response(
@@ -297,9 +306,13 @@ REGRAS DO MODO C:
         : groqRes.status === 429
           ? "A IA atingiu o limite de uso por minuto. Aguarde cerca de um minuto e envie de novo."
           : "A IA não conseguiu responder agora. Tente de novo em instantes.";
-    return new Response(JSON.stringify({ error: friendly }), {
+    // Quanto esperar: o cabeçalho retry-after ou o "try again in 23.5s" da mensagem do Groq.
+    const waitSeconds =
+      groqRes.status === 429 ? Math.ceil(retryAfter > 0 ? retryAfter : parseRetrySeconds(text) ?? 30) : null;
+    // O chatId vai junto: a interface reenvia na mesma conversa, sem criar outra.
+    return new Response(JSON.stringify({ error: friendly, retryAfter: waitSeconds, chatId }), {
       status: groqRes.status,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Chat-Id": chatId },
     });
   }
 
@@ -379,4 +392,11 @@ REGRAS DO MODO C:
       "X-Chat-Omitted": String(conversation.omitted),
     },
   });
+}
+
+/** "Please try again in 23.45s" ou "in 1m2.5s" -> segundos. */
+function parseRetrySeconds(message: string): number | null {
+  const match = /try again in (?:(\d+)m)?([\d.]+)s/i.exec(message);
+  if (!match) return null;
+  return Number(match[1] ?? 0) * 60 + Number(match[2]);
 }

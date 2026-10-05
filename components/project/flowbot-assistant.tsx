@@ -234,6 +234,8 @@ export function FlowbotAssistant({
     if (!trimmed || isStreaming) return
 
     const nextMessages: ChatMessage[] = [...messages, { role: "user", content: trimmed }]
+    // Avisos e erros da interface não vão para a IA como conversa.
+    const history = nextMessages.filter((m) => !m.error && m.content.trim())
     setMessages([...nextMessages, { role: "assistant", content: "" }])
     setInput("")
     setIsStreaming(true)
@@ -244,12 +246,40 @@ export function FlowbotAssistant({
     abortRef.current = controller
 
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextMessages, chatId: activeChatId, projectId }),
-        signal: controller.signal,
-      })
+      const setLast = (message: ChatMessage) =>
+        setMessages((prev) => {
+          const updated = [...prev]
+          updated[updated.length - 1] = message
+          return updated
+        })
+      let chatIdForRequest = activeChatId
+      let res: Response
+      // Limite de uso por minuto da IA: espera o tempo pedido e reenvia sozinho (até 2 vezes).
+      for (let attempt = 0; ; attempt++) {
+        res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: history, chatId: chatIdForRequest, projectId }),
+          signal: controller.signal,
+        })
+        if (res.status !== 429 || attempt >= 2) break
+        const wait = await res.json().catch(() => ({}))
+        if (wait.chatId) {
+          chatIdForRequest = wait.chatId
+          setActiveChatId(wait.chatId)
+        }
+        const seconds = Math.min(Math.max(Math.ceil(Number(wait.retryAfter) || 30), 3), 90)
+        for (let left = seconds; left > 0; left--) {
+          if (controller.signal.aborted) throw new DOMException("cancelado", "AbortError")
+          setLast({
+            role: "assistant",
+            content: `A IA atingiu o limite de uso por minuto. Tentando de novo em ${left} s…`,
+            error: true,
+          })
+          await new Promise((resolve) => setTimeout(resolve, 1000))
+        }
+        setLast({ role: "assistant", content: "" })
+      }
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -296,6 +326,7 @@ export function FlowbotAssistant({
         updated[updated.length - 1] = {
           role: "assistant",
           content: error instanceof Error ? `Erro: ${error.message}` : "Erro ao conectar à API.",
+          error: true,
         }
         return updated
       })

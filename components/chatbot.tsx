@@ -6,7 +6,8 @@ import { WelcomeScreen } from "@/components/welcome-screen";
 import { ChatInput } from "@/components/chat-input";
 import { ProjectCreationLayout } from "@/components/project-steps/project-creation-layout";
 import { useSidebar } from "@/components/ui/sidebar";
-import { BotIcon } from "lucide-react";
+import { BotIcon, SquarePenIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   MessageBubble,
   TypingIndicator,
@@ -22,6 +23,42 @@ import {
 } from "@/lib/tour-chat";
 
 const CHAT_IMPORT_KEY = "flowbot:chat-requirements";
+// Conversa em andamento (antes de virar projeto): recarregar a página a reabre.
+const CURRENT_CHAT_KEY = "flowbot:conversa-em-andamento";
+
+function readSavedChat(): string | null {
+  try {
+    return localStorage.getItem(CURRENT_CHAT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function saveCurrentChat(chatId: string) {
+  try {
+    localStorage.setItem(CURRENT_CHAT_KEY, chatId);
+  } catch {
+    /* sem armazenamento: a conversa continua no histórico do servidor */
+  }
+}
+
+function clearSavedChat() {
+  try {
+    localStorage.removeItem(CURRENT_CHAT_KEY);
+  } catch {
+    /* nada a limpar */
+  }
+}
+
+/** Espera `seconds`, avisando a cada segundo; para se o envio for cancelado. */
+async function countdown(seconds: number, onTick: (left: number) => void, signal: AbortSignal) {
+  for (let left = seconds; left > 0; left--) {
+    if (signal.aborted) throw new DOMException("cancelado", "AbortError");
+    onTick(left);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  if (signal.aborted) throw new DOMException("cancelado", "AbortError");
+}
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -38,7 +75,7 @@ interface Conversation {
 /*  Main Chat Page                                                     */
 /* ------------------------------------------------------------------ */
 
-export default function ChatPage() {
+export default function ChatPage({ fresh = false }: { fresh?: boolean }) {
   const router = useRouter();
   const { setOpen } = useSidebar();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -122,6 +159,34 @@ export default function ChatPage() {
     };
   }, []);
 
+  /* Conversa em andamento: reabre depois de recarregar a página */
+  useEffect(() => {
+    if (fresh) {
+      clearSavedChat();
+      return;
+    }
+    const saved = readSavedChat();
+    if (!saved) return;
+    let cancelled = false;
+    fetch(`/api/conversations/${encodeURIComponent(saved)}/messages`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { messages?: Message[] } | null) => {
+        if (cancelled || isDemoRef.current) return;
+        const restored = (data?.messages ?? []).filter((m) => m.content?.trim());
+        if (restored.length === 0) {
+          clearSavedChat();
+          return;
+        }
+        setMessages(restored);
+        setCurrentChatId(saved);
+        setActiveId(saved);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [fresh]);
+
   /* Auto-scroll on new messages */
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -160,6 +225,7 @@ export default function ChatPage() {
     setActiveId(id);
     setCurrentChatId(null);
     setMessages([]);
+    clearSavedChat();
   }, []);
 
   /* Select conversation */
@@ -200,11 +266,11 @@ export default function ChatPage() {
     }
 
     const userMsg: Message = { role: "user", content: trimmed };
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
+    // Avisos e erros da interface ficam na tela, mas não vão para a IA como conversa.
+    const history = [...messages.filter((m) => !m.error && m.content.trim()), userMsg];
+    setMessages([...messages, userMsg, { role: "assistant", content: "" }]);
     setInput("");
     setIsStreaming(true);
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     // Update title with first message
     if (messages.length === 0 && activeId) {
@@ -216,37 +282,56 @@ export default function ChatPage() {
 
     const controller = new AbortController();
     abortRef.current = controller;
+    const setLast = (message: Message) =>
+      setMessages((prev) => {
+        const u = [...prev];
+        u[u.length - 1] = message;
+        return u;
+      });
+    let chatIdForRequest = currentChatId;
+    const rememberChat = (id: string | null) => {
+      if (!id) return;
+      chatIdForRequest = id;
+      setCurrentChatId(id);
+      saveCurrentChat(id);
+    };
 
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: newMessages,
-          model,
-          chatId: currentChatId,
-        }),
-        signal: controller.signal,
-      });
+      let res: Response;
+      // Limite de uso por minuto da IA: espera o tempo pedido e reenvia sozinho (até 2 vezes).
+      for (let attempt = 0; ; attempt++) {
+        res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: history, model, chatId: chatIdForRequest }),
+          signal: controller.signal,
+        });
+        if (res.status !== 429 || attempt >= 2) break;
+        const wait = await res.json().catch(() => ({}));
+        rememberChat(wait.chatId ?? null);
+        const seconds = Math.min(Math.max(Math.ceil(Number(wait.retryAfter) || 30), 3), 90);
+        await countdown(
+          seconds,
+          (left) =>
+            setLast({
+              role: "assistant",
+              content: `A IA atingiu o limite de uso por minuto do plano gratuito. Tentando de novo em ${left} s…`,
+              error: true,
+            }),
+          controller.signal
+        );
+        setLast({ role: "assistant", content: "" });
+      }
 
       if (!res.ok) {
-        const err = await res.json();
-        setMessages((prev) => {
-          const u = [...prev];
-          u[u.length - 1] = {
-            role: "assistant",
-            content: `Erro: ${err.error}`,
-          };
-          return u;
-        });
+        const err = await res.json().catch(() => ({}));
+        rememberChat(err.chatId ?? null);
+        setLast({ role: "assistant", content: `Erro: ${err.error ?? "a IA não respondeu."}`, error: true });
         return;
       }
 
       // Ler o chatId do header da resposta
-      const newChatId = res.headers.get("X-Chat-Id");
-      if (newChatId && newChatId !== currentChatId) {
-        setCurrentChatId(newChatId);
-      }
+      rememberChat(res.headers.get("X-Chat-Id"));
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
@@ -264,15 +349,10 @@ export default function ChatPage() {
         });
       }
     } catch (err: unknown) {
-      if (err instanceof Error && err.name !== "AbortError") {
-        setMessages((prev) => {
-          const u = [...prev];
-          u[u.length - 1] = {
-            role: "assistant",
-            content: "Erro ao conectar à API.",
-          };
-          return u;
-        });
+      if (err instanceof Error && err.name === "AbortError") {
+        setLast({ role: "assistant", content: "Envio cancelado.", error: true });
+      } else {
+        setLast({ role: "assistant", content: "Erro ao conectar à API.", error: true });
       }
     } finally {
       setIsStreaming(false);
@@ -284,7 +364,7 @@ export default function ChatPage() {
             ? {
                 ...c,
                 messages: [
-                  ...newMessages,
+                  ...history,
                   { role: "assistant" as const, content: "" },
                 ],
               }
@@ -314,6 +394,7 @@ export default function ChatPage() {
         CHAT_IMPORT_KEY,
         JSON.stringify({ projectName, requirements, chatId: currentChatId })
       );
+      clearSavedChat();
       router.push("/dashboard/projects/new/manual");
     },
     [messages, router, currentChatId]
@@ -332,6 +413,22 @@ export default function ChatPage() {
         {hasMessages ? (
           /* ---- Conversation view ---- */
           <div className="flex w-full flex-col gap-5 py-6 sm:py-8">
+            <div className="flex justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-muted-foreground"
+                disabled={isStreaming}
+                onClick={() => {
+                  if (window.confirm("Começar uma nova conversa? Esta continua no seu histórico.")) {
+                    createNewConversation();
+                  }
+                }}
+              >
+                <SquarePenIcon className="size-4" />
+                Nova conversa
+              </Button>
+            </div>
             {messages.map((msg, i) => {
               const isStreamingPlaceholder =
                 isStreaming &&

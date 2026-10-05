@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  /** Aviso ou erro gerado pela interface: aparece na conversa, mas não vai para a IA. */
+  error?: boolean;
 }
 
 // Renderização markdown das respostas do assistente, compartilhada entre a tela de chat

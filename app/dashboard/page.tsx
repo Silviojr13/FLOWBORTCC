@@ -16,7 +16,9 @@ function DashboardChatContent() {
     }
   }, [isNewAiSession, router])
 
-  return <ChatPage key={sessionKey} />
+  // "Gerar sugestões com IA" (?new=ai) começa do zero; abrir o painel normalmente reabre a
+  // conversa em andamento.
+  return <ChatPage key={sessionKey} fresh={isNewAiSession} />
 }
 
 export default function Page() {
