@@ -24,6 +24,7 @@ import {
   HELP_CENTER_EVENT,
   PAGE_TUTORIALS,
   getPageTutorial,
+  isNewTutorial,
   openHelpCenter,
   startTutorials,
   tutorialForLocation,
@@ -195,7 +196,14 @@ export function HelpCenter() {
                       aria-label={done ? "Concluído" : "Ainda não visto"}
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-foreground">{t.title}</p>
+                      <p className="flex items-center gap-2 text-sm text-foreground">
+                        {t.title}
+                        {!done && isNewTutorial(t) && (
+                          <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary uppercase">
+                            Novo
+                          </span>
+                        )}
+                      </p>
                       <p className="truncate text-xs text-muted-foreground">{t.summary}</p>
                     </div>
                     <Button size="sm" variant="ghost" disabled={blocked} onClick={() => start([t.key])}>

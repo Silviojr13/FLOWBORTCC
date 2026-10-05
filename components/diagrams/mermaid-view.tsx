@@ -14,7 +14,7 @@ export interface MermaidViewHandle {
 let queue: Promise<unknown> = Promise.resolve()
 let counter = 0
 
-async function renderMermaid(code: string, dark: boolean): Promise<string> {
+export async function renderMermaid(code: string, dark: boolean): Promise<string> {
   const { default: mermaid } = await import("mermaid")
   mermaid.initialize({
     startOnLoad: false,

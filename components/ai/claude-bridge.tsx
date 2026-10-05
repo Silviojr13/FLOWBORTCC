@@ -98,7 +98,10 @@ export function ClaudeBridge() {
     : ""
 
   return (
-    <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm dark:shadow-none sm:p-5">
+    <section
+      className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm dark:shadow-none sm:p-5"
+      data-tour="aikeys-bridge"
+    >
       <div className="flex flex-col gap-1">
         <h2 className="flex items-center gap-2 text-sm font-medium text-foreground">
           <TerminalIcon className="size-4 text-primary" aria-hidden />

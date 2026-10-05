@@ -4,7 +4,7 @@ import { PrismaLibSql } from '@prisma/adapter-libsql';
 
 /**
  * Cria, na conta indicada, um projeto sobre o próprio FlowBot: os requisitos oficiais da
- * documentação (RF01–RF23, RNF01–RNF06), os módulos, as três sprints do TCC e as tarefas
+ * documentação (RF01–RF24, RNF01–RNF06), os módulos, as três sprints do TCC e as tarefas
  * já entregues e pendentes. Serve para a equipe acompanhar a evolução da plataforma
  * dentro dela mesma — e para testar como a ferramenta lida com um projeto 100% software.
  *
@@ -58,6 +58,7 @@ const REQUISITOS: [string, string, Categoria, string, string, string][] = [
   ['RF21', 'Ocultar custos, preços, orçamento e recursos de quem não pode vê-los, com liberação pelo dono do projeto.', 'Funcional', 'Média', 'Validado', 'Subsistema'],
   ['RF22', 'Conectar IAs externas (OpenAI, Anthropic, Google Gemini, Groq e OpenRouter) com a chave de API da própria pessoa, guardada criptografada, e escolher qual IA responde no assistente.', 'Funcional', 'Média', 'Validado', 'Subsistema'],
   ['RF23', 'Integrar o projeto a um agente de desenvolvimento (Claude Code) por MCP: o agente lê o contexto do projeto, desenvolve o software e devolve o andamento para o quadro.', 'Funcional', 'Média', 'Validado', 'Sistema'],
+  ['RF24', 'Gerar a documentação de engenharia do projeto (visão, requisitos, casos de uso, arquitetura, plano de projeto, plano de testes, rastreabilidade e manual) nas normas ISO/IEC/IEEE, a partir dos dados do projeto, com exportação em PDF e Markdown.', 'Funcional', 'Média', 'Validado', 'Sistema'],
   ['RNF01', 'Atingir pontuação média igual ou superior a 70 no questionário SUS na avaliação com usuários reais.', 'Não Funcional', 'Alta', 'Em Aberto', 'Sistema'],
   ['RNF02', 'Interface responsiva e funcional nas versões recentes do Chrome, Firefox e Edge.', 'Não Funcional', 'Média', 'Em Aberto', 'Sistema'],
   ['RNF03', 'Nenhuma alteração de requisito, tarefa ou componente pode ser perdida em falha inesperada: persistência imediata a cada escrita.', 'Não Funcional', 'Alta', 'Validado', 'Sistema'],
@@ -83,6 +84,7 @@ const MODULOS: [string, string, string, string][] = [
   ['Avaliação na plataforma', 'Convite por link e por e-mail, guia do participante, tarefas detectadas e questionário SUS com resultados no admin.', 'Concluída', 'RNF01'],
   ['Central de tutoriais', 'Tutorial de cada tela, tour para iniciantes e tutorial completo do projeto.', 'Concluída', 'RNF01'],
   ['Compartilhamento e cargos', 'Convite por e-mail ou link, cargos (gestor, funcionário, estagiário, visitante) e custos ocultos; falta o painel de permissões por área.', 'Em desenvolvimento', 'RF19'],
+  ['Documentação de engenharia', 'Documentos nas normas ISO/IEC/IEEE escritos a partir dos dados, com diretrizes acadêmicas, modelo de referência e exportação em PDF.', 'Concluída', 'RF24'],
   ['IAs conectadas', 'Minhas IAs (chave própria de OpenAI, Anthropic, Gemini, Groq e OpenRouter), ponte com o Claude Code por MCP e conselho de IAs com cargos.', 'Concluída', 'RF22'],
 ];
 
@@ -209,6 +211,10 @@ const TAREFAS: Tarefa[] = [
   { titulo: 'Conselho de IAs: várias IAs com cargos analisando o projeto', descricao: 'Membros com cargo e IA própria ou gratuita; reunião em rodadas com falas ao vivo; ata do relator com ações para confirmar.', prioridade: 'Média', responsavel: 'Silvio', prazo: '2026-10-23', requisito: 'RF22', modulo: 'IAs conectadas', sprint: 1, coluna: 'Concluído', em: '2026-10-05' },
   { titulo: 'Corrigir o limite por minuto do Groq tratado como falta de crédito', descricao: 'O aviso do Groq traz um link de billing e parava o chat e o conselho; agora a IA espera alguns segundos e continua.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RNF03', modulo: 'Assistente FlowBot (IA)', sprint: 1, coluna: 'Concluído', em: '2026-10-05' },
   { titulo: 'Resolver os apontamentos do SonarCloud no conselho de IAs', descricao: 'Bug de promessa sem tratamento de erro e funções complexas demais; Quality Gate aprovado de novo.', prioridade: 'Média', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RNF02', modulo: 'Qualidade e testes', sprint: 1, coluna: 'Concluído', em: '2026-10-05' },
+  { titulo: 'Tutoriais das telas novas e aviso de novidade para quem já usa', descricao: 'Minhas IAs, Compartilhamento, Desenvolvimento, Conselho de IAs e Documentação; quem já usava recebe o convite para os tutoriais das telas que chegaram depois.', prioridade: 'Média', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RNF01', modulo: 'Central de tutoriais', sprint: 1, coluna: 'Concluído', em: '2026-10-05' },
+  { titulo: 'Aba Documentação com documentos nas normas ISO/IEC/IEEE', descricao: 'Oito documentos (visão, SRS, casos de uso, arquitetura, plano de projeto, plano de testes, rastreabilidade e manual); tabelas dos dados, diagramas e texto pela IA; diretrizes acadêmicas, modelo de referência e PDF.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-21', requisito: 'RF24', modulo: 'Documentação de engenharia', sprint: 1, coluna: 'Concluído', em: '2026-10-05' },
+  { titulo: 'Gerar a documentação do FlowBot com o próprio FlowBot', descricao: 'Documentos do TCC escritos pela plataforma; a equipe revisa, ajusta e publica as versões antes da entrega.', prioridade: 'Alta', responsavel: 'Silvio', prazo: '2026-10-23', requisito: 'RF24', modulo: 'Documentação de engenharia', sprint: 1, coluna: 'Em Revisão', em: '2026-10-05' },
+  { titulo: 'Centralizar os ícones e o botão da barra lateral recolhida', descricao: 'Ícones no centro da barra recolhida e botão de abrir e fechar junto à borda, na altura do logo.', prioridade: 'Baixa', responsavel: 'Silvio', prazo: '2026-10-14', requisito: 'RNF02', modulo: 'Autenticação e Onboarding', sprint: 1, coluna: 'Concluído', em: '2026-10-05' },
   { titulo: 'Registrar RF22, RF23 e o módulo IAs conectadas na documentação', prioridade: 'Alta', prazo: '2026-10-23', requisito: 'RF22', sprint: 1, coluna: 'Backlog' },
   { titulo: 'Homologação da Sprint 2 com o orientador', prioridade: 'Alta', prazo: '2026-10-23', requisito: 'RNF01', modulo: 'Qualidade e testes', sprint: 1, coluna: 'Em Revisão', em: '2026-10-01' },
   // Sprint 3

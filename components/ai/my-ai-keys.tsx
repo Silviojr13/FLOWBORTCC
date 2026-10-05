@@ -127,7 +127,7 @@ export function MyAiKeys() {
         </p>
       )}
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-3" data-tour="aikeys-assistant">
         <div className="flex flex-col gap-1">
           <h2 className="text-sm font-medium text-foreground">Quem responde no assistente</h2>
           <p className="text-xs leading-relaxed text-muted-foreground">
@@ -166,7 +166,12 @@ export function MyAiKeys() {
               OpenAI (ChatGPT), Anthropic (Claude), Google Gemini, Groq ou OpenRouter, com a sua chave de API.
             </p>
           </div>
-          <Button className="gap-1.5" disabled={!data.encryptionReady} onClick={() => setConnectOpen(true)}>
+          <Button
+            className="gap-1.5"
+            disabled={!data.encryptionReady}
+            onClick={() => setConnectOpen(true)}
+            data-tour="aikeys-connect"
+          >
             <PlusIcon />
             Conectar IA
           </Button>

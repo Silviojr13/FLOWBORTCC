@@ -146,7 +146,10 @@ export function SharingPanel({ projectId }: { projectId: string }) {
   return (
     <div className="flex flex-col gap-8">
       {manage && (
-        <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm dark:shadow-none sm:p-5">
+        <section
+          className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm dark:shadow-none sm:p-5"
+          data-tour="sharing-invite"
+        >
           <div className="flex flex-col gap-1">
             <h2 className="text-sm font-medium text-foreground">Convidar pessoas</h2>
             <p className="text-xs leading-relaxed text-muted-foreground">
@@ -281,7 +284,7 @@ export function SharingPanel({ projectId }: { projectId: string }) {
         </section>
       )}
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-3" data-tour="sharing-people">
         <h2 className="text-sm font-medium text-foreground">Pessoas no projeto</h2>
         <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
           <PersonRow person={data.owner} role="dono" />
@@ -377,7 +380,7 @@ export function SharingPanel({ projectId }: { projectId: string }) {
         )}
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-3" data-tour="sharing-roles">
         <h2 className="text-sm font-medium text-foreground">O que cada cargo pode fazer</h2>
         <ul className="grid gap-3 sm:grid-cols-2">
           {(["dono", ...MEMBER_ROLES] as ProjectRole[]).map((role) => (

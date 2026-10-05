@@ -51,7 +51,7 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="px-3 pt-4 pb-2 group-data-[collapsible=icon]:px-1.5">
+      <SidebarHeader className="px-3 pt-1 pb-2 group-data-[collapsible=icon]:px-1.5">
         <Link
           href="/dashboard"
           aria-label="Flowbot"
