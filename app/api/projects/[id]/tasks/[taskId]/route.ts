@@ -3,6 +3,7 @@ import { authorizeProject } from "../../../../../../lib/project-access";
 import { tursoDb } from "../../../../../../lib/turso-db";
 import { emitProjectEvent } from "../../../../../../lib/project-events";
 import { isTaskPriority } from "../../../../../../lib/kanban";
+import { isOwnTask } from "../../../../../../lib/project-permissions";
 import {
   json,
   jsonError,
@@ -18,7 +19,7 @@ import {
 async function findProjectTask(projectId: string, taskId: string) {
   return tursoDb.task.findUnique({
     where: { id: taskId, projectId },
-    include: { column: { select: { id: true, name: true } } },
+    include: { column: { select: { id: true, name: true } }, participants: { select: { name: true } } },
   });
 }
 
@@ -34,6 +35,10 @@ export async function PATCH(
 
   const existing = await findProjectTask(projectId, taskId);
   if (!existing) return jsonError("Tarefa não encontrada", 404);
+  // Estagiário: só as tarefas em que é responsável principal ou participante.
+  if (gate.access.ownTasksOnly && !isOwnTask(gate.access.viewerName, existing)) {
+    return jsonError("Seu cargo só permite alterar as tarefas em que você é responsável ou participante.", 403);
+  }
 
   const {
     title,
@@ -183,7 +188,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; taskId: string }> }
 ) {
   const { id: projectId, taskId } = await params;
-  const gate = await authorizeProject(projectId, { edit: "kanban" });
+  const gate = await authorizeProject(projectId, { edit: "kanban", board: true });
   if (gate instanceof Response) return gate;
 
   const existing = await findProjectTask(projectId, taskId);
