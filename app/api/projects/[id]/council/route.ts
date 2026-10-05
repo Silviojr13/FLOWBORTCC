@@ -52,6 +52,17 @@ export async function GET(_req: NextRequest, { params }: Params) {
   });
 }
 
+/** Valida um membro vindo da tela: o membro pronto ou a mensagem de erro. */
+function parseMember(raw: Record<string, unknown> | null): CouncilMemberInput | string {
+  const name = typeof raw?.name === "string" ? raw.name.trim().slice(0, 40) : "";
+  if (!raw || !name) return "Todo membro precisa de um nome.";
+  if (!isCouncilRole(raw.role)) return `Cargo inválido para ${name}.`;
+  const instructions = typeof raw.instructions === "string" ? raw.instructions.trim().slice(0, 500) || null : null;
+  if (raw.role === "personalizado" && !instructions) return `Descreva o cargo personalizado de ${name}.`;
+  const keyId = typeof raw.keyId === "string" && raw.keyId ? raw.keyId : null;
+  return { name, role: raw.role, instructions, keyId };
+}
+
 // PUT: troca a lista de membros do conselho desta pessoa (nome, cargo, instruções e IA).
 export async function PUT(req: NextRequest, { params }: Params) {
   const { id: projectId } = await params;
@@ -66,16 +77,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
   }
 
   const members: CouncilMemberInput[] = [];
-  for (const raw of body.members as Record<string, unknown>[]) {
-    const name = typeof raw?.name === "string" ? raw.name.trim().slice(0, 40) : "";
-    if (!name) return NextResponse.json({ error: "Todo membro precisa de um nome." }, { status: 400 });
-    if (!isCouncilRole(raw.role)) return NextResponse.json({ error: `Cargo inválido para ${name}.` }, { status: 400 });
-    const instructions = typeof raw.instructions === "string" ? raw.instructions.trim().slice(0, 500) || null : null;
-    if (raw.role === "personalizado" && !instructions) {
-      return NextResponse.json({ error: `Descreva o cargo personalizado de ${name}.` }, { status: 400 });
-    }
-    const keyId = typeof raw.keyId === "string" && raw.keyId ? raw.keyId : null;
-    members.push({ name, role: raw.role, instructions, keyId });
+  for (const raw of body.members as (Record<string, unknown> | null)[]) {
+    const member = parseMember(raw);
+    if (typeof member === "string") return NextResponse.json({ error: member }, { status: 400 });
+    members.push(member);
   }
   if (new Set(members.map((m) => m.name.toLocaleLowerCase("pt-BR"))).size !== members.length) {
     return NextResponse.json({ error: "Dê um nome diferente a cada membro." }, { status: 400 });

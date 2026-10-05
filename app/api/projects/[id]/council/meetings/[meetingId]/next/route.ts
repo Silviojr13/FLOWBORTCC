@@ -8,6 +8,22 @@ export const maxDuration = 60;
 
 type Params = { params: Promise<{ id: string; meetingId: string }> };
 
+const STATUS_BY_KIND: Partial<Record<string, number>> = { rate: 429, quota: 402 };
+
+/** Erro da reunião em resposta: 429 com retryAfter faz a tela esperar e continuar sozinha. */
+function errorResponse(error: unknown): Response {
+  if (error instanceof CouncilError) return NextResponse.json({ error: error.message }, { status: error.status });
+  if (error instanceof CouncilAiError) {
+    const { kind, retryAfter } = error.cause;
+    return NextResponse.json(
+      { error: error.message, retryAfter: kind === "rate" ? retryAfter : null },
+      { status: STATUS_BY_KIND[kind] ?? 502 }
+    );
+  }
+  console.error("Erro na reunião do conselho:", error);
+  return NextResponse.json({ error: "A reunião parou por um erro. Tente continuar de novo." }, { status: 500 });
+}
+
 // POST: a próxima fala da reunião (ou a ata, quando todos já falaram). Só quem abriu a
 // reunião a conduz, porque ela usa as IAs dessa pessoa.
 export async function POST(req: NextRequest, { params }: Params) {
@@ -27,15 +43,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   try {
     await runNextStep(meeting, gate.access, gate.user.id, expectedTurn);
   } catch (error) {
-    if (error instanceof CouncilError) return NextResponse.json({ error: error.message }, { status: error.status });
-    if (error instanceof CouncilAiError) {
-      // 429 com retryAfter: a tela espera e continua sozinha.
-      const { kind, retryAfter } = error.cause;
-      const status = kind === "rate" ? 429 : kind === "quota" ? 402 : 502;
-      return NextResponse.json({ error: error.message, retryAfter: kind === "rate" ? retryAfter : null }, { status });
-    }
-    console.error("Erro na reunião do conselho:", error);
-    return NextResponse.json({ error: "A reunião parou por um erro. Tente continuar de novo." }, { status: 500 });
+    return errorResponse(error);
   }
 
   const updated = await loadMeeting(projectId, meetingId);

@@ -131,7 +131,7 @@ const today = () => new Date().toLocaleDateString("pt-BR", { timeZone: "America/
 
 type MeetingRow = NonNullable<Awaited<ReturnType<typeof loadMeeting>>>
 
-export async function loadMeeting(projectId: string, meetingId: string) {
+export function loadMeeting(projectId: string, meetingId: string) {
   return tursoDb.aiCouncilMeeting.findFirst({
     where: { id: meetingId, projectId },
     include: { messages: { orderBy: { turn: "asc" } } },
@@ -165,82 +165,88 @@ export async function meetingView(meeting: MeetingRow, viewerId: string): Promis
   }
 }
 
-/** Faz a próxima fala ou, quando todos já falaram, a ata do relator. */
-export async function runNextStep(meeting: MeetingRow, access: ProjectAccess, userId: string, expectedTurn: number): Promise<void> {
-  const members = parseMembers(meeting.members)
-  if (members.length === 0) throw new CouncilError("Reunião sem membros.", 409)
-  const total = members.length * meeting.rounds
-  const next = meeting.messages.length
-  if (meeting.status === "done") throw new CouncilError("A reunião já terminou.", 409)
-  if (expectedTurn !== next) throw new CouncilError("A reunião andou em outra aba. Recarregue para ver as falas.", 409)
+interface StepContext {
+  meeting: MeetingRow
+  members: CouncilSnapshot[]
+  access: ProjectAccess
+  userId: string
+  projectName: string
+  /** "Fulano (Cargo), Beltrana (Cargo)" */
+  names: string
+}
 
-  const names = members.map((m) => `${m.name} (${COUNCIL_ROLE_INFO[m.role]?.label ?? m.role})`).join(", ")
-  const project = await tursoDb.project.findUnique({ where: { id: meeting.projectId }, select: { name: true } })
+function projectData(ctx: StepContext, limits: typeof COMPACT) {
+  return buildProjectContext(ctx.meeting.projectId, ctx.access.ownerId, limits.contextChars, {
+    hideCosts: !ctx.access.canSeeCosts,
+    devNotes: limits.devNotes,
+  }).then((text) => text ?? "")
+}
 
-  if (next < total) {
-    const member = members[next % members.length]
-    const round = Math.floor(next / members.length) + 1
-    const { target, compact } = await targetFor(member, userId)
-    const limits = compact ? COMPACT : FULL
-    const context =
-      (await buildProjectContext(meeting.projectId, access.ownerId, limits.contextChars, {
-        hideCosts: !access.canSeeCosts,
-        devNotes: limits.devNotes,
-      })) ?? ""
-    const info = COUNCIL_ROLE_INFO[member.role] ?? COUNCIL_ROLE_INFO.personalizado
+/** Uma fala: o membro da vez, com o tema, as falas anteriores e os dados do projeto. */
+async function speak(ctx: StepContext, turn: number): Promise<void> {
+  const { meeting, members } = ctx
+  const member = members[turn % members.length]
+  const round = Math.floor(turn / members.length) + 1
+  const { target, compact } = await targetFor(member, ctx.userId)
+  const limits = compact ? COMPACT : FULL
+  const context = await projectData(ctx, limits)
+  const info = COUNCIL_ROLE_INFO[member.role] ?? COUNCIL_ROLE_INFO.personalizado
+  const extra = member.instructions ? `\nInstrucoes do seu cargo: ${member.instructions}` : ""
+  const closing =
+    round === meeting.rounds
+      ? "E a ultima rodada: feche com a sua recomendacao objetiva."
+      : "Traga a sua analise e uma proposta concreta."
 
-    const system = `Voce e "${member.name}", ${info.label} no conselho de IAs do projeto "${project?.name ?? ""}".
-Seu foco: ${info.focus}.${member.instructions ? `\nInstrucoes do seu cargo: ${member.instructions}` : ""}
-Participantes da reuniao: ${names}.
+  const system = `Voce e "${member.name}", ${info.label} no conselho de IAs do projeto "${ctx.projectName}".
+Seu foco: ${info.focus}.${extra}
+Participantes da reuniao: ${ctx.names}.
 Tema da reuniao: "${meeting.topic}". Esta e a rodada ${round} de ${meeting.rounds}. Hoje e ${today()}.
 
 Regras:
 - Responda em portugues brasileiro, em no maximo ${limits.lines} linhas, sem titulo.
 - Baseie-se nos dados do projeto abaixo: cite requisitos pelo codigo e tarefas e sprints pelo nome. Nunca invente dados.
 - Fale do seu foco. Comente o que os colegas ja disseram, pelo nome: concorde, discorde ou complemente. Nao repita o que ja foi dito.
-- ${round === meeting.rounds ? "E a ultima rodada: feche com a sua recomendacao objetiva." : "Traga a sua analise e uma proposta concreta."}
+- ${closing}
 - Nao escreva blocos de codigo nem o bloco flowbot-actions: quem propoe as alteracoes e o relator, na ata.
 
 --- DADOS DO PROJETO ---
 ${context}
 --- FIM DOS DADOS ---`
 
-    const spoken = transcript(meeting.messages, limits.transcriptTokens)
-    const user = `Tema: ${meeting.topic}\n\n${spoken ? `Falas ate agora:\n${spoken}` : "(Voce abre a reuniao.)"}\n\nSua vez, ${member.name}.`
-    const { text } = await collect(member, target, system, user, limits.turnTokens)
+  const spoken = transcript(meeting.messages, limits.transcriptTokens)
+  const history = spoken ? "Falas ate agora:\n" + spoken : "(Voce abre a reuniao.)"
+  const user = `Tema: ${meeting.topic}\n\n${history}\n\nSua vez, ${member.name}.`
+  const { text } = await collect(member, target, system, user, limits.turnTokens)
 
-    try {
-      await tursoDb.aiCouncilMessage.create({
-        data: {
-          meetingId: meeting.id,
-          turn: next,
-          round,
-          speaker: member.name,
-          role: member.role,
-          model: target.model,
-          content: text || "(sem resposta)",
-        },
-      })
-    } catch (error) {
-      // Duas abas pedindo a mesma fala: a segunda perde, sem duplicar.
-      if ((error as { code?: string }).code === "P2002") throw new CouncilError("Essa fala já foi registrada.", 409)
-      throw error
-    }
-    await tursoDb.aiCouncilMeeting.update({ where: { id: meeting.id }, data: { updatedAt: new Date() } })
-    return
+  try {
+    await tursoDb.aiCouncilMessage.create({
+      data: {
+        meetingId: meeting.id,
+        turn,
+        round,
+        speaker: member.name,
+        role: member.role,
+        model: target.model,
+        content: text || "(sem resposta)",
+      },
+    })
+  } catch (error) {
+    // Duas abas pedindo a mesma fala: a segunda perde, sem duplicar.
+    if ((error as { code?: string }).code === "P2002") throw new CouncilError("Essa fala já foi registrada.", 409)
+    throw error
   }
+  await tursoDb.aiCouncilMeeting.update({ where: { id: meeting.id }, data: { updatedAt: new Date() } })
+}
 
-  // Ata: o gerente (ou o primeiro membro) é o relator e propõe as alterações.
+/** Ata: o gerente (ou o primeiro membro) é o relator e propõe as alterações. */
+async function writeMinutes(ctx: StepContext): Promise<void> {
+  const { meeting, members } = ctx
   const relator = members.find((m) => m.role === "gerente") ?? members[0]
-  const { target, compact } = await targetFor(relator, userId)
+  const { target, compact } = await targetFor(relator, ctx.userId)
   const limits = compact ? COMPACT : FULL
-  const context =
-    (await buildProjectContext(meeting.projectId, access.ownerId, limits.contextChars, {
-      hideCosts: !access.canSeeCosts,
-      devNotes: limits.devNotes,
-    })) ?? ""
+  const context = await projectData(ctx, limits)
 
-  const system = `Voce e "${relator.name}", relator do conselho de IAs do projeto "${project?.name ?? ""}". Participaram: ${names}.
+  const system = `Voce e "${relator.name}", relator do conselho de IAs do projeto "${ctx.projectName}". Participaram: ${ctx.names}.
 Escreva a ATA da reuniao em portugues brasileiro, curta e objetiva, com estes titulos em negrito:
 **Resumo** (2 a 3 linhas), **Decisoes**, **Riscos** e **Proximos passos** (com responsavel quando o projeto tiver nomes).
 Depois da ata, proponha as alteracoes no projeto que o conselho recomendou (no maximo ${limits.maxActions} acoes, JSON enxuto). A pessoa vai revisar e confirmar: nunca diga que as alteracoes ja foram feitas. Se nada precisar mudar, nao inclua o bloco.
@@ -251,15 +257,35 @@ ${FLOWBOT_ACTIONS_FORMAT}
 --- DADOS DO PROJETO ---
 ${context}
 --- FIM DOS DADOS ---`
-  const user = `Tema: ${meeting.topic}\n\nFalas da reuniao:\n${transcript(meeting.messages, limits.transcriptTokens)}\n\nEscreva a ata e as alteracoes propostas.`
+  const spoken = transcript(meeting.messages, limits.transcriptTokens)
+  const user = `Tema: ${meeting.topic}\n\nFalas da reuniao:\n${spoken}\n\nEscreva a ata e as alteracoes propostas.`
   const { text, cut } = await collect(relator, target, system, user, limits.summaryTokens)
 
+  const note = cut ? "\n\n_(A ata chegou ao limite de tamanho da IA.)_" : ""
   const updated = await tursoDb.aiCouncilMeeting.updateMany({
     where: { id: meeting.id, status: "running" },
-    data: {
-      status: "done",
-      summary: (text || "(O relator não conseguiu escrever a ata.)") + (cut ? "\n\n_(A ata chegou ao limite de tamanho da IA.)_" : ""),
-    },
+    data: { status: "done", summary: (text || "(O relator não conseguiu escrever a ata.)") + note },
   })
   if (updated.count === 0) throw new CouncilError("A ata já foi escrita.", 409)
+}
+
+/** Faz a próxima fala ou, quando todos já falaram, a ata do relator. */
+export async function runNextStep(meeting: MeetingRow, access: ProjectAccess, userId: string, expectedTurn: number): Promise<void> {
+  const members = parseMembers(meeting.members)
+  if (members.length === 0) throw new CouncilError("Reunião sem membros.", 409)
+  if (meeting.status === "done") throw new CouncilError("A reunião já terminou.", 409)
+  const next = meeting.messages.length
+  if (expectedTurn !== next) throw new CouncilError("A reunião andou em outra aba. Recarregue para ver as falas.", 409)
+
+  const project = await tursoDb.project.findUnique({ where: { id: meeting.projectId }, select: { name: true } })
+  const ctx: StepContext = {
+    meeting,
+    members,
+    access,
+    userId,
+    projectName: project?.name ?? "",
+    names: members.map((m) => `${m.name} (${COUNCIL_ROLE_INFO[m.role]?.label ?? m.role})`).join(", "),
+  }
+  if (next < members.length * meeting.rounds) await speak(ctx, next)
+  else await writeMinutes(ctx)
 }

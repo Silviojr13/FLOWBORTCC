@@ -102,7 +102,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<{ ok: boolea
  * tema e acompanha as falas. No fim, o relator escreve a ata e propõe alterações, que só
  * entram no projeto depois da confirmação.
  */
-export function CouncilPanel({ projectId }: { projectId: string }) {
+export function CouncilPanel({ projectId }: Readonly<{ projectId: string }>) {
   const router = useRouter()
   const [data, setData] = useState<CouncilData | null>(null)
   const [draft, setDraft] = useState<CouncilMemberInput[] | null>(null)
@@ -119,19 +119,23 @@ export function CouncilPanel({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     let cancelled = false
-    request<CouncilData>(`/api/projects/${projectId}/council`).then(({ ok, body }) => {
-      if (cancelled) return
-      if (!ok) {
-        toast.error(body.error || "Não foi possível carregar o conselho.")
-        return
-      }
-      setData(body)
-      // Só na primeira carga: depois, o rascunho é o que está na tela (salvo ou não), e
-      // recarregar a lista de reuniões não o troca.
-      setDraft((current) => current ?? (body.members.length > 0 ? body.members : suggestedMembers(body.ais)))
-      // A sugestão inicial ainda não está salva: é salva ao clicar em Salvar ou ao iniciar.
-      if (body.members.length === 0) setDirty(true)
-    })
+    request<CouncilData>(`/api/projects/${projectId}/council`)
+      .then(({ ok, body }) => {
+        if (cancelled) return
+        if (!ok) {
+          toast.error(body.error || "Não foi possível carregar o conselho.")
+          return
+        }
+        setData(body)
+        // Só na primeira carga: depois, o rascunho é o que está na tela (salvo ou não), e
+        // recarregar a lista de reuniões não o troca.
+        setDraft((current) => current ?? (body.members.length > 0 ? body.members : suggestedMembers(body.ais)))
+        // A sugestão inicial ainda não está salva: é salva ao clicar em Salvar ou ao iniciar.
+        if (body.members.length === 0) setDirty(true)
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("Não foi possível carregar o conselho. Confira a conexão.")
+      })
     return () => {
       cancelled = true
     }
@@ -506,7 +510,7 @@ function MeetingView({
   onStop,
   onContinue,
   onApplied,
-}: {
+}: Readonly<{
   projectId: string
   meeting: CouncilMeetingView
   running: boolean
@@ -515,7 +519,7 @@ function MeetingView({
   onStop: () => void
   onContinue: () => void
   onApplied: (meeting: CouncilMeetingView) => void
-}) {
+}>) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const [isApplying, setIsApplying] = useState(false)
   const [results, setResults] = useState<ActionResult[] | null>(null)
@@ -529,6 +533,9 @@ function MeetingView({
   const next = meeting.nextTurn < meeting.totalTurns ? meeting.members[meeting.nextTurn % meeting.members.length] : null
   const round = Math.min(Math.floor(meeting.nextTurn / Math.max(1, meeting.members.length)) + 1, meeting.rounds)
   const actions: FlowbotAction[] = meeting.summary ? parseFlowbotActions(meeting.summary) : []
+  const roundNote = meeting.rounds > 1 ? ` (rodada ${round} de ${meeting.rounds})` : ""
+  const progress = next ? `${next.name} está analisando${roundNote}...` : "O relator está escrevendo a ata..."
+
   const showProposal = meeting.isMine && actions.length > 0 && !meeting.appliedSummary && !discarded
 
   async function apply(chosen: FlowbotAction[]) {
@@ -643,9 +650,7 @@ function MeetingView({
             ) : (
               <>
                 <LoaderCircleIcon className="size-3.5 animate-spin" />
-                {next
-                  ? `${next.name} está analisando${meeting.rounds > 1 ? ` (rodada ${round} de ${meeting.rounds})` : ""}...`
-                  : "O relator está escrevendo a ata..."}
+                {progress}
               </>
             )}
           </li>
