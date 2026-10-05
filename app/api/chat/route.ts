@@ -7,6 +7,9 @@ import { estimateTokens, fitConversation, omittedNote, type ChatMessage } from "
 
 export const runtime = "nodejs";
 
+/** Abaixo do limite de 1000 tokens de saída por minuto do plano gratuito do Groq. */
+const MAX_OUTPUT_TOKENS = Number(process.env.GROQ_MAX_OUTPUT_TOKENS) || 900;
+
 interface Message {
   role: "user" | "assistant";
   content: string;
@@ -101,31 +104,33 @@ export async function POST(req: NextRequest) {
   console.log(`Modelo: ${model}`);
   console.log("─────────────────────────────────────");
 
-  const SYSTEM_INSTRUCTION = `Voce e um assistente especialista em sistemas embarcados e robotica com dois modos de atuacao:
-
-MODO A — Levantamento de Requisitos (modo principal):
-Ativado quando o usuario descreve uma ideia de projeto. Voce conduz um fluxo guiado de perguntas para levantar e estruturar os requisitos do projeto.
-
-MODO B — Assistente Geral de Projetos Embarcados:
-Ativado quando o usuario faz perguntas tecnicas sobre sistemas embarcados, robotica, eletronica, microcontroladores, componentes ou duvidas sobre o projeto em andamento. Responda de forma direta, util e concisa. Voce PODE explicar conceitos, sugerir componentes e esclarecer duvidas tecnicas.
-
-Detecao do modo: identifique a intencao do usuario a cada mensagem. Se ele descreve uma ideia ou pede levantamento de requisitos, use o Modo A. Se ele faz uma pergunta tecnica, use o Modo B. Os dois modos podem coexistir na mesma conversa.
+  const BASE_INSTRUCTION = `Voce e o FlowBot, assistente de projetos de robotica, sistemas embarcados, IoT e software
+(inclusive jogos e aplicativos). Seu papel e ajudar a pessoa a tirar o projeto do papel e,
+no caminho, aprender como um projeto e estruturado.
 
 REGRAS GERAIS:
 - Responda SEMPRE em portugues brasileiro.
-- Respostas sempre curtas, diretas e organizadas.
-- Trate o usuario como desenvolvedor — nao explique conceitos basicos a menos que ele pergunte.
-- So recuse responder se a pergunta for completamente fora do universo de projetos embarcados e robotica (ex: receitas de culinaria, politica, entretenimento). Nesse caso diga: "Esse tema esta fora do meu escopo. Posso te ajudar com questoes relacionadas a projetos de sistemas embarcados e robotica."
+- Seja direto e organizado, mas didatico: quando sugerir algo, diga em poucas palavras o porque.
+- Ajuste o nivel a pessoa: se ela parecer iniciante, explique termos (requisito, funcionalidade, tarefa, sprint) numa frase simples.
+- So recuse se o pedido nao tiver nenhuma relacao com projetos (ex.: receitas, politica). Nesse caso diga: "Esse tema esta fora do meu escopo. Posso te ajudar com o seu projeto."
+- Nunca diga que o sistema esta instavel, sem conexao ou que voce "nao pode" criar coisas: se algo der errado, a interface avisa a pessoa.
 
 REGRAS DE FORMATACAO:
 - Texto limpo, com markdown minimo.
 - Use negrito (**texto**) para dar enfase quando necessario, mas sem excesso.
-- Use listas numeradas (1. 2. 3.) para perguntas.
-- Use marcadores simples (-) para listas de itens dentro de categorias.
+- Use listas numeradas (1. 2. 3.) para perguntas e marcadores (-) para itens.
 - Use o ✅ apenas para itens ja confirmados no levantamento e no cabecalho de requisitos gerados.
 - Nao use emojis alem do ✅.
-- Agrupe informacoes por categorias com titulos simples em negrito, sem caixas ou blocos artificiais.
-- Tom natural, como uma conversa fluida com um especialista.
+- Agrupe informacoes por categorias com titulos simples em negrito.
+
+MODO B — Duvidas tecnicas:
+Quando a pessoa fizer uma pergunta tecnica (eletronica, microcontroladores, componentes, software, engines, arquitetura), responda de forma direta e util.
+`;
+
+  const MODE_A_INSTRUCTION = `
+MODO A — Levantamento de Requisitos (modo principal fora de um projeto):
+Ativado quando a pessoa descreve uma ideia de projeto. Voce conduz um fluxo guiado de perguntas para levantar e estruturar os requisitos.
+Identifique a intencao a cada mensagem: ideia ou pedido de requisitos -> Modo A; pergunta tecnica -> Modo B.
 
 --- FLUXO DO MODO A (Levantamento de Requisitos) ---
 
@@ -185,49 +190,76 @@ RNF01 – ...
 
   // MODO C: dentro de um projeto, o assistente recebe o estado atual e pode propor
   // alterações. Quem executa é a interface, e só depois da confirmação do usuário.
-  let systemContent = SYSTEM_INSTRUCTION;
+  let systemContent = BASE_INSTRUCTION;
+  let inProject = false;
   // O acesso é conferido de novo: a pessoa pode ter saído do projeto ou mudado de cargo.
   const projectAccess = resolvedProjectId ? await getProjectAccess(resolvedProjectId, user.id) : null;
   if (resolvedProjectId && projectAccess?.canEdit.assistente) {
     const context = await buildProjectContext(resolvedProjectId, projectAccess.ownerId);
     if (context) {
+      inProject = true;
+      const today = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
       systemContent += `
 
 --- CONTEXTO DO PROJETO ATUAL ---
-Voce esta atendendo dentro de um projeto especifico. Use SEMPRE os dados abaixo como verdade
-sobre este projeto; nunca invente requisitos, tarefas, componentes ou sprints que nao estejam
-listados. Quando o usuario disser "o projeto", "os requisitos", "o kanban", e a este projeto
-que ele se refere.
+Voce esta dentro de um projeto especifico. Use os dados abaixo como verdade sobre ele; nunca
+invente requisitos, tarefas ou sprints que nao estejam listados. Hoje e ${today}: datas
+novas comecam a partir de hoje, no ano de ${today.slice(-4)} ou depois.
 
 ${context}
 --- FIM DO CONTEXTO ---
 
-MODO C — Alteracoes no projeto:
-Quando o usuario pedir para criar, alterar, excluir ou mover algo neste projeto, escreva uma
-frase curta explicando o que voce vai fazer e, ao final da mensagem, inclua UM bloco de codigo
-no formato abaixo com as alteracoes propostas:
+MODO C — Montar e alterar o projeto:
+Voce pode criar e alterar requisitos, funcionalidades, sprints, tarefas e componentes. Voce
+PROPOE; a pessoa revisa num card e confirma com um clique. Seja proativo e entregue pronto:
+
+- Quando a pessoa pedir para estruturar, planejar, organizar, quebrar em tarefas ou "montar" o
+  projeto (ou uma parte dele), NAO faca perguntas antes: proponha um pacote completo com
+  suposicoes razoaveis (requisitos que faltam, funcionalidades, sprints com datas, tarefas de
+  cada funcionalidade com prioridade, prazo e coluna, e componentes quando fizer sentido).
+  Liste as suposicoes numa linha; a pessoa ajusta depois.
+- So pergunte antes quando faltar algo impossivel de supor (ex.: o objetivo do projeto).
+- Explique de forma didatica, curta e agrupada, ANTES do bloco: **Requisitos** (o que o sistema
+  precisa atender), **Funcionalidades** (as capacidades que entregam isso), **Sprints e tarefas**
+  (o trabalho em etapas), cada um com 1 ou 2 linhas dizendo o porque. Termine com uma linha
+  "**Proximo passo:** ..." sugerindo o que fazer depois.
+- Sua resposta tem um limite curto de tamanho. Por isso: no maximo 12 acoes por mensagem,
+  JSON enxuto (sem campos vazios, descricoes de tarefa com ate 8 palavras) e explicacao de no
+  maximo 6 linhas. Se o pacote for maior, entregue a primeira parte (ex.: funcionalidades e
+  as tarefas da primeira sprint) e diga que, depois de confirmar, voce monta o resto.
+- Itens criados no mesmo bloco podem ser referenciados pelos seguintes: use o codigo que o
+  requisito novo vai receber (o proximo numero livre: se existem RF01 a RF03, o novo e RF04) e
+  o nome exato da funcionalidade ou sprint nova.
+- Toda sprint nova precisa de ao menos uma tarefa apontando para ela (sprintName na tarefa
+  criada ou alterada); use o nome exato da sprint.
+- NUNCA diga que a alteracao ja foi feita ou salva: a pessoa ainda vai confirmar.
+- Se a pessoa so fizer uma pergunta, responda normalmente e NAO inclua o bloco.
+
+Formato: ao final da mensagem, UM bloco de codigo assim:
 
 \`\`\`flowbot-actions
 {"actions": [ { "type": "...", ... } ]}
 \`\`\`
 
-Tipos de acao disponiveis (use exatamente estes nomes de campo):
-- {"type":"create_requirement","description":"...","category":"Funcional"|"Nao Funcional","priority":"Alta"|"Media"|"Baixa","status":"Em Aberto"|"Validado"|"Descartado","level":"Sistema"|"Subsistema"|"Componente"}
-- {"type":"update_requirement","code":"RF01","description":"...","priority":"...","status":"...","level":"..."}
+Tipos de acao (use exatamente estes nomes de campo; datas no formato AAAA-MM-DD):
+- {"type":"create_requirement","description":"...","category":"Funcional"|"Nao Funcional","priority":"Alta"|"Media"|"Baixa","level":"Sistema"|"Subsistema"|"Componente"}
+- {"type":"update_requirement","code":"RF01","description":"...","priority":"...","status":"Em Aberto"|"Validado"|"Descartado"}
 - {"type":"delete_requirement","code":"RF01"}
 - {"type":"create_feature","name":"...","description":"...","status":"Planejada"|"Em desenvolvimento"|"Concluida","requirementCode":"RF01"}
-- {"type":"create_component","name":"...","description":"...","quantity":1,"unitPrice":0,"requirementCode":"RF01"}
-- {"type":"create_task","title":"...","description":"...","priority":"Alta"|"Media"|"Baixa","assignee":"...","dueDate":"AAAA-MM-DD","requirementCode":"RF01","featureName":"...","columnName":"Backlog"}
-- {"type":"move_task","title":"titulo exato da tarefa","columnName":"Em Progresso"}
+- {"type":"update_feature","name":"nome exato","status":"...","description":"..."}
+- {"type":"create_sprint","name":"Sprint 1 — ...","goal":"...","startDate":"AAAA-MM-DD","endDate":"AAAA-MM-DD"}
+- {"type":"create_task","title":"...","description":"...","priority":"Alta"|"Media"|"Baixa","assignee":"...","participants":["..."],"dueDate":"AAAA-MM-DD","requirementCode":"RF01","featureName":"...","sprintName":"...","columnName":"Backlog"}
+- {"type":"update_task","title":"titulo exato","priority":"...","assignee":"...","dueDate":"...","sprintName":"...","columnName":"..."}
+- {"type":"move_task","title":"titulo exato","columnName":"Em Progresso"}
+- {"type":"create_component","name":"...","description":"...","quantity":1,"unitPrice":0,"domain":"Hardware"|"Software","requirementCode":"RF01"}
 
-REGRAS DO MODO C:
-- Use "category" com os valores exatos "Funcional" ou "Nao Funcional" (a interface corrige a acentuacao).
-- Referencie requisitos pelo codigo (RF01, RNF02), funcionalidades pelo nome e colunas pelo nome exato listado no contexto.
-- NUNCA diga que a alteracao ja foi feita, salva ou aplicada. Voce apenas PROPOE; o usuario revisa e confirma na interface.
-- Se o pedido for ambiguo (falta descricao, prioridade, coluna), pergunte antes de propor.
-- Se o usuario so fizer uma pergunta, responda normalmente e NAO inclua o bloco.`;
+Regras do bloco: categoria "Funcional" ou "Nao Funcional" (a interface corrige acentos);
+referencie requisitos pelo codigo, funcionalidades e sprints pelo nome e colunas pelo nome
+exato do contexto; so use responsavel (assignee) com nomes que aparecem no projeto.`;
     }
   }
+
+  if (!inProject) systemContent += MODE_A_INSTRUCTION;
 
   // A conversa inteira não cabe no limite de tokens por minuto do plano gratuito: vão a
   // primeira mensagem e as mais recentes, e a IA é avisada do que ficou de fora.
@@ -240,7 +272,10 @@ REGRAS DO MODO C:
   const body = {
     model,
     stream: true,
-    max_tokens: 1024,
+    // O plano gratuito do Groq limita a SAÍDA a 1000 tokens por minuto (OTPM) e recusa o
+    // pedido cujo max_tokens passe disso: as respostas ficam abaixo do limite, e pacotes
+    // grandes de ações vêm em partes.
+    max_tokens: MAX_OUTPUT_TOKENS,
     messages: [{ role: "system", content: systemContent }, ...conversation.messages],
   };
 
@@ -331,26 +366,45 @@ REGRAS DO MODO C:
       const decoder = new TextDecoder();
       process.stdout.write("[GROQ] ");
       let fullResponse = "";
+      let cutByLength = false;
+
+      // Uma linha do SSE pode chegar partida em dois pedaços da rede: o pedaço incompleto
+      // fica guardado até o próximo. (Antes ele era descartado, e a resposta perdia trechos.)
+      let pending = "";
+      const handleLine = (line: string) => {
+        if (!line.startsWith("data: ")) return;
+        const json = line.slice("data: ".length).trim();
+        if (!json || json === "[DONE]") return;
+        try {
+          const parsed = JSON.parse(json);
+          if (parsed.choices?.[0]?.finish_reason === "length") cutByLength = true;
+          const token: string | undefined = parsed.choices?.[0]?.delta?.content;
+          if (token) {
+            process.stdout.write(token);
+            fullResponse += token;
+            controller.enqueue(encoder.encode(token));
+          }
+        } catch { /* linha que não é JSON (comentário do SSE) */ }
+      };
 
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          for (const line of chunk.split("\n")) {
-            if (!line.startsWith("data: ")) continue;
-            const json = line.replace("data: ", "").trim();
-            if (!json || json === "[DONE]") continue;
-            try {
-              const parsed = JSON.parse(json);
-              const token: string | undefined = parsed.choices?.[0]?.delta?.content;
-              if (token) {
-                process.stdout.write(token);
-                fullResponse += token;
-                controller.enqueue(encoder.encode(token));
-              }
-            } catch { /* skip */ }
-          }
+          pending += decoder.decode(value, { stream: true });
+          const lines = pending.split("\n");
+          pending = lines.pop() ?? "";
+          for (const line of lines) handleLine(line);
+        }
+        pending += decoder.decode();
+        if (pending) handleLine(pending);
+
+        // Resposta cortada pelo limite de tamanho: avisa como continuar (a interface aproveita
+        // as ações que chegaram inteiras).
+        if (cutByLength) {
+          const note = "\n\n_(A resposta chegou ao limite de tamanho da IA. Escreva \"continue\" para eu seguir de onde parei.)_";
+          fullResponse += note;
+          controller.enqueue(encoder.encode(note));
         }
 
         // Salvar a resposta da IA no banco de dados após completar a resposta

@@ -45,7 +45,7 @@ export function fitConversation(
   systemTokens: number,
   budget = INPUT_TOKEN_BUDGET
 ): FittedConversation {
-  const available = Math.max(800, budget - systemTokens)
+  const available = Math.max(1200, budget - systemTokens)
   const clipped = messages.map((m) => clipMessage(m, Math.min(MAX_MESSAGE_TOKENS, available)))
 
   // A última mensagem (a pergunta atual) entra sempre.

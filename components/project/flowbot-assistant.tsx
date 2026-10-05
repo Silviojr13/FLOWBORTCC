@@ -69,6 +69,10 @@ export function FlowbotAssistant({
   const [isOpen, setIsOpen] = useState(false)
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
+  // Conversa criada pelo próprio envio: já está na tela, não precisa ser recarregada do
+  // servidor. Recarregar no meio da resposta trocava a lista pela versão sem a resposta, e o
+  // texto seguinte ia parar na bolha da pessoa.
+  const ownChatIdRef = useRef<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -136,6 +140,10 @@ export function FlowbotAssistant({
 
   useEffect(() => {
     if (!activeChatId) return
+    if (ownChatIdRef.current === activeChatId) {
+      ownChatIdRef.current = null
+      return
+    }
     let cancelled = false
     setIsLoading(true)
 
@@ -266,7 +274,10 @@ export function FlowbotAssistant({
         const wait = await res.json().catch(() => ({}))
         if (wait.chatId) {
           chatIdForRequest = wait.chatId
-          setActiveChatId(wait.chatId)
+          if (wait.chatId !== activeChatId) {
+            ownChatIdRef.current = wait.chatId
+            setActiveChatId(wait.chatId)
+          }
         }
         const seconds = Math.min(Math.max(Math.ceil(Number(wait.retryAfter) || 30), 3), 90)
         for (let left = seconds; left > 0; left--) {
@@ -288,6 +299,7 @@ export function FlowbotAssistant({
 
       const chatId = res.headers.get("X-Chat-Id")
       if (chatId && chatId !== activeChatId) {
+        ownChatIdRef.current = chatId
         setActiveChatId(chatId)
         // Conversa recém-criada entra na lista sem precisar recarregar tudo.
         setConversations((prev) =>
