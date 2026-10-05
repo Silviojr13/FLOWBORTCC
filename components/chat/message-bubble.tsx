@@ -1,10 +1,11 @@
 "use client";
 
 import ReactMarkdown from "react-markdown";
-import { BotIcon, SaveIcon, UserIcon } from "lucide-react";
+import { BotIcon, FileTextIcon, SaveIcon, UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { messageHasGeneratedRequirements } from "@/lib/parse-requirements";
 import { stripFlowbotActions } from "@/lib/flowbot-actions";
+import { splitAttachments } from "@/lib/chat-attachments";
 import { cn } from "@/lib/utils";
 
 export interface ChatMessage {
@@ -94,7 +95,7 @@ export function MessageBubble({
         )}
       >
         {isUser ? (
-          <span className="whitespace-pre-wrap">{msg.content}</span>
+          <UserContent content={msg.content} />
         ) : (
           <ReactMarkdown components={markdownComponents}>{text}</ReactMarkdown>
         )}
@@ -122,6 +123,30 @@ export function TypingIndicator() {
       <span className="typing-dot" />
       <span className="typing-dot" />
       <span className="typing-dot" />
+    </div>
+  );
+}
+
+/** Texto da pessoa e, se houver, os arquivos anexados como cartões que abrem o conteúdo. */
+function UserContent({ content }: { content: string }) {
+  const { text, attachments } = splitAttachments(content);
+  return (
+    <div className="flex flex-col gap-2">
+      {text && <span className="whitespace-pre-wrap">{text}</span>}
+      {attachments.map((file, index) => (
+        <details key={`${file.name}-${index}`} className="rounded-lg border border-border/60 bg-background/60 text-xs">
+          <summary className="flex cursor-pointer items-center gap-2 px-2.5 py-1.5">
+            <FileTextIcon className="size-3.5 shrink-0 text-primary" aria-hidden />
+            <span className="truncate font-medium">{file.name}</span>
+            <span className="shrink-0 text-muted-foreground">
+              {file.content.split("\n").length} linha(s){file.truncated ? " · só o começo" : ""}
+            </span>
+          </summary>
+          <pre className="max-h-48 overflow-auto border-t border-border/60 px-2.5 py-2 font-mono text-[11px] whitespace-pre-wrap">
+            {file.content}
+          </pre>
+        </details>
+      ))}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { getCurrentUser } from "../../../lib/auth";
 import { tursoDb } from "../../../lib/turso-db";
 import { buildProjectContext } from "../../../lib/project-context";
 import { getProjectAccess } from "../../../lib/project-access";
+import { estimateTokens, fitConversation, omittedNote, type ChatMessage } from "../../../lib/chat-budget";
 
 export const runtime = "nodejs";
 
@@ -219,19 +220,26 @@ REGRAS DO MODO C:
     }
   }
 
+  // A conversa inteira não cabe no limite de tokens por minuto do plano gratuito: vão a
+  // primeira mensagem e as mais recentes, e a IA é avisada do que ficou de fora.
+  const conversation = fitConversation(
+    messages.map((m: Message) => ({ role: m.role, content: String(m.content ?? "") }) as ChatMessage),
+    estimateTokens(systemContent)
+  );
+  if (conversation.omitted > 0) systemContent += omittedNote(conversation.omitted);
+
   const body = {
     model,
     stream: true,
     max_tokens: 1024,
-    messages: [
-      { role: "system", content: systemContent },
-      ...messages.map((m: Message) => ({ role: m.role, content: m.content })),
-    ],
+    messages: [{ role: "system", content: systemContent }, ...conversation.messages],
   };
 
   console.log("[PAYLOAD]", JSON.stringify({
     model: body.model,
     messagesCount: body.messages.length,
+    omitted: conversation.omitted,
+    inputTokensEstimate: body.messages.reduce((sum, m) => sum + estimateTokens(m.content), 0),
   }, null, 2));
 
   const MAX_RETRIES = 2;
@@ -271,24 +279,28 @@ REGRAS DO MODO C:
       continue;
     }
 
+    // Limite por minuto: se o Groq pede para esperar poucos segundos, espera e tenta de novo.
+    const retryAfter = Number(groqRes.headers.get("retry-after"));
+    if (groqRes.status === 429 && attempt < MAX_RETRIES && retryAfter > 0 && retryAfter <= 12) {
+      console.log(`[RETRY] Limite por minuto; aguardando ${retryAfter}s...`);
+      await new Promise((r) => setTimeout(r, retryAfter * 1000));
+      continue;
+    }
+
+    // O erro bruto do provedor (com ids internos da conta) fica só no log do servidor.
     const text = await groqRes.text();
     console.log(`[ERROR] Resposta de erro da API do Groq:`, text);
 
-    if (groqRes.status === 429) {
-      return new Response(
-        JSON.stringify({ error: "Limite de requisições do Groq atingido. Tente novamente em instantes." }),
-        { status: 429, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    return new Response(
-      JSON.stringify({
-        error: `Erro ${groqRes.status}: ${text}`,
-        modelUsed: model,
-        urlCalled: apiUrl,
-      }),
-      { status: groqRes.status, headers: { "Content-Type": "application/json" } }
-    );
+    const friendly =
+      groqRes.status === 413
+        ? "A conversa ficou grande demais para o limite da IA. Comece uma nova conversa ou resuma o que já foi definido."
+        : groqRes.status === 429
+          ? "A IA atingiu o limite de uso por minuto. Aguarde cerca de um minuto e envie de novo."
+          : "A IA não conseguiu responder agora. Tente de novo em instantes.";
+    return new Response(JSON.stringify({ error: friendly }), {
+      status: groqRes.status,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   if (!groqRes) {
@@ -363,6 +375,8 @@ REGRAS DO MODO C:
       "Transfer-Encoding": "chunked",
       "Cache-Control": "no-cache",
       "X-Chat-Id": chatId,
+      // Quantas mensagens antigas não foram enviadas à IA (a interface pode avisar).
+      "X-Chat-Omitted": String(conversation.omitted),
     },
   });
 }
