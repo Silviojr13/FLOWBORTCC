@@ -88,7 +88,7 @@ export default function ManualProjectPage() {
   }
 
   return (
-    <ProjectCreationLayout currentStep="requisitos">
+    <ProjectCreationLayout>
       <div className="flex w-full flex-col gap-10">
         {!project ? (
           <div className="flex w-full flex-col gap-8">
