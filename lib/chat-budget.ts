@@ -17,11 +17,15 @@ export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 3.2)
 }
 
-/** Limite de entrada usado por pedido, com folga em relação ao limite por minuto do Groq. */
-export const INPUT_TOKEN_BUDGET = Number(process.env.GROQ_INPUT_TOKEN_BUDGET) || 5200
+/**
+ * Limite de entrada por pedido. O Groq gratuito conta 7000 tokens por MINUTO: com ~3400 por
+ * pedido, duas mensagens seguidas cabem no mesmo minuto. Num plano pago, aumente por
+ * GROQ_INPUT_TOKEN_BUDGET.
+ */
+export const INPUT_TOKEN_BUDGET = Number(process.env.GROQ_INPUT_TOKEN_BUDGET) || 3400
 
 /** Uma mensagem sozinha (por exemplo, com arquivo anexado) não passa disto. */
-const MAX_MESSAGE_TOKENS = 2600
+const MAX_MESSAGE_TOKENS = 1800
 
 function clipMessage(message: ChatMessage, maxTokens: number): ChatMessage {
   if (estimateTokens(message.content) <= maxTokens) return message

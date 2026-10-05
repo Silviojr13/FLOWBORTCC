@@ -12,10 +12,10 @@ export const ATTACHMENT_EXTENSIONS = [
 export const MAX_ATTACHMENT_BYTES = 300 * 1024
 
 /**
- * Quanto do arquivo vai para a IA (~2.400 tokens). O plano gratuito aceita poucos tokens
+ * Quanto do arquivo vai para a IA (~1.600 tokens). O plano gratuito aceita poucos tokens
  * por minuto; o restante é cortado e a pessoa é avisada.
  */
-export const MAX_ATTACHMENT_CHARS = 7500
+export const MAX_ATTACHMENT_CHARS = 5000
 
 export interface ChatAttachment {
   name: string

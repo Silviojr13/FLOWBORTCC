@@ -9,7 +9,7 @@ import { formatDate, isTaskOverdue } from "./kanban";
 export async function buildProjectContext(
   projectId: string,
   userId: string,
-  maxChars = 7000
+  maxChars = 4500
 ): Promise<string | null> {
   const project = await tursoDb.project.findUnique({
     where: { id: projectId, userId },
