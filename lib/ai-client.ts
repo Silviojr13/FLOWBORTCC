@@ -93,7 +93,8 @@ export function parseRetrySeconds(message: string): number | null {
 
 function classify(status: number, text: string, retryAfterHeader: number): AiProviderError {
   const lower = text.toLowerCase()
-  if (status === 402 || /insufficient_quota|credit balance|billing|out of credits|insufficient credits/.test(lower)) {
+  // Sem "billing": o aviso de limite por minuto do Groq sugere o plano pago com um link de billing.
+  if (status === 402 || /insufficient_quota|exceeded your current quota|credit balance|out of credits|insufficient credits/.test(lower)) {
     return new AiProviderError("quota", status)
   }
   if (status === 429) {

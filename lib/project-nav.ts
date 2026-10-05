@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react"
 import {
   BoxIcon,
+  BrainCircuitIcon,
   CalendarRangeIcon,
   ClipboardListIcon,
   CodeXmlIcon,
@@ -19,6 +20,7 @@ export type ProjectModuleKey =
   | "sprints"
   | "report"
   | "development"
+  | "council"
   | "features"
   | "components"
   | "resources"
@@ -71,6 +73,13 @@ export const PROJECT_MODULES: ProjectModule[] = [
     href: (projectId) => `/dashboard/projects/${projectId}/development`,
   },
   {
+    key: "council",
+    label: "Conselho de IAs",
+    description: "IAs com cargos analisam o projeto e propõem os próximos passos.",
+    icon: BrainCircuitIcon,
+    href: (projectId) => `/dashboard/projects/${projectId}/council`,
+  },
+  {
     key: "features",
     label: "Funcionalidades",
     description: "Gerencie as capacidades do projeto.",
@@ -118,7 +127,7 @@ export const PROJECT_MODULE_GROUPS = [
   {
     id: "tracking",
     label: "Acompanhamento",
-    keys: ["overview", "kanban", "sprints", "report", "development"] as const,
+    keys: ["overview", "kanban", "sprints", "report", "development", "council"] as const,
   },
   {
     id: "structure",
@@ -176,6 +185,7 @@ export function getProjectModuleKey(
   if (matchesPath(pathname, `${base}/sprints`)) return "sprints"
   if (matchesPath(pathname, `${base}/report`)) return "report"
   if (matchesPath(pathname, `${base}/development`)) return "development"
+  if (matchesPath(pathname, `${base}/council`)) return "council"
   if (matchesPath(pathname, `${base}/features`)) return "features"
   if (matchesPath(pathname, `${base}/components-costs`)) return "components"
   if (matchesPath(pathname, `${base}/resources`)) return "resources"
