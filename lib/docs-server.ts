@@ -6,7 +6,9 @@ import type { ProjectAccess } from "./project-access"
 import { ROLE_LABELS, isMemberRole } from "./project-permissions"
 import { RESOURCE_COST_MODEL_LABELS, RESOURCE_TYPE_LABELS } from "./resources"
 import {
+  DOC_CUT_NOTE,
   getDocType,
+  stripCutNote,
   type DocDataSource,
   type DocRevision,
   type DocSectionDef,
@@ -312,13 +314,17 @@ export class DocsAiError extends Error {
   }
 }
 
-/** Escreve uma seção de texto do documento e a salva. */
+/**
+ * Escreve uma seção de texto do documento e a salva. Com mode "continue", a IA segue de onde
+ * a seção parou (no limite de tamanho), sem repetir o que já foi escrito.
+ */
 export async function writeSection(
   access: ProjectAccess,
   userId: string,
   def: DocTypeDef,
   section: DocSectionDef,
-  instructions: string | null
+  instructions: string | null,
+  mode: "write" | "continue" = "write"
 ): Promise<string> {
   const { target, compact, ownKey } = await writerTarget(userId)
   const limits = compact ? COMPACT : FULL
@@ -365,9 +371,25 @@ ${context ?? ""}
 
   const user = `${others ? `Secoes ja escritas deste documento:\n${others}\n\n` : ""}Escreva a secao "${section.title}".`
 
+  // Continuar: a parte já escrita entra como a resposta anterior da IA.
+  const previous = mode === "continue" ? stripCutNote(stored[section.key]?.content ?? "") : ""
+  if (mode === "continue" && !previous) throw new DocsError("A seção ainda não foi escrita.", 400)
+  const messages: { role: "user" | "assistant"; content: string }[] =
+    mode === "continue"
+      ? [
+          { role: "user", content: user },
+          { role: "assistant", content: previous },
+          {
+            role: "user",
+            content:
+              "Continue exatamente de onde o texto parou, sem repetir nada do que ja foi escrito e sem titulo. Se o texto parou no meio de uma frase ou de uma linha de tabela, complete-a. Se a secao ja estiver completa, responda apenas FIM.",
+          },
+        ]
+      : [{ role: "user", content: user }]
+
   let res: Response
   try {
-    res = await openChatStream(target, { system, messages: [{ role: "user", content: user }], maxTokens: limits.maxTokens }, { logLabel: "DOCS" })
+    res = await openChatStream(target, { system, messages, maxTokens: limits.maxTokens }, { logLabel: "DOCS" })
   } catch (error) {
     if (error instanceof AiProviderError) throw new DocsAiError(error, ownKey, target.provider)
     throw error
@@ -381,8 +403,22 @@ ${context ?? ""}
   text = text.replace(/<think>[\s\S]*?<\/think>/g, "").trim()
   // Alguns modelos repetem o título da seção apesar da regra.
   text = text.replace(new RegExp(`^#{1,3}\\s*${section.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\n`, "i"), "").trim()
+
+  if (mode === "continue") {
+    // "FIM": a seção já estava completa; só sai o aviso de corte.
+    const done = /^FIM\.?$/i.test(text)
+    // Linha de tabela, lista ou título começa em linha nova; frase partida continua na mesma.
+    let glue = " "
+    if (/[|\-*\d#]/.test(text[0] ?? "")) glue = "\n"
+    else if (previous.endsWith(" ")) glue = ""
+    let merged = done || !text ? previous : `${previous}${glue}${text}`
+    if (cut && !done) merged += `\n\n${DOC_CUT_NOTE}`
+    await saveSection(projectId, def.key, section.key, merged, "ia")
+    return merged
+  }
+
   if (!text) throw new DocsError("A IA não escreveu a seção. Tente de novo.", 502)
-  if (cut) text += "\n\n_(A seção chegou ao limite de tamanho da IA. Gere de novo com uma IA de Minhas IAs para um texto completo.)_"
+  if (cut) text += `\n\n${DOC_CUT_NOTE}`
 
   await saveSection(projectId, def.key, section.key, text, "ia")
   return text

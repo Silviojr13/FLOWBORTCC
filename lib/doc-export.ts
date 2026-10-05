@@ -2,7 +2,7 @@
 
 import { marked, type Token, type Tokens } from "marked"
 import type { Content, ContextPageSize, TableCell, TDocumentDefinitions } from "pdfmake/interfaces"
-import type { DocSettings, DocView } from "./docs"
+import { stripCutNote, type DocSettings, type DocView } from "./docs"
 
 /**
  * Exportação de um documento da aba Documentação.
@@ -73,7 +73,7 @@ export function docToMarkdown(doc: DocView, info: DocExportInfo): string {
   }
   doc.sections.forEach((s, i) => {
     const title = /^\d/.test(s.title) ? s.title : `${i + 1}. ${s.title}`
-    lines.push(`## ${title}`, "", s.content.trim() || (s.kind === "diagrama" ? "_Diagrama ainda não gerado na aba Diagramas._" : "_Seção ainda não escrita._"), "")
+    lines.push(`## ${title}`, "", stripCutNote(s.content).trim() || (s.kind === "diagrama" ? "_Diagrama ainda não gerado na aba Diagramas._" : "_Seção ainda não escrita._"), "")
   })
   lines.push("---", "", `_Documento gerado pelo FlowBot em ${dateBR(new Date())}._`, "")
   return lines.join("\n")
@@ -305,7 +305,7 @@ async function buildPdf(doc: DocView, info: DocExportInfo): Promise<TDocumentDef
   for (const [i, section] of doc.sections.entries()) {
     const title = /^\d/.test(section.title) ? section.title : `${i + 1}. ${section.title}`
     content.push({ text: title, style: "h2", tocItem: true, tocStyle: { fontSize: 10 }, tocMargin: [0, 2, 0, 0] })
-    const body = section.content.trim()
+    const body = stripCutNote(section.content).trim()
     if (!body) {
       content.push({
         text: section.kind === "diagrama" ? "Diagrama ainda não gerado na aba Diagramas." : "Seção ainda não escrita.",

@@ -159,6 +159,21 @@ export const DOC_TYPES: DocTypeDef[] = [
   },
 ]
 
+/** Aviso no fim de uma seção que parou no limite de tamanho da IA (dá para continuar). */
+export const DOC_CUT_NOTE = "_(A seção parou no limite de tamanho da IA. Use Continuar para a IA seguir de onde parou.)_"
+
+/** O aviso de corte, inclusive o da primeira versão do texto. */
+const CUT_NOTE_PATTERN = /\n*_\(A seção (?:parou|chegou) [^\n]*limite de tamanho da IA[^\n]*\)_\s*/g
+
+export function isCutSection(content: string): boolean {
+  return /_\(A seção (?:parou|chegou) [^\n]*limite de tamanho da IA[^\n]*\)_\s*$/.test(content)
+}
+
+/** O texto da seção sem o aviso de corte. */
+export function stripCutNote(content: string): string {
+  return content.replace(CUT_NOTE_PATTERN, "\n").trimEnd()
+}
+
 export function getDocType(key: string): DocTypeDef | undefined {
   return DOC_TYPES.find((d) => d.key === key)
 }

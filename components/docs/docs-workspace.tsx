@@ -28,7 +28,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { DocMarkdown } from "@/components/docs/doc-markdown"
 import { downloadDocMarkdown, downloadDocPdf } from "@/lib/doc-export"
-import type { DocSectionView, DocSettings, DocSummary, DocView } from "@/lib/docs"
+import { isCutSection, stripCutNote, type DocSectionView, type DocSettings, type DocSummary, type DocView } from "@/lib/docs"
 import { cn } from "@/lib/utils"
 
 type ApiResult<T> = { ok: boolean; status: number; body: T & { error?: string; retryAfter?: number | null } }
@@ -250,7 +250,7 @@ function DocumentView({
 
   /** Escreve as seções em sequência; no limite por minuto, espera e continua. */
   const writeSections = useCallback(
-    async (keys: string[], instructions?: string) => {
+    async (keys: string[], instructions?: string, continueCut = false) => {
       stopRef.current = false
       for (const [index, key] of keys.entries()) {
         if (stopRef.current) break
@@ -260,7 +260,7 @@ function DocumentView({
         while (!done && !stopRef.current) {
           const { ok, status, body } = await request<{ content: string }>(
             `/api/projects/${projectId}/docs/${type}/sections/${key}`,
-            { method: "POST", body: JSON.stringify({ instructions }) }
+            { method: "POST", body: JSON.stringify({ instructions, continue: continueCut }) }
           )
           if (ok) {
             setDoc((d) =>
@@ -404,6 +404,7 @@ function DocumentView({
               setEditing(null)
             }}
             onWrite={(instructions) => void writeSections([section.key], instructions)}
+            onContinue={() => void writeSections([section.key], undefined, true)}
           />
         ))}
       </ol>
@@ -443,6 +444,7 @@ function SectionCard({
   onCancelEdit,
   onSaved,
   onWrite,
+  onContinue,
 }: Readonly<{
   projectId: string
   type: string
@@ -456,6 +458,7 @@ function SectionCard({
   onCancelEdit: () => void
   onSaved: (content: string) => void
   onWrite: (instructions?: string) => void
+  onContinue: () => void
 }>) {
   const [draft, setDraft] = useState(section.content)
   const [saving, setSaving] = useState(false)
@@ -558,7 +561,20 @@ function SectionCard({
           </div>
         </div>
       ) : hasContent ? (
-        <DocMarkdown content={section.content} />
+        <>
+          <DocMarkdown content={stripCutNote(section.content)} />
+          {isCutSection(section.content) && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+              <span className="flex-1">A seção parou no limite de tamanho da IA.</span>
+              {canEdit && (
+                <Button size="sm" variant="outline" className="h-7 gap-1" disabled={busy} onClick={onContinue}>
+                  <SparklesIcon className="size-3.5" />
+                  Continuar de onde parou
+                </Button>
+              )}
+            </div>
+          )}
+        </>
       ) : (
         <p className="text-xs leading-relaxed text-muted-foreground">
           {section.kind === "diagrama"

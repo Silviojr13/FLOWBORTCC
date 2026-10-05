@@ -26,7 +26,8 @@ function errorResponse(error: unknown): Response {
   return NextResponse.json({ error: "Não foi possível escrever a seção agora. Tente de novo." }, { status: 500 });
 }
 
-// POST: a IA escreve (ou reescreve) uma seção de texto do documento.
+// POST: a IA escreve (ou reescreve) uma seção de texto do documento; { continue: true } segue
+// de onde a seção parou no limite de tamanho da IA.
 export async function POST(req: NextRequest, { params }: Params) {
   const { id: projectId, type, sectionKey } = await params;
   const gate = await authorizeProject(projectId, { edit: "projeto" });
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
     const body = await req.json().catch(() => ({}));
     const instructions = typeof body.instructions === "string" ? body.instructions.trim() || null : null;
-    const content = await writeSection(gate.access, gate.user.id, def, section, instructions);
+    const content = await writeSection(gate.access, gate.user.id, def, section, instructions, body.continue === true ? "continue" : "write");
     return NextResponse.json({ content });
   } catch (error) {
     return errorResponse(error);
