@@ -6,6 +6,7 @@ import {
   ClipboardListIcon,
   CodeXmlIcon,
   Columns3Icon,
+  FileTextIcon,
   FileChartColumnIcon,
   LayoutDashboardIcon,
   NetworkIcon,
@@ -26,6 +27,7 @@ export type ProjectModuleKey =
   | "resources"
   | "requirements"
   | "diagrams"
+  | "docs"
   | "sharing"
 
 export type ProjectModule = {
@@ -115,6 +117,13 @@ export const PROJECT_MODULES: ProjectModule[] = [
     href: (projectId) => `/dashboard/projects/${projectId}/diagrams`,
   },
   {
+    key: "docs",
+    label: "Documentação",
+    description: "Documentos de engenharia nas normas ISO/IEC/IEEE.",
+    icon: FileTextIcon,
+    href: (projectId) => `/dashboard/projects/${projectId}/docs`,
+  },
+  {
     key: "sharing",
     label: "Compartilhamento",
     description: "Quem participa do projeto e com qual cargo.",
@@ -132,7 +141,7 @@ export const PROJECT_MODULE_GROUPS = [
   {
     id: "structure",
     label: "Estrutura do projeto",
-    keys: ["features", "components", "resources", "requirements", "diagrams"] as const,
+    keys: ["features", "components", "resources", "requirements", "diagrams", "docs"] as const,
   },
   {
     id: "team",
@@ -191,6 +200,7 @@ export function getProjectModuleKey(
   if (matchesPath(pathname, `${base}/resources`)) return "resources"
   if (matchesPath(pathname, `${base}/requirements`)) return "requirements"
   if (matchesPath(pathname, `${base}/diagrams`)) return "diagrams"
+  if (matchesPath(pathname, `${base}/docs`)) return "docs"
   if (matchesPath(pathname, `${base}/sharing`)) return "sharing"
   return null
 }

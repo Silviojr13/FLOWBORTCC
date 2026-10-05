@@ -141,6 +141,8 @@ model Project {
   devNotes     DevNote[]
   councilMembers  AiCouncilMember[]
   councilMeetings AiCouncilMeeting[]
+  documents       ProjectDocument[]
+  docSettings     ProjectDocSettings?
 
   @@map("projects")
 }
@@ -649,4 +651,43 @@ model AiCouncilMessage {
 
   @@unique([meetingId, turn])
   @@map("ai_council_messages")
+}
+
+// Documento de engenharia do projeto (aba Documentação): um por tipo (lib/docs.ts). Guarda as
+// seções escritas pela IA ou editadas à mão (JSON { [seção]: { content, source, updatedAt } });
+// as seções de dados e de diagrama são montadas na hora, a partir do projeto.
+model ProjectDocument {
+  id        String   @id @default(cuid())
+  projectId String
+  type      String
+  version   String   @default("0.1")
+  sections  String   @default("{}")
+  // Histórico de revisões: JSON [{ version, date, author, note }]
+  revisions String   @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, type])
+  @@map("project_documents")
+}
+
+// Diretrizes da documentação do projeto: se é uma entrega acadêmica (instituição, curso,
+// autores, orientador) e o texto do modelo de referência anexado, que a IA segue.
+model ProjectDocSettings {
+  projectId     String   @id
+  academic      Boolean  @default(false)
+  institution   String?
+  course        String?
+  authors       String?
+  advisor       String?
+  notes         String?
+  referenceName String?
+  referenceText String?
+  updatedAt     DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_doc_settings")
 }

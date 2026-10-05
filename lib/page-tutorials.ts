@@ -315,6 +315,30 @@ export const PAGE_TUTORIALS: PageTutorial[] = [
     ],
   },
   {
+    key: "documentacao",
+    title: "Documentação",
+    summary: "Documentos de engenharia gerados a partir do projeto, nas normas ISO/IEC/IEEE.",
+    scope: "projeto",
+    path: (id) => `/dashboard/projects/${id}/docs`,
+    since: "2026-10-05",
+    steps: [
+      {
+        target: "docs-settings",
+        title: "Diretrizes da documentação",
+        body: "Diga se é uma entrega acadêmica (instituição, curso, autores, orientador) e anexe o modelo de referência da instituição ou a rubrica: a IA segue a estrutura dele.",
+      },
+      {
+        target: "docs-list",
+        title: "Os documentos do projeto",
+        body: "Visão, requisitos (SRS), casos de uso, arquitetura, plano de projeto, plano de testes, rastreabilidade e manual do usuário, cada um na estrutura da sua norma.",
+      },
+      {
+        title: "Dados, diagramas e texto",
+        body: "As tabelas saem direto dos dados e nunca ficam desatualizadas; os diagramas vêm da aba Diagramas; o texto é escrito pela IA e pode ser editado à mão. Depois é só exportar em PDF ou Markdown.",
+      },
+    ],
+  },
+  {
     key: "conselho",
     title: "Conselho de IAs",
     summary: "IAs com cargos discutem o projeto e propõem os próximos passos.",
@@ -359,6 +383,7 @@ export const ADVANCED_TUTORIAL = [
   "componentes",
   "recursos",
   "diagramas",
+  "documentacao",
   "relatorios",
   "desenvolvimento",
   "conselho",
@@ -387,6 +412,7 @@ export function tutorialForLocation(pathname: string, search: string): { key: st
     resources: "recursos",
     requirements: "requisitos",
     diagrams: "diagramas",
+    docs: "documentacao",
     development: "desenvolvimento",
     council: "conselho",
     sharing: "compartilhamento",
