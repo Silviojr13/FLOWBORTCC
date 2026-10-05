@@ -8,7 +8,9 @@ import { toast } from "sonner"
 import {
   ArrowUpIcon,
   ChevronDownIcon,
+  LoaderCircleIcon,
   MessageSquarePlusIcon,
+  MicIcon,
   SquareIcon,
   XIcon,
 } from "lucide-react"
@@ -34,6 +36,7 @@ import {
   type FlowbotAction,
 } from "@/lib/flowbot-actions"
 import { cn } from "@/lib/utils"
+import { useVoiceInput } from "@/lib/use-voice-input"
 
 // O <main> do dashboard usa backdrop-filter, o que cria um containing block e faria
 // `position: fixed` se ancorar nele (o robô subiria junto com o scroll). Renderizar em um
@@ -75,6 +78,9 @@ export function FlowbotAssistant({
   const ownChatIdRef = useRef<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
+  // Ditado por voz: o texto falado entra no campo, para a pessoa revisar antes de enviar.
+  const voice = useVoiceInput({ text: input, onText: setInput })
+  const voiceActive = voice.state === "listening" || voice.state === "recording"
   const [isLoading, setIsLoading] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
   const [hasLoadedList, setHasLoadedList] = useState(false)
@@ -135,6 +141,11 @@ export function FlowbotAssistant({
       cancelled = true
     }
   }, [isOpen, hasLoadedList, projectId])
+
+  const { state: voiceState, toggle: toggleVoice } = voice
+  useEffect(() => {
+    if (!isOpen && (voiceState === "listening" || voiceState === "recording")) toggleVoice()
+  }, [isOpen, voiceState, toggleVoice])
 
   /* ---- mensagens da conversa ativa ---- */
 
@@ -240,6 +251,7 @@ export function FlowbotAssistant({
   const sendMessage = useCallback(async () => {
     const trimmed = input.trim()
     if (!trimmed || isStreaming) return
+    if (voiceState === "listening" || voiceState === "recording") toggleVoice()
 
     const nextMessages: ChatMessage[] = [...messages, { role: "user", content: trimmed }]
     // Avisos e erros da interface não vão para a IA como conversa.
@@ -346,7 +358,7 @@ export function FlowbotAssistant({
       setIsStreaming(false)
       abortRef.current = null
     }
-  }, [input, isStreaming, messages, activeChatId, projectId])
+  }, [input, isStreaming, messages, activeChatId, projectId, voiceState, toggleVoice])
 
   /* ---- render ---- */
 
@@ -503,10 +515,39 @@ export function FlowbotAssistant({
                     void sendMessage()
                   }
                 }}
-                placeholder="Pergunte ao FlowBot..."
+                placeholder={voiceActive ? "Pode falar, estou ouvindo..." : "Pergunte ao FlowBot..."}
                 rows={1}
                 className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
               />
+              {voiceActive && (
+                <span className="flex shrink-0 items-center gap-1 self-center text-xs text-destructive" aria-live="polite">
+                  <span className="size-2 animate-pulse rounded-full bg-destructive" aria-hidden />
+                  {Math.floor(voice.seconds / 60)}:{String(voice.seconds % 60).padStart(2, "0")}
+                </span>
+              )}
+              <Button
+                size="icon"
+                variant="ghost"
+                title={voiceActive ? "Parar de ditar" : "Ditar mensagem"}
+                aria-label={voiceActive ? "Parar de ditar" : "Ditar mensagem"}
+                aria-pressed={voiceActive}
+                disabled={isStreaming || voice.state === "transcribing"}
+                onClick={voice.toggle}
+                className={cn(
+                  "size-9 shrink-0",
+                  voiceActive
+                    ? "bg-destructive/10 text-destructive hover:bg-destructive/15 hover:text-destructive"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {voice.state === "transcribing" ? (
+                  <LoaderCircleIcon className="size-4 animate-spin" />
+                ) : voiceActive ? (
+                  <SquareIcon className="size-3.5" />
+                ) : (
+                  <MicIcon className="size-4" />
+                )}
+              </Button>
               {isStreaming ? (
                 <Button
                   size="icon"
@@ -525,7 +566,7 @@ export function FlowbotAssistant({
                   size="icon"
                   className="size-9 shrink-0"
                   aria-label="Enviar mensagem"
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || voice.state === "transcribing"}
                   onClick={() => void sendMessage()}
                 >
                   <ArrowUpIcon className="size-4" />
