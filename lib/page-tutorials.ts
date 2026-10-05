@@ -17,6 +17,11 @@ export interface PageTutorial {
   scope: "geral" | "projeto"
   path: (projectId: string | null) => string
   steps: PageTutorialStep[]
+  /**
+   * Data (AAAA-MM-DD) em que a tela entrou no FlowBot. Quem já usava a plataforma antes
+   * dessa data recebe o aviso de novidade com o tutorial (components/tutorials/whats-new.tsx).
+   */
+  since?: string
 }
 
 export const PAGE_TUTORIALS: PageTutorial[] = [
@@ -240,7 +245,109 @@ export const PAGE_TUTORIALS: PageTutorial[] = [
       },
     ],
   },
+  {
+    key: "minhas-ias",
+    title: "Minhas IAs",
+    summary: "Conectar as IAs que você já paga e o Claude Code ao FlowBot.",
+    scope: "geral",
+    path: () => "/dashboard/minhas-ias",
+    since: "2026-10-05",
+    steps: [
+      {
+        target: "aikeys-assistant",
+        title: "Quem responde no assistente",
+        body: "Escolha entre a IA gratuita do FlowBot e uma IA sua. Com a sua chave, o assistente lê mais do projeto e monta pacotes maiores de uma vez.",
+      },
+      {
+        target: "aikeys-connect",
+        title: "Conecte uma IA",
+        body: "OpenAI (ChatGPT), Anthropic (Claude), Google Gemini, Groq ou OpenRouter. Cole a chave de API, busque os modelos e o FlowBot testa antes de salvar. A chave fica criptografada.",
+      },
+      {
+        target: "aikeys-bridge",
+        title: "Ponte com o Claude Code",
+        body: "Gere um token e rode o comando no terminal: o Claude Code lê as tarefas do projeto, desenvolve o software e devolve o andamento para o quadro.",
+      },
+    ],
+  },
+  {
+    key: "compartilhamento",
+    title: "Compartilhamento",
+    summary: "Convidar pessoas e definir o cargo de cada uma.",
+    scope: "projeto",
+    path: (id) => `/dashboard/projects/${id}/sharing`,
+    since: "2026-10-04",
+    steps: [
+      {
+        target: "sharing-invite",
+        title: "Convide por e-mail ou link",
+        body: "Quem aceita entra como visitante, só acompanhando. O link vale 7 dias e pode ser trocado ou desativado.",
+      },
+      {
+        target: "sharing-people",
+        title: "Pessoas e cargos",
+        body: "Gestor, funcionário, estagiário ou visitante. Custos e recursos ficam ocultos para visitante e estagiário, a menos que você libere.",
+      },
+      {
+        target: "sharing-roles",
+        title: "O que cada cargo pode fazer",
+        body: "As permissões valem no servidor: um visitante não altera nada, nem pela IA nem pelo Claude Code.",
+      },
+    ],
+  },
+  {
+    key: "desenvolvimento",
+    title: "Desenvolvimento",
+    summary: "O que o Claude Code fez e relatou no projeto.",
+    scope: "projeto",
+    path: (id) => `/dashboard/projects/${id}/development`,
+    since: "2026-10-05",
+    steps: [
+      {
+        target: "dev-notes",
+        title: "O andamento do desenvolvimento",
+        body: "Progresso, tarefas concluídas, problemas e perguntas que o Claude Code registra ao desenvolver. Filtre por tipo e abra o link do PR ou commit.",
+      },
+      {
+        title: "As IAs acompanham daqui",
+        body: "O assistente e o conselho de IAs leem esse andamento para sugerir a continuidade: tarefas para os problemas, respostas às dúvidas e os próximos passos.",
+      },
+    ],
+  },
+  {
+    key: "conselho",
+    title: "Conselho de IAs",
+    summary: "IAs com cargos discutem o projeto e propõem os próximos passos.",
+    scope: "projeto",
+    path: (id) => `/dashboard/projects/${id}/council`,
+    since: "2026-10-05",
+    steps: [
+      {
+        target: "council-members",
+        title: "Monte o conselho",
+        body: "Cada membro é uma IA com um cargo (gerente, analista de sprints, revisor de requisitos...). Use a IA gratuita ou as suas IAs de Minhas IAs.",
+      },
+      {
+        target: "council-new-meeting",
+        title: "Abra uma reunião",
+        body: "Escolha um tema e as rodadas. Cada IA fala na sua vez, vendo o que as outras disseram, e você acompanha ao vivo.",
+      },
+      {
+        target: "council-meetings",
+        title: "A ata e as alterações",
+        body: "O gerente escreve a ata (decisões, riscos e próximos passos) e propõe alterações no projeto, que só entram depois da sua confirmação.",
+      },
+    ],
+  },
 ]
+
+/** Tutoriais com aviso de "Novo" na central nos primeiros dias depois de lançados. */
+export const NEW_TUTORIAL_DAYS = 30
+
+export function isNewTutorial(tutorial: PageTutorial, now = Date.now()): boolean {
+  if (!tutorial.since) return false
+  return now - new Date(`${tutorial.since}T00:00:00`).getTime() < NEW_TUTORIAL_DAYS * 24 * 60 * 60 * 1000
+}
 
 /** Ordem do tutorial completo (avançado): todas as telas de um projeto, uma após a outra. */
 export const ADVANCED_TUTORIAL = [
@@ -253,6 +360,9 @@ export const ADVANCED_TUTORIAL = [
   "recursos",
   "diagramas",
   "relatorios",
+  "desenvolvimento",
+  "conselho",
+  "compartilhamento",
 ]
 
 export function getPageTutorial(key: string): PageTutorial | undefined {
@@ -263,6 +373,7 @@ export function getPageTutorial(key: string): PageTutorial | undefined {
 export function tutorialForLocation(pathname: string, search: string): { key: string; projectId: string | null } | null {
   if (pathname === "/dashboard") return { key: "inicio", projectId: null }
   if (pathname === "/dashboard/projects") return { key: "projetos", projectId: null }
+  if (pathname === "/dashboard/minhas-ias") return { key: "minhas-ias", projectId: null }
 
   const match = pathname.match(/^\/dashboard\/projects\/([^/]+)(?:\/([^/]+))?$/)
   if (!match || match[1] === "new") return null
@@ -276,6 +387,9 @@ export function tutorialForLocation(pathname: string, search: string): { key: st
     resources: "recursos",
     requirements: "requisitos",
     diagrams: "diagramas",
+    development: "desenvolvimento",
+    council: "conselho",
+    sharing: "compartilhamento",
   }
   if (section) return bySection[section] ? { key: bySection[section], projectId } : null
   // Com ?step= a tela é o assistente de criação, que não tem tutorial próprio.

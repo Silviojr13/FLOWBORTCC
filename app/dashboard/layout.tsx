@@ -8,6 +8,7 @@ import { TourLauncher } from "@/components/tour/tour-launcher"
 import { ParticipantPanel } from "@/components/study/participant-panel"
 import { HelpCenter } from "@/components/tutorials/help-center"
 import { PageTutorialRunner } from "@/components/tutorials/page-tutorial-runner"
+import { WhatsNew } from "@/components/tutorials/whats-new"
 import { PendingInviteRedirect } from "@/components/sharing/pending-invite-redirect"
 import BackgroundAnimation from "@/components/background-animation"
 import { tursoDb } from "@/lib/turso-db"
@@ -66,6 +67,9 @@ export default async function DashboardLayout({
       {/* Central de tutoriais (botão "Tutoriais" no cabeçalho) e o executor dos tutoriais por tela. */}
       <HelpCenter />
       <PageTutorialRunner />
+
+      {/* Aviso de tela nova com tutorial, para quem já usava a plataforma antes dela. */}
+      <WhatsNew />
     </SidebarProvider>
   )
 }

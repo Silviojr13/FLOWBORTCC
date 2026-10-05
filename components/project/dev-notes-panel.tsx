@@ -84,7 +84,10 @@ export function DevNotesPanel({ projectId }: { projectId: string }) {
 
   if (notes.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-4 py-10 text-center">
+      <div
+        className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-4 py-10 text-center"
+        data-tour="dev-notes"
+      >
         <TerminalIcon className="size-6 text-muted-foreground" aria-hidden />
         <p className="text-sm text-foreground">Nenhum andamento registrado ainda.</p>
         <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
@@ -105,7 +108,7 @@ export function DevNotesPanel({ projectId }: { projectId: string }) {
   const shown = filter === "todos" ? notes : notes.filter((n) => n.kind === filter)
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" data-tour="dev-notes">
       <div className="flex flex-wrap items-center gap-2">
         <FilterChip active={filter === "todos"} onClick={() => setFilter("todos")}>
           Todos ({notes.length})

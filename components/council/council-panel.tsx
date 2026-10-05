@@ -286,7 +286,10 @@ export function CouncilPanel({ projectId }: Readonly<{ projectId: string }>) {
   return (
     <div className="flex flex-col gap-8">
       {data.canRun && (
-        <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm dark:shadow-none sm:p-5">
+        <section
+          className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm dark:shadow-none sm:p-5"
+          data-tour="council-members"
+        >
           <div className="flex flex-col gap-1">
             <h2 className="flex items-center gap-2 text-sm font-medium text-foreground">
               <UsersRoundIcon className="size-4 text-primary" aria-hidden />
@@ -407,7 +410,10 @@ export function CouncilPanel({ projectId }: Readonly<{ projectId: string }>) {
       )}
 
       {data.canRun && (
-        <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm dark:shadow-none sm:p-5">
+        <section
+          className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm dark:shadow-none sm:p-5"
+          data-tour="council-new-meeting"
+        >
           <h2 className="text-sm font-medium text-foreground">Nova reunião</h2>
           <div className="flex flex-wrap gap-2">
             {COUNCIL_TOPICS.map((t) => (
@@ -463,7 +469,7 @@ export function CouncilPanel({ projectId }: Readonly<{ projectId: string }>) {
         </section>
       )}
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-3" data-tour="council-meetings">
         <h2 className="text-sm font-medium text-foreground">Reuniões</h2>
         {data.meetings.length === 0 ? (
           <p className="text-xs text-muted-foreground">
