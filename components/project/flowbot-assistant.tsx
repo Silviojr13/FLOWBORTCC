@@ -531,7 +531,7 @@ export function FlowbotAssistant({
                 title={voiceActive ? "Parar de ditar" : "Ditar mensagem"}
                 aria-label={voiceActive ? "Parar de ditar" : "Ditar mensagem"}
                 aria-pressed={voiceActive}
-                disabled={isStreaming || voice.state === "transcribing"}
+                disabled={isStreaming || voice.state === "transcribing" || voice.state === "starting"}
                 onClick={voice.toggle}
                 className={cn(
                   "size-9 shrink-0",
@@ -540,7 +540,7 @@ export function FlowbotAssistant({
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {voice.state === "transcribing" ? (
+                {voice.state === "transcribing" || voice.state === "starting" ? (
                   <LoaderCircleIcon className="size-4 animate-spin" />
                 ) : voiceActive ? (
                   <SquareIcon className="size-3.5" />

@@ -155,7 +155,7 @@ export function ChatInput({
                 title={voiceActive ? "Parar de ditar" : "Ditar mensagem"}
                 aria-label={voiceActive ? "Parar de ditar" : "Ditar mensagem"}
                 aria-pressed={voiceActive}
-                disabled={isStreaming || voice.state === "transcribing"}
+                disabled={isStreaming || voice.state === "transcribing" || voice.state === "starting"}
                 onClick={voice.toggle}
                 className={cn(
                   "transition-colors duration-150",
@@ -164,7 +164,7 @@ export function ChatInput({
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {voice.state === "transcribing" ? (
+                {voice.state === "transcribing" || voice.state === "starting" ? (
                   <LoaderCircleIcon className="size-4 animate-spin" />
                 ) : voiceActive ? (
                   <SquareIcon className="size-3.5" />
@@ -178,9 +178,9 @@ export function ChatInput({
                   {formatSeconds(voice.seconds)}
                 </span>
               )}
-              {voice.state === "transcribing" && (
+              {(voice.state === "transcribing" || voice.state === "starting") && (
                 <span className="text-xs text-muted-foreground" aria-live="polite">
-                  Transcrevendo...
+                  {voice.state === "starting" ? "Aguardando o microfone..." : "Transcrevendo..."}
                 </span>
               )}
             </div>
