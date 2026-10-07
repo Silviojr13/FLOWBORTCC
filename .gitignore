@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -47,3 +48,7 @@ build.db
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# banco local de desenvolvimento (npm run dev:setup)
+dev.db
+dev.db-*

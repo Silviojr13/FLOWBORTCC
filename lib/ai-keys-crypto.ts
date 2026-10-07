@@ -15,28 +15,29 @@ function secret(): string {
 }
 
 /** Chave de 32 bytes derivada do segredo, separada da usada pelo login. */
-function encryptionKey(): Buffer {
-  return createHash("sha256").update(`flowbot:user-ai-keys:${secret()}`).digest()
+function encryptionKey(withSecret = secret()): Buffer {
+  return createHash("sha256").update(`flowbot:user-ai-keys:${withSecret}`).digest()
 }
 
 export function encryptionReady(): boolean {
   return Boolean(process.env.AI_KEYS_SECRET || process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET)
 }
 
-export function encryptApiKey(plain: string): string {
+/** withSecret só é passado na troca do segredo (scripts/rotate-ai-keys-secret.ts). */
+export function encryptApiKey(plain: string, withSecret?: string): string {
   const iv = randomBytes(12)
-  const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv)
+  const cipher = createCipheriv("aes-256-gcm", encryptionKey(withSecret), iv)
   const data = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()])
   const tag = cipher.getAuthTag()
   return ["v1", iv.toString("base64"), tag.toString("base64"), data.toString("base64")].join(":")
 }
 
 /** Devolve null quando a chave não abre (segredo trocado ou valor adulterado). */
-export function decryptApiKey(stored: string): string | null {
+export function decryptApiKey(stored: string, withSecret?: string): string | null {
   const [version, iv, tag, data] = stored.split(":")
   if (version !== "v1" || !iv || !tag || !data) return null
   try {
-    const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), Buffer.from(iv, "base64"))
+    const decipher = createDecipheriv("aes-256-gcm", encryptionKey(withSecret), Buffer.from(iv, "base64"))
     decipher.setAuthTag(Buffer.from(tag, "base64"))
     return Buffer.concat([decipher.update(Buffer.from(data, "base64")), decipher.final()]).toString("utf8")
   } catch {

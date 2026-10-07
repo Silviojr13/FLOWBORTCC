@@ -1,34 +1,42 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+## Ambiente de desenvolvimento
 
-First, run the development server:
+Cada integrante desenvolve com um ambiente próprio: banco SQLite local, segredo de login
+próprio e a sua chave da IA. As chaves de produção ficam só na Vercel e não são compartilhadas.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Database Configuration
-
-This project uses Prisma ORM with support for Turso database. For local development, it uses a SQLite file database (`flowbot.db`). For production, you can connect to Turso using the following configuration:
-
-1. Create your Turso database with the name `flowbotdb`
-2. Update your `.env` file with your Turso database URL:
+1. Instale as dependências:
+   ```bash
+   npm install
    ```
-   DATABASE_URL="libsql://flowbotdb.turso.io"
+2. Crie o seu `.env` a partir do modelo:
+   ```bash
+   cp .env.example .env
    ```
+3. No `.env`, preencha:
+   - `AUTH_SECRET` e `NEXTAUTH_SECRET` com um valor gerado por `openssl rand -base64 32`;
+   - `DEV_PASSWORD` com a senha que você quer para a sua conta de teste;
+   - `GROQ_API_KEY` com a sua chave gratuita de https://console.groq.com/keys (só para usar a IA).
+4. Monte o banco local, com todas as tabelas, uma conta de teste e o projeto de exemplo:
+   ```bash
+   npm run dev:setup
+   ```
+5. Rode o FlowBot e entre em http://localhost:3000 com `dev@flowbot.local` e a sua `DEV_PASSWORD`:
+   ```bash
+   npm run dev
+   ```
+
+O `dev.db` fica só no seu computador (o Git o ignora). Rodar `npm run dev:setup` de novo
+sincroniza as tabelas depois de mudanças no `prisma/schema.prisma`, sem apagar seus dados.
+O script se recusa a rodar se o `DATABASE_URL` apontar para o Turso.
+
+Login com Google em desenvolvimento precisa de um cliente OAuth próprio, com
+`http://localhost:3000` como origem; sem ele, use e-mail e senha.
+
+## Banco de dados
+
+Prisma ORM com libSQL: em desenvolvimento, um arquivo SQLite (`dev.db`); em produção, o
+Turso, configurado só nas variáveis de ambiente da Vercel.
 
 ## E-mail (recuperação de senha)
 

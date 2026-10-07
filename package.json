@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:setup": "dotenv -e .env -- tsx scripts/dev-setup.ts",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
@@ -36,7 +37,8 @@
     "script:alter-user-ai-keys": "dotenv -e .env -- tsx scripts/alter-user-ai-keys.ts",
     "script:alter-dev-bridge": "dotenv -e .env -- tsx scripts/alter-dev-bridge.ts",
     "script:alter-ai-council": "dotenv -e .env -- tsx scripts/alter-ai-council.ts",
-    "script:alter-project-docs": "dotenv -e .env -- tsx scripts/alter-project-docs.ts"
+    "script:alter-project-docs": "dotenv -e .env -- tsx scripts/alter-project-docs.ts",
+    "script:rotate-ai-keys-secret": "dotenv -e .env -- tsx scripts/rotate-ai-keys-secret.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
