@@ -102,6 +102,9 @@ const TOOLS = [
         funcionalidade: { type: "string", description: "Nome exato da funcionalidade." },
         sprint: { type: "string", description: "Nome da sprint." },
         coluna: { type: "string", description: "Nome da coluna (padrão: a primeira)." },
+        prazo: day("Prazo"),
+        responsavel: { type: "string", description: "Nome do responsável principal." },
+        participantes: { type: "array", items: { type: "string" }, description: "Outros participantes." },
       },
       required: ["projeto_id", "titulo"],
       additionalProperties: false,
@@ -149,7 +152,7 @@ const TOOLS = [
   {
     name: "atualizar_tarefa",
     title: "Atualizar tarefa",
-    description: "Altera os campos de uma tarefa; só muda o que for informado. Para trocar de coluna, use mover_tarefa.",
+    description: "Altera os campos de uma tarefa; só muda o que for informado. coluna move a tarefa como mover_tarefa.",
     inputSchema: {
       type: "object",
       properties: {
@@ -164,6 +167,7 @@ const TOOLS = [
         sprint: clearable("Nome da sprint."),
         responsavel: { type: "string", description: "Nome do responsável principal." },
         participantes: { type: "array", items: { type: "string" }, description: "Lista completa de participantes (substitui a atual)." },
+        coluna: { type: "string", description: "Nome da coluna de destino (o mesmo que mover_tarefa)." },
       },
       required: ["projeto_id", "tarefa"],
       additionalProperties: false,
