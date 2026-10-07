@@ -159,6 +159,21 @@ async function findFeature(projectId: string, name: string) {
   return found
 }
 
+/** Responsável e participantes; os campos que não vierem partem do que a tarefa já tem. */
+function parseTeam(
+  args: Record<string, unknown>,
+  current: { assignee: string | null; participants: string[] }
+): { assignee: string | null; participants: string[] } {
+  const list = args.participantes
+  if (list !== undefined && list !== null && (!Array.isArray(list) || list.some((p) => typeof p !== "string"))) {
+    throw new BridgeError("participantes deve ser uma lista de nomes.")
+  }
+  const others = Array.isArray(list) ? list : list === null ? [] : current.participants
+  const team = normalizeTaskTeam(args.responsavel !== undefined ? args.responsavel : current.assignee, others)
+  if (team === "too-many") throw new BridgeError(`Uma tarefa tem no máximo ${MAX_TASK_PARTICIPANTS} participantes além do responsável.`)
+  return team
+}
+
 /** Prazo ou data em AAAA-MM-DD. */
 function parseDay(value: unknown, field: string): Date | null {
   const parsed = parseDateInput(value)
@@ -290,6 +305,8 @@ export async function createProjectTask(user: BridgeUser, args: Record<string, u
   const description = typeof args.descricao === "string" ? args.descricao.trim().slice(0, 4000) || null : null
   const priority = typeof args.prioridade === "string" ? PRIORITY_BY_NORM[norm(args.prioridade)] : "Média"
   if (!priority) throw new BridgeError("Prioridade deve ser Alta, Média ou Baixa.")
+  const dueDate = args.prazo !== undefined ? parseDay(args.prazo, "prazo") : null
+  const team = parseTeam(args, { assignee: null, participants: [] })
 
   const projectId = access.projectId
   const requirementId =
@@ -318,6 +335,9 @@ export async function createProjectTask(user: BridgeUser, args: Record<string, u
       requirementId,
       featureId,
       sprintId,
+      dueDate,
+      assignee: team.assignee,
+      participants: { create: team.participants.map((name, order) => ({ name, order })) },
       // Primeira entrada do histórico: a coluna em que a tarefa nasceu (RF09).
       history: { create: { fromColumn: null, toColumn: column.name } },
     },
@@ -488,22 +508,21 @@ export async function updateProjectTask(user: BridgeUser, args: Record<string, u
     changed.push(sprint ? `sprint "${sprint.name}"` : "sprint desvinculada")
   }
   if (args.responsavel !== undefined || args.participantes !== undefined) {
-    if (args.participantes !== undefined && args.participantes !== null && (!Array.isArray(args.participantes) || args.participantes.some((p) => typeof p !== "string"))) {
-      throw new BridgeError("participantes deve ser uma lista de nomes.")
-    }
-    const others = Array.isArray(args.participantes) ? args.participantes : args.participantes === null ? [] : task.participants.map((p) => p.name)
-    const team = normalizeTaskTeam(args.responsavel !== undefined ? args.responsavel : task.assignee, others)
-    if (team === "too-many") throw new BridgeError(`Uma tarefa tem no máximo ${MAX_TASK_PARTICIPANTS} participantes além do responsável.`)
+    const team = parseTeam(args, { assignee: task.assignee, participants: task.participants.map((p) => p.name) })
     data.assignee = team.assignee
     data.participants = participantsWrite(team.participants)
     changed.push(`equipe: ${[team.assignee, ...team.participants].filter(Boolean).join(", ") || "ninguém"}`)
   }
 
-  if (changed.length === 0) {
-    throw new BridgeError("Nada para alterar: informe ao menos um campo (titulo, descricao, prioridade, prazo, requisito, funcionalidade, sprint, responsavel, participantes). Para trocar de coluna, use mover_tarefa.")
+  const moving = typeof args.coluna === "string" && args.coluna.trim()
+  if (changed.length === 0 && !moving) {
+    throw new BridgeError("Nada para alterar: informe ao menos um campo (titulo, descricao, prioridade, prazo, requisito, funcionalidade, sprint, responsavel, participantes, coluna).")
   }
-  await tursoDb.task.update({ where: { id: task.id }, data })
-  return `Tarefa "${task.title}" atualizada: ${changed.join("; ")}.`
+  if (changed.length) await tursoDb.task.update({ where: { id: task.id }, data })
+  const lines = changed.length ? [`Tarefa "${task.title}" atualizada: ${changed.join("; ")}.`] : []
+  // A troca de coluna segue o mesmo caminho de mover_tarefa (histórico e efeitos no requisito).
+  if (moving) lines.push(await moveProjectTask(user, { projeto_id: access.projectId, tarefa: task.id, coluna: args.coluna }))
+  return lines.join("\n")
 }
 
 export async function deleteProjectTask(user: BridgeUser, args: Record<string, unknown>): Promise<string> {
@@ -560,6 +579,14 @@ export async function updateProjectRequirement(user: BridgeUser, args: Record<st
   if (description === undefined && !priority && !status && level === undefined) {
     throw new BridgeError("Nada para alterar: informe descricao, prioridade, status ou nivel.")
   }
+  // Só o que de fato muda: valor igual ao atual não conta como alteração.
+  const newDescription = description !== undefined && description !== existing.description ? description : undefined
+  const newPriority = priority && priority !== existing.priority ? priority : undefined
+  const newStatus = status && status !== existing.status ? status : undefined
+  const newLevel = level !== undefined && level !== existing.level ? level : undefined
+  if (newDescription === undefined && !newPriority && !newStatus && newLevel === undefined) {
+    return `Requisito ${existing.code} já está assim; nada mudou.`
+  }
 
   // Guarda o estado anterior no histórico, como a tela faz (RF03 / RNF04).
   await tursoDb.requirementHistory.create({
@@ -574,10 +601,10 @@ export async function updateProjectRequirement(user: BridgeUser, args: Record<st
   })
   const requirement = await tursoDb.requirement.update({
     where: { id: existing.id },
-    data: { description: description ?? undefined, priority, status, level },
+    data: { description: newDescription ?? undefined, priority: newPriority, status: newStatus, level: newLevel },
   })
   const effects =
-    status && status !== existing.status
+    newStatus
       ? await emitProjectEvent({
           type: "requirement.status_changed",
           projectId: access.projectId,
@@ -588,10 +615,10 @@ export async function updateProjectRequirement(user: BridgeUser, args: Record<st
         })
       : []
   const changed = [
-    description !== undefined ? "descrição" : null,
-    priority ? `prioridade ${existing.priority} → ${priority}` : null,
-    status ? `status ${existing.status} → ${status}` : null,
-    level !== undefined ? `nível ${level ?? "removido"}` : null,
+    newDescription !== undefined ? "descrição" : null,
+    newPriority ? `prioridade ${existing.priority} → ${newPriority}` : null,
+    newStatus ? `status ${existing.status} → ${newStatus}` : null,
+    newLevel !== undefined ? `nível ${newLevel ?? "removido"}` : null,
   ].filter(Boolean)
   return [
     `Requisito ${requirement.code} atualizado: ${changed.join("; ")}. A versão anterior ficou no histórico do requisito.`,
@@ -748,6 +775,8 @@ function actionArgs(action: FlowbotAction, projectId: string): Record<string, un
   const args: Record<string, unknown> = { projeto_id: projectId }
   for (const [field, value] of Object.entries(action)) {
     if (field === "type" || value === undefined) continue
+    // atualizar_requisito não troca o tipo: o código (RF/RNF) depende dele.
+    if (action.type === "update_requirement" && field === "category") continue
     // Na criação o título é o da tarefa nova; nas outras, aponta a tarefa a alterar.
     const arg = field === "title" ? (action.type === "create_task" ? "titulo" : "tarefa") : (ACTION_FIELD_TO_ARG[field] ?? field)
     args[arg] = value
@@ -795,6 +824,7 @@ Regras:
 - Responda em portugues brasileiro, baseado SOMENTE nos dados abaixo: cite requisitos pelo codigo e tarefas e sprints pelo nome. Nunca invente dados.
 - Va direto ao ponto: no maximo ${limits.lines} linhas de texto, sem mostrar seu raciocinio nem repetir os dados.
 - Se a instrucao pedir alteracoes no projeto, proponha-as no bloco flowbot-actions (no maximo ${limits.maxActions} acoes, JSON enxuto). Elas NAO sao aplicadas automaticamente: quem pediu decide e aplica.
+- Nao invente cronograma: so proponha prazo (dueDate) ou datas de sprint quando o projeto ja tiver datas (do projeto ou de sprints) ou quando a instrucao pedir.
 - Se for so uma pergunta ou analise, responda sem o bloco.
 
 --- DADOS DO PROJETO ---
