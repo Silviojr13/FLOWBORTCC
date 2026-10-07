@@ -254,7 +254,7 @@ export async function readProject(user: BridgeUser, args: Record<string, unknown
     "- Ao começar uma tarefa, mova-a para a coluna de andamento; ao terminar, para a coluna de concluídas (mover_tarefa).",
     "- Registre o que fez, os problemas e as dúvidas com registrar_andamento: a equipe e as IAs do FlowBot leem isso para seguir o planejamento.",
     "- Trabalho novo descoberto no caminho (bug, ajuste) vira tarefa com criar_tarefa.",
-    "- Para gerir o projeto: criar_requisito / atualizar_requisito, criar_funcionalidade, criar_sprint, criar_componente, atualizar_tarefa, ler_tarefa e excluir_tarefa (confirme antes de excluir).",
+    "- Para gerir o projeto: criar_requisito / atualizar_requisito, criar_funcionalidade, criar_sprint / atualizar_sprint, criar_componente, atualizar_tarefa, ler_tarefa e excluir_tarefa (confirme antes de excluir).",
     "- acionar_ia consulta as IAs do FlowBot (assistente, gerente, revisor_requisitos...) com este contexto; o que elas propõem você aplica com as ferramentas acima.",
   ].join("\n")
 }
@@ -627,6 +627,39 @@ export async function updateProjectRequirement(user: BridgeUser, args: Record<st
 }
 
 /* ---------------------------------------------------------------- funcionalidades, sprints, componentes */
+
+export async function updateProjectSprint(user: BridgeUser, args: Record<string, unknown>): Promise<string> {
+  const access = await accessOrFail(args.projeto_id, user)
+  requireEdit(access, "sprints", "alterar sprints")
+  if (typeof args.sprint !== "string" || !args.sprint.trim()) throw new BridgeError("Informe a sprint (id ou nome).")
+  const byId = await tursoDb.sprint.findFirst({ where: { id: args.sprint.trim(), projectId: access.projectId } })
+  const sprint = byId ?? (await tursoDb.sprint.findUniqueOrThrow({ where: { id: (await findSprint(access.projectId, args.sprint)).id } }))
+
+  const name = args.nome !== undefined ? optionalText(args.nome, "nome", 200) : undefined
+  if (args.nome !== undefined && !name) throw new BridgeError("O nome da sprint não pode ficar vazio.")
+  const goal = optionalText(args.objetivo, "objetivo", 1000)
+  const start = args.inicio !== undefined ? parseDay(args.inicio, "inicio") : undefined
+  const end = args.fim !== undefined ? parseDay(args.fim, "fim") : undefined
+  if (start === null || end === null) throw new BridgeError("inicio e fim não podem ficar vazios (AAAA-MM-DD).")
+  if (name === undefined && goal === undefined && !start && !end) {
+    throw new BridgeError("Nada para alterar: informe nome, objetivo, inicio ou fim. Para pôr ou tirar tarefas da sprint, use atualizar_tarefa com o campo sprint.")
+  }
+  const effectiveStart = start ?? sprint.startDate
+  const effectiveEnd = end ?? sprint.endDate
+  if (effectiveEnd.getTime() < effectiveStart.getTime()) throw new BridgeError("O fim da sprint deve ser igual ou posterior ao início.")
+
+  // Só o que de fato muda, como em atualizar_requisito.
+  const changed = [
+    name && name !== sprint.name ? `nome "${sprint.name}" → "${name}"` : null,
+    goal !== undefined && goal !== sprint.goal ? (goal ? "objetivo" : "objetivo removido") : null,
+    start && start.getTime() !== sprint.startDate.getTime() ? `início ${formatDate(sprint.startDate)} → ${formatDate(start)}` : null,
+    end && end.getTime() !== sprint.endDate.getTime() ? `fim ${formatDate(sprint.endDate)} → ${formatDate(end)}` : null,
+  ].filter(Boolean)
+  if (changed.length === 0) return `Sprint "${sprint.name}" já está assim; nada mudou.`
+
+  await tursoDb.sprint.update({ where: { id: sprint.id }, data: { name: name ?? undefined, goal, startDate: start, endDate: end } })
+  return `Sprint "${name ?? sprint.name}" atualizada: ${changed.join("; ")}.`
+}
 
 const FEATURE_STATUSES = ["Planejada", "Em desenvolvimento", "Concluída"] as const
 

@@ -17,6 +17,7 @@ import {
   readProjectTask,
   recordProgress,
   updateProjectRequirement,
+  updateProjectSprint,
   updateProjectTask,
   type BridgeUser,
 } from "@/lib/dev-bridge";
@@ -45,7 +46,7 @@ Comece por listar_projetos e ler_projeto. Ao desenvolver: mova a tarefa para a c
 ao começar e para a de concluídas ao terminar, e registre o que fez, problemas e dúvidas com
 registrar_andamento. A equipe e as IAs do FlowBot acompanham o projeto por esses registros.
 Para gerir o projeto: criar_requisito e atualizar_requisito, criar_funcionalidade, criar_sprint,
-criar_componente, atualizar_tarefa, ler_tarefa e excluir_tarefa. acionar_ia consulta as IAs do
+atualizar_sprint, criar_componente, atualizar_tarefa, ler_tarefa e excluir_tarefa. acionar_ia consulta as IAs do
 FlowBot com o contexto do projeto; o que elas propõem não é aplicado sozinho.`;
 
 const projectId = { type: "string", description: "Id do projeto (veja listar_projetos)." };
@@ -258,6 +259,25 @@ const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false },
   },
   {
+    name: "atualizar_sprint",
+    title: "Atualizar sprint",
+    description: "Altera nome, objetivo, início ou fim de uma sprint; só muda o que for informado. Tarefas entram e saem da sprint por atualizar_tarefa (campo sprint).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        projeto_id: projectId,
+        sprint: { type: "string", description: "Id ou nome da sprint." },
+        nome: { type: "string" },
+        objetivo: { type: "string", description: "Texto vazio apaga o objetivo." },
+        inicio: day("Início"),
+        fim: day("Fim"),
+      },
+      required: ["projeto_id", "sprint"],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  },
+  {
     name: "criar_componente",
     title: "Criar componente",
     description: "Cadastra um componente do produto (hardware ou software pago), com quantidade e preço unitário.",
@@ -316,6 +336,7 @@ const HANDLERS: Record<string, (user: BridgeUser, args: ToolArgs) => Promise<str
   atualizar_requisito: updateProjectRequirement,
   criar_funcionalidade: createProjectFeature,
   criar_sprint: createProjectSprint,
+  atualizar_sprint: updateProjectSprint,
   criar_componente: createProjectComponent,
   acionar_ia: askProjectAi,
 };
