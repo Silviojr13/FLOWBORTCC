@@ -23,4 +23,5 @@ Tipos de acao (use exatamente estes nomes de campo; datas no formato AAAA-MM-DD)
 
 Regras do bloco: categoria "Funcional" ou "Nao Funcional" (a interface corrige acentos);
 referencie requisitos pelo codigo, funcionalidades e sprints pelo nome e colunas pelo nome
-exato do contexto; so use responsavel (assignee) com nomes que aparecem no projeto.`
+exato do contexto; responsavel (assignee) e participantes so com nomes da Equipe do contexto; sem nome adequado,
+deixe sem responsavel.`

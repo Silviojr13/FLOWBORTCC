@@ -1,6 +1,7 @@
 import { tursoDb } from "./turso-db";
 import { formatDate, isTaskOverdue } from "./kanban";
 import { DEV_NOTE_LABELS, isDevNoteKind } from "./dev-notes";
+import { ROLE_LABELS, isMemberRole } from "./project-permissions";
 
 // Monta um resumo textual do estado atual do projeto para ser injetado no prompt do
 // assistente. É o que permite ao FlowBot responder sobre "este projeto" em vez de falar
@@ -17,7 +18,15 @@ export async function buildProjectContext(
 ): Promise<string | null> {
   const project = await tursoDb.project.findUnique({
     where: { id: projectId, userId },
-    select: { id: true, name: true, description: true, startDate: true, endDate: true },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      startDate: true,
+      endDate: true,
+      user: { select: { name: true } },
+      members: { orderBy: { createdAt: "asc" }, select: { role: true, user: { select: { name: true } } } },
+    },
   });
   if (!project) return null;
 
@@ -72,6 +81,17 @@ export async function buildProjectContext(
   if (uncovered.length > 0) {
     lines.push(`Requisitos sem tarefa vinculada: ${uncovered.join(", ")}.`);
   }
+  // A equipe de verdade: sem ela, a IA tomava "Claude Code" (a origem do andamento) por
+  // uma pessoa e designava tarefas a ele.
+  const team = [
+    project.user.name ? `${project.user.name} (${ROLE_LABELS.dono})` : null,
+    ...project.members
+      .filter((m) => m.user.name)
+      .map((m) => `${m.user.name} (${isMemberRole(m.role) ? ROLE_LABELS[m.role] : m.role})`),
+  ].filter(Boolean);
+  lines.push(
+    `Equipe (unicos nomes validos como responsavel ou participante): ${team.join(", ") || "(sem nomes cadastrados)"}. O Claude Code, que registra o andamento, e uma ferramenta, nao um membro.`
+  );
 
   const header = lines.join("\n");
 
