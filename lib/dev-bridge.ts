@@ -822,6 +822,7 @@ Quem pede e uma IA de desenvolvimento (Claude Code, pelo servidor MCP) trabalhan
 
 Regras:
 - Responda em portugues brasileiro, baseado SOMENTE nos dados abaixo: cite requisitos pelo codigo e tarefas e sprints pelo nome. Nunca invente dados.
+- Copie os codigos exatamente como estao nos dados: RF (funcional) e RNF (nao funcional) sao requisitos diferentes; confira a descricao antes de citar.
 - Va direto ao ponto: no maximo ${limits.lines} linhas de texto, sem mostrar seu raciocinio nem repetir os dados.
 - Se a instrucao pedir alteracoes no projeto, proponha-as no bloco flowbot-actions (no maximo ${limits.maxActions} acoes, JSON enxuto). Elas NAO sao aplicadas automaticamente: quem pediu decide e aplica.
 - Nao invente cronograma: so proponha prazo (dueDate) ou datas de sprint quando o projeto ja tiver datas (do projeto ou de sprints) ou quando a instrucao pedir.
