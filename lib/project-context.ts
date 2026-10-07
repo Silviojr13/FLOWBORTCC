@@ -83,11 +83,15 @@ export async function buildProjectContext(
   }
   // A equipe de verdade: sem ela, a IA tomava "Claude Code" (a origem do andamento) por
   // uma pessoa e designava tarefas a ele.
+  // Nomes salvos com espaço sobrando ("Rafaela ") viravam "Rafaela  (Visitante)".
+  const cleanName = (name: string | null) => name?.replace(/\s+/g, " ").trim() || null;
+  const ownerName = cleanName(project.user.name);
   const team = [
-    project.user.name ? `${project.user.name} (${ROLE_LABELS.dono})` : null,
-    ...project.members
-      .filter((m) => m.user.name)
-      .map((m) => `${m.user.name} (${isMemberRole(m.role) ? ROLE_LABELS[m.role] : m.role})`),
+    ownerName ? `${ownerName} (${ROLE_LABELS.dono})` : null,
+    ...project.members.flatMap((m) => {
+      const name = cleanName(m.user.name);
+      return name ? [`${name} (${isMemberRole(m.role) ? ROLE_LABELS[m.role] : m.role})`] : [];
+    }),
   ].filter(Boolean);
   lines.push(
     `Equipe (unicos nomes validos como responsavel ou participante): ${team.join(", ") || "(sem nomes cadastrados)"}. O Claude Code, que registra o andamento, e uma ferramenta, nao um membro.`
