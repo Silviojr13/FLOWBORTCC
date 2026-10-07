@@ -15,12 +15,13 @@ próprio e a sua chave da IA. As chaves de produção ficam só na Vercel e não
    ```
 3. No `.env`, preencha:
    - `AUTH_SECRET` e `NEXTAUTH_SECRET` com um valor gerado por `openssl rand -base64 32`;
+   - `DEV_PASSWORD` com a senha que você quer para a sua conta de teste;
    - `GROQ_API_KEY` com a sua chave gratuita de https://console.groq.com/keys (só para usar a IA).
 4. Monte o banco local, com todas as tabelas, uma conta de teste e o projeto de exemplo:
    ```bash
    npm run dev:setup
    ```
-5. Rode o FlowBot e entre em http://localhost:3000 com `dev@flowbot.local` / `flowbot-dev`:
+5. Rode o FlowBot e entre em http://localhost:3000 com `dev@flowbot.local` e a sua `DEV_PASSWORD`:
    ```bash
    npm run dev
    ```
