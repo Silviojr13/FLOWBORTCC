@@ -1,30 +1,16 @@
 import { NextRequest } from "next/server";
 import { authorizeProject } from "../../../../../lib/project-access";
 import { tursoDb } from "../../../../../lib/turso-db";
+import {
+  nextRequirementCode,
+  REQUIREMENT_CATEGORIES,
+  REQUIREMENT_PRIORITIES,
+  REQUIREMENT_STATUSES,
+} from "../../../../../lib/requirements-server";
 
-const CATEGORY_PREFIX: Record<string, string> = {
-  Funcional: "RF",
-  "Não Funcional": "RNF",
-};
-
-const VALID_CATEGORIES = Object.keys(CATEGORY_PREFIX);
-const VALID_PRIORITIES = ["Alta", "Média", "Baixa"];
-const VALID_STATUSES = ["Em Aberto", "Validado", "Descartado"];
-
-async function nextRequirementCode(projectId: string, category: string) {
-  const prefix = CATEGORY_PREFIX[category];
-  const existing = await tursoDb.requirement.findMany({
-    where: { projectId, category },
-    select: { code: true },
-  });
-
-  const max = existing.reduce((currentMax, r) => {
-    const n = parseInt(r.code.slice(prefix.length), 10);
-    return Number.isNaN(n) ? currentMax : Math.max(currentMax, n);
-  }, 0);
-
-  return `${prefix}${String(max + 1).padStart(2, "0")}`;
-}
+const VALID_CATEGORIES = REQUIREMENT_CATEGORIES;
+const VALID_PRIORITIES = REQUIREMENT_PRIORITIES;
+const VALID_STATUSES = REQUIREMENT_STATUSES;
 
 export async function GET(
   req: NextRequest,
