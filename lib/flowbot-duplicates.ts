@@ -48,19 +48,29 @@ function overlap(a: string, b: string): number {
   return common / Math.min(wa.size, wb.size)
 }
 
-const quote = (text: string) => `"${text.length > 60 ? `${text.slice(0, 59)}…` : text}"`
+function quote(text: string): string {
+  const short = text.length > 60 ? text.slice(0, 59) + "…" : text
+  return `"${short}"`
+}
 
-function taskHint(action: Extract<FlowbotAction, { type: "create_task" }>, existing: ExistingTask[]): DuplicateHint | null {
+type ProposedTask = Extract<FlowbotAction, { type: "create_task" }>
+
+/** Quão parecida a tarefa proposta é com uma existente, e quanto precisa para contar como repetida. */
+function taskSimilarity(action: ProposedTask, task: ExistingTask, code: string | undefined) {
+  const sameRequirement = Boolean(code && task.requirement?.code === code)
+  const byTitle = overlap(action.title, task.title)
+  // Descrição só pesa com o mesmo requisito: sozinha, gera falso alarme.
+  const byText = sameRequirement
+    ? overlap(`${action.title} ${action.description ?? ""}`, `${task.title} ${task.description ?? ""}`)
+    : 0
+  return { score: Math.max(byTitle, byText), needed: sameRequirement ? 0.5 : 0.75 }
+}
+
+function taskHint(action: ProposedTask, existing: ExistingTask[]): DuplicateHint | null {
   const code = action.requirementCode?.toUpperCase()
   let best: { task: ExistingTask; score: number } | null = null
   for (const task of existing) {
-    const sameRequirement = Boolean(code && task.requirement?.code === code)
-    const score = Math.max(
-      overlap(action.title, task.title),
-      // Descrição só pesa com o mesmo requisito: sozinha, gera falso alarme.
-      sameRequirement ? overlap(`${action.title} ${action.description ?? ""}`, `${task.title} ${task.description ?? ""}`) : 0
-    )
-    const needed = sameRequirement ? 0.5 : 0.75
+    const { score, needed } = taskSimilarity(action, task, code)
     if (score >= needed && (!best || score > best.score)) best = { task, score }
   }
   if (best) return { level: "duplicate", message: `Parece repetir a tarefa ${quote(best.task.title)}, que já existe.` }

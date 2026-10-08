@@ -86,8 +86,14 @@ const LEVELS = ["Sistema", "Subsistema", "Componente"] as const
 const DOMAINS = ["Hardware", "Software"] as const
 
 // O contexto lista a equipe como "Nome (Cargo)" e a IA às vezes copia o cargo junto.
-const ROLE_SUFFIX = /\s*\((dono|gestor|funcion[áa]rio|estagi[áa]rio|visitante)\)\s*$/i
-const personName = (value: string) => value.replace(ROLE_SUFFIX, "").trim()
+const ROLES = new Set(["dono", "gestor", "funcionario", "estagiario", "visitante"])
+function personName(value: string): string {
+  const name = value.trim()
+  const open = name.lastIndexOf("(")
+  if (open < 0 || !name.endsWith(")")) return name
+  const role = deaccent(name.slice(open + 1, -1))
+  return ROLES.has(role) ? name.slice(0, open).trim() : name
+}
 
 function normalizeAction(action: FlowbotAction): FlowbotAction {
   const a = { ...action } as Record<string, unknown>
