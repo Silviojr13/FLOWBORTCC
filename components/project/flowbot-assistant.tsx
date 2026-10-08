@@ -506,6 +506,7 @@ export function FlowbotAssistant({
                 isApplying={isApplying}
                 onConfirm={applyActions}
                 onDiscard={() => setDiscardedIndex(lastIndex)}
+                projectId={projectId}
               />
             )}
 
