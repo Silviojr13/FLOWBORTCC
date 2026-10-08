@@ -28,7 +28,8 @@ const FREE_LIMITS = {
   maxMessageTokens: MAX_MESSAGE_TOKENS,
   contextChars: 4500,
   devNotes: 3,
-  maxActions: 12,
+  // Com o critério de aceite nas descrições, 8 ações cabem nos 900 tokens de saída.
+  maxActions: 8,
   explanationLines: 6,
 };
 const OWN_KEY_LIMITS = {
@@ -271,6 +272,11 @@ PROPOE; a pessoa revisa num card e confirma com um clique. Seja proativo e entre
   cada funcionalidade com prioridade, prazo e coluna, e componentes quando fizer sentido).
   Liste as suposicoes numa linha; a pessoa ajusta depois.
 - So pergunte antes quando faltar algo impossivel de supor (ex.: o objetivo do projeto).
+- NAO DUPLIQUE: antes de criar, confira TAREFAS ABERTAS, TAREFAS CONCLUIDAS, FUNCIONALIDADES e
+  REQUISITOS do contexto. Se ja existe algo do mesmo assunto ou do mesmo requisito, proponha
+  update_task (vincular requisito, funcionalidade, sprint ou prazo) em vez de criar outra; nunca
+  recrie trabalho ja concluido. Ao analisar um documento anexado, crie so o que o projeto ainda
+  nao tem e diga, numa linha, o que do documento ja estava coberto.
 - O ANDAMENTO DO DESENVOLVIMENTO (quando houver) vem do Claude Code, que desenvolve o software:
   use-o para acompanhar o projeto e sugerir a continuidade (ex.: tarefas para os problemas
   relatados, respostas as perguntas, proximas tarefas da sprint).
@@ -279,7 +285,8 @@ PROPOE; a pessoa revisa num card e confirma com um clique. Seja proativo e entre
   (o trabalho em etapas), cada um com 1 ou 2 linhas dizendo o porque. Termine com uma linha
   "**Proximo passo:** ..." sugerindo o que fazer depois.
 - Sua resposta tem um limite de tamanho. Por isso: no maximo ${limits.maxActions} acoes por mensagem,
-  JSON enxuto (sem campos vazios, descricoes de tarefa com ate 8 palavras) e explicacao de no
+  JSON enxuto (sem campos vazios; descricao de tarefa com ate 20 palavras, terminando em
+  "Aceite: <como saber que esta pronta>") e explicacao de no
   maximo ${limits.explanationLines} linhas. Se o pacote for maior, entregue a primeira parte (ex.: funcionalidades e
   as tarefas da primeira sprint) e diga que, depois de confirmar, voce monta o resto.
 - Itens criados no mesmo bloco podem ser referenciados pelos seguintes: use o codigo que o

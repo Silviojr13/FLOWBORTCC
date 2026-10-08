@@ -85,6 +85,10 @@ const FEATURE_STATUSES = ["Planejada", "Em desenvolvimento", "Concluída"] as co
 const LEVELS = ["Sistema", "Subsistema", "Componente"] as const
 const DOMAINS = ["Hardware", "Software"] as const
 
+// O contexto lista a equipe como "Nome (Cargo)" e a IA às vezes copia o cargo junto.
+const ROLE_SUFFIX = /\s*\((dono|gestor|funcion[áa]rio|estagi[áa]rio|visitante)\)\s*$/i
+const personName = (value: string) => value.replace(ROLE_SUFFIX, "").trim()
+
 function normalizeAction(action: FlowbotAction): FlowbotAction {
   const a = { ...action } as Record<string, unknown>
 
@@ -100,9 +104,10 @@ function normalizeAction(action: FlowbotAction): FlowbotAction {
   }
   if ("participants" in a) {
     a.participants = Array.isArray(a.participants)
-      ? a.participants.filter((p): p is string => typeof p === "string" && !!p.trim())
+      ? a.participants.filter((p): p is string => typeof p === "string" && !!p.trim()).map(personName)
       : undefined
   }
+  if (typeof a.assignee === "string") a.assignee = personName(a.assignee)
   // Campos vazios devem virar "ausente" para a API aplicar os padrões.
   for (const key of ["description", "assignee", "dueDate", "featureName", "requirementCode", "columnName", "sprintName", "goal"]) {
     if (key in a && typeof a[key] === "string" && !(a[key] as string).trim()) a[key] = undefined

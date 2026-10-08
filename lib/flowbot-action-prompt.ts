@@ -23,5 +23,8 @@ Tipos de acao (use exatamente estes nomes de campo; datas no formato AAAA-MM-DD)
 
 Regras do bloco: categoria "Funcional" ou "Nao Funcional" (a interface corrige acentos);
 referencie requisitos pelo codigo, funcionalidades e sprints pelo nome e colunas pelo nome
-exato do contexto; responsavel (assignee) e participantes so com nomes da Equipe do contexto; sem nome adequado,
-deixe sem responsavel.`
+exato do contexto; responsavel (assignee) e participantes so com nomes da Equipe do contexto, sem o cargo; sem nome adequado,
+deixe sem responsavel. Nao crie o que ja existe no projeto (inclusive tarefas concluidas): para
+algo equivalente, use update_task. Toda tarefa criada leva description curta com o criterio de
+aceite ("... Aceite: ..."). So proponha move_task quando a pessoa pedir ou houver motivo claro,
+e diga o motivo no texto antes do bloco.`

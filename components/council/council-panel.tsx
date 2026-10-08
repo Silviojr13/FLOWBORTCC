@@ -676,6 +676,7 @@ function MeetingView({
               isApplying={isApplying}
               onConfirm={(chosen) => void apply(chosen)}
               onDiscard={() => setDiscarded(true)}
+              projectId={projectId}
             />
           )}
           {meeting.appliedSummary && (

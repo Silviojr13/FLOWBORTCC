@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   AlertTriangleIcon,
+  CopyIcon,
   CheckIcon,
   CircleCheckIcon,
   CircleXIcon,
@@ -20,6 +21,7 @@ import {
   type ActionResult,
   type FlowbotAction,
 } from "@/lib/flowbot-actions"
+import { findDuplicateHints, type DuplicateHint, type ExistingProjectItems } from "@/lib/flowbot-duplicates"
 import { cn } from "@/lib/utils"
 
 function ActionIcon({ type }: { type: FlowbotAction["type"] }) {
@@ -39,15 +41,44 @@ export function FlowbotActionProposal({
   isApplying,
   onConfirm,
   onDiscard,
+  projectId,
 }: {
   actions: FlowbotAction[]
   results: ActionResult[] | null
   isApplying: boolean
   onConfirm: (actions: FlowbotAction[]) => void
   onDiscard: () => void
+  /** Com o projeto, o card confere se o que vai ser criado já existe. */
+  projectId?: string
 }) {
   // Todas marcadas por padrão; o usuário pode desmarcar o que não quiser aplicar.
   const [selected, setSelected] = useState<boolean[]>(() => actions.map(() => true))
+  const [hints, setHints] = useState<Map<number, DuplicateHint>>(() => new Map())
+
+  // Confere as criações contra o que o projeto já tem (inclusive tarefas concluídas). O que
+  // quase certamente repete algo vem desmarcado; a pessoa pode marcar de novo.
+  useEffect(() => {
+    if (!projectId || !actions.some((a) => a.type.startsWith("create"))) return
+    let cancelled = false
+    const get = (path: string): Promise<Partial<ExistingProjectItems>> =>
+      fetch(`/api/projects/${projectId}/${path}`).then((r) => (r.ok ? r.json() : {}))
+    Promise.all([get("tasks"), get("features"), get("requirements")])
+      .then(([t, f, r]) => {
+        if (cancelled) return
+        const found = findDuplicateHints(actions, {
+          tasks: t.tasks ?? [],
+          features: f.features ?? [],
+          requirements: r.requirements ?? [],
+        })
+        setHints(found)
+        setSelected((prev) => prev.map((v, i) => (found.get(i)?.level === "duplicate" ? false : v)))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [actions, projectId])
+  const duplicates = [...hints.values()].filter((h) => h.level === "duplicate").length
 
   const hasDestructive = actions.some((a) => a.type.startsWith("delete"))
   const chosen = actions.filter((_, i) => selected[i])
@@ -137,6 +168,19 @@ export function FlowbotActionProposal({
                           {details.length > 0 && (
                             <span className="block text-xs text-muted-foreground">{details.join(" · ")}</span>
                           )}
+                          {hints.get(index) && (
+                            <span
+                              className={cn(
+                                "mt-0.5 flex items-start gap-1 text-xs",
+                                hints.get(index)!.level === "duplicate"
+                                  ? "text-amber-700 dark:text-amber-400"
+                                  : "text-muted-foreground"
+                              )}
+                            >
+                              <CopyIcon className="mt-0.5 size-3 shrink-0" aria-hidden />
+                              {hints.get(index)!.message}
+                            </span>
+                          )}
                         </span>
                       </label>
                     </li>
@@ -147,6 +191,14 @@ export function FlowbotActionProposal({
           )
         })}
       </div>
+
+      {duplicates > 0 && (
+        <p className="mb-2 flex items-start gap-1.5 rounded-md bg-amber-500/10 px-2 py-1.5 text-xs text-amber-800 dark:text-amber-300">
+          <CopyIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          {duplicates} item(ns) parece(m) repetir o que o projeto já tem e veio(vieram) desmarcado(s). Marque de
+          novo se for mesmo algo novo.
+        </p>
+      )}
 
       {hasDestructive && (
         <p className="mb-2 flex items-start gap-1.5 rounded-md bg-destructive/10 px-2 py-1.5 text-xs text-destructive">
