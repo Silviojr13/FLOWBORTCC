@@ -24,8 +24,11 @@ export function estimateTokens(text: string): number {
  */
 export const INPUT_TOKEN_BUDGET = Number(process.env.GROQ_INPUT_TOKEN_BUDGET) || 3400
 
-/** Uma mensagem sozinha (por exemplo, com arquivo anexado) não passa disto. */
-const MAX_MESSAGE_TOKENS = 1800
+/**
+ * Uma mensagem sozinha (por exemplo, com arquivo anexado) não passa disto na IA gratuita.
+ * Com chave própria, o chat passa um teto maior.
+ */
+export const MAX_MESSAGE_TOKENS = 1800
 
 function clipMessage(message: ChatMessage, maxTokens: number): ChatMessage {
   if (estimateTokens(message.content) <= maxTokens) return message
@@ -43,10 +46,11 @@ export interface FittedConversation {
 export function fitConversation(
   messages: ChatMessage[],
   systemTokens: number,
-  budget = INPUT_TOKEN_BUDGET
+  budget = INPUT_TOKEN_BUDGET,
+  maxMessageTokens = MAX_MESSAGE_TOKENS
 ): FittedConversation {
   const available = Math.max(1200, budget - systemTokens)
-  const clipped = messages.map((m) => clipMessage(m, Math.min(MAX_MESSAGE_TOKENS, available)))
+  const clipped = messages.map((m) => clipMessage(m, Math.min(maxMessageTokens, available)))
 
   // A última mensagem (a pergunta atual) entra sempre.
   const last = clipped[clipped.length - 1]

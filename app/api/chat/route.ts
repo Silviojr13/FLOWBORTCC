@@ -3,7 +3,7 @@ import { getCurrentUser } from "../../../lib/auth";
 import { tursoDb } from "../../../lib/turso-db";
 import { buildProjectContext } from "../../../lib/project-context";
 import { getProjectAccess } from "../../../lib/project-access";
-import { estimateTokens, fitConversation, omittedNote, INPUT_TOKEN_BUDGET, type ChatMessage } from "../../../lib/chat-budget";
+import { estimateTokens, fitConversation, omittedNote, INPUT_TOKEN_BUDGET, MAX_MESSAGE_TOKENS, type ChatMessage } from "../../../lib/chat-budget";
 import {
   AiProviderError,
   friendlyAiError,
@@ -25,6 +25,7 @@ export const runtime = "nodejs";
 const FREE_LIMITS = {
   maxOutputTokens: Number(process.env.GROQ_MAX_OUTPUT_TOKENS) || 900,
   inputBudget: INPUT_TOKEN_BUDGET,
+  maxMessageTokens: MAX_MESSAGE_TOKENS,
   contextChars: 4500,
   devNotes: 3,
   maxActions: 12,
@@ -33,6 +34,8 @@ const FREE_LIMITS = {
 const OWN_KEY_LIMITS = {
   maxOutputTokens: 4000,
   inputBudget: 24000,
+  // Cabe um documento anexado de até ~45 mil caracteres (MAX_ATTACHMENT_CHARS_OWN_KEY).
+  maxMessageTokens: 16000,
   contextChars: 16000,
   devNotes: 8,
   maxActions: 30,
@@ -298,7 +301,8 @@ ${FLOWBOT_ACTIONS_FORMAT}`;
   const conversation = fitConversation(
     messages.map((m: Message) => ({ role: m.role, content: String(m.content ?? "") }) as ChatMessage),
     estimateTokens(systemContent),
-    limits.inputBudget
+    limits.inputBudget,
+    limits.maxMessageTokens
   );
   if (conversation.omitted > 0) systemContent += omittedNote(conversation.omitted);
 

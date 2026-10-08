@@ -8,14 +8,22 @@ export const ATTACHMENT_EXTENSIONS = [
   ".gd", ".html", ".css", ".sql", ".sh",
 ]
 
+/** Documentos que o servidor converte em texto antes de anexar (/api/attachments). */
+export const DOCUMENT_ATTACHMENT_EXTENSIONS = [".pdf", ".docx", ".markdown"]
+
+/** Tudo o que o botão de anexo aceita. */
+export const ACCEPTED_ATTACHMENT_EXTENSIONS = [...ATTACHMENT_EXTENSIONS, ...DOCUMENT_ATTACHMENT_EXTENSIONS]
+
 /** Arquivo maior que isto nem é lido. */
-export const MAX_ATTACHMENT_BYTES = 300 * 1024
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
 
 /**
- * Quanto do arquivo vai para a IA (~1.600 tokens). O plano gratuito aceita poucos tokens
- * por minuto; o restante é cortado e a pessoa é avisada.
+ * Quanto do arquivo vai para a IA. A IA gratuita aceita poucos tokens por minuto (~1.600
+ * tokens de anexo); com a chave própria em "Minhas IAs" cabe bem mais. O que passa disso é
+ * condensado (lib/document-text.ts) e a pessoa é avisada.
  */
 export const MAX_ATTACHMENT_CHARS = 5000
+export const MAX_ATTACHMENT_CHARS_OWN_KEY = 45000
 
 export interface ChatAttachment {
   name: string
@@ -26,13 +34,24 @@ export interface ChatAttachment {
 
 export function isAcceptedAttachment(fileName: string): boolean {
   const lower = fileName.toLowerCase()
-  return ATTACHMENT_EXTENSIONS.some((ext) => lower.endsWith(ext))
+  return ACCEPTED_ATTACHMENT_EXTENSIONS.some((ext) => lower.endsWith(ext))
 }
 
-export function prepareAttachment(name: string, raw: string): ChatAttachment {
-  const text = raw.replace(/\r\n/g, "\n").replace(/\u0000/g, "").trim()
-  const truncated = text.length > MAX_ATTACHMENT_CHARS
-  return { name, content: truncated ? text.slice(0, MAX_ATTACHMENT_CHARS) : text, truncated }
+/**
+ * Lê o arquivo no servidor (PDF e Word viram texto; tudo é limpo e, se preciso, condensado
+ * para caber no limite da IA de quem está usando). Lança Error com a mensagem para a pessoa.
+ */
+export async function uploadAttachment(file: File): Promise<ChatAttachment> {
+  if (!isAcceptedAttachment(file.name)) {
+    throw new Error("Formato não aceito. Envie PDF, Word (.docx), Markdown, texto ou código.")
+  }
+  if (file.size > MAX_ATTACHMENT_BYTES) throw new Error("Arquivo grande demais. Envie um arquivo de até 10 MB.")
+  const form = new FormData()
+  form.append("file", file)
+  const res = await fetch("/api/attachments", { method: "POST", body: form })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || "Não foi possível ler o arquivo.")
+  return data.attachment as ChatAttachment
 }
 
 const OPEN = /<anexo nome="([^"]*)"( cortado="sim")?>\n?/

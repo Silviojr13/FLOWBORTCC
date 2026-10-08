@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeProject } from "@/lib/project-access";
 import { tursoDb } from "@/lib/turso-db";
 import { clipReference, loadSettings, settingsView } from "@/lib/docs-server";
+import { DOCUMENT_EXTENSIONS, extractDocumentText } from "@/lib/document-text";
 
 export const runtime = "nodejs";
 
@@ -12,20 +13,8 @@ const MAX_BYTES = 10 * 1024 * 1024;
 /** Texto do modelo de referência: PDF, Word (.docx), Markdown ou texto. */
 async function extractText(file: File): Promise<string> {
   const name = file.name.toLowerCase();
-  const buffer = new Uint8Array(await file.arrayBuffer());
-  if (name.endsWith(".pdf")) {
-    const { extractText: pdfText, getDocumentProxy } = await import("unpdf");
-    const pdf = await getDocumentProxy(buffer);
-    const { text } = await pdfText(pdf, { mergePages: true });
-    return text;
-  }
-  if (name.endsWith(".docx")) {
-    const mammoth = await import("mammoth");
-    const { value } = await mammoth.extractRawText({ buffer: Buffer.from(buffer) });
-    return value;
-  }
-  if (/\.(md|markdown|txt)$/.test(name)) return new TextDecoder("utf-8").decode(buffer);
-  throw new Error("formato");
+  if (!DOCUMENT_EXTENSIONS.some((ext) => name.endsWith(ext))) throw new Error("formato");
+  return extractDocumentText(file.name, new Uint8Array(await file.arrayBuffer()));
 }
 
 // POST: anexa o modelo de referência (o modelo da instituição, a rubrica ou um exemplo).

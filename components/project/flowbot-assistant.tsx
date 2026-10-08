@@ -29,6 +29,8 @@ import {
   type ChatMessage,
 } from "@/components/chat/message-bubble"
 import { FlowbotActionProposal } from "@/components/project/flowbot-action-proposal"
+import { AttachButton, AttachmentChip, useAttachmentPicker } from "@/components/chat/attachment-picker"
+import { withAttachment } from "@/lib/chat-attachments"
 import {
   executeFlowbotActions,
   parseFlowbotActions,
@@ -95,6 +97,10 @@ export function FlowbotAssistant({
   const isClient = useIsClient()
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const files = useAttachmentPicker(() => textareaRef.current?.focus())
+  const attachment = files.attachment
+  const clearAttachment = files.clear
+  const readingFile = Boolean(files.reading)
   const abortRef = useRef<AbortController | null>(null)
 
   const activeTitle =
@@ -249,15 +255,18 @@ export function FlowbotAssistant({
   }
 
   const sendMessage = useCallback(async () => {
-    const trimmed = input.trim()
-    if (!trimmed || isStreaming) return
+    const trimmed = withAttachment(input, attachment).trim()
+    if (!trimmed || isStreaming || readingFile) return
     if (voiceState === "listening" || voiceState === "recording") toggleVoice()
+    // Título da conversa nova: o que a pessoa escreveu ou, só com anexo, o nome do arquivo.
+    const titleSource = input.trim() || attachment?.name || trimmed
 
     const nextMessages: ChatMessage[] = [...messages, { role: "user", content: trimmed }]
     // Avisos e erros da interface não vão para a IA como conversa.
     const history = nextMessages.filter((m) => !m.error && m.content.trim())
     setMessages([...nextMessages, { role: "assistant", content: "" }])
     setInput("")
+    clearAttachment()
     setIsStreaming(true)
     setAppliedResults(null)
     setDiscardedIndex(null)
@@ -320,7 +329,7 @@ export function FlowbotAssistant({
             : [
                 {
                   id: chatId,
-                  title: trimmed.slice(0, 60),
+                  title: titleSource.slice(0, 60),
                   date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }),
                   messageCount: 2,
                 },
@@ -358,7 +367,7 @@ export function FlowbotAssistant({
       setIsStreaming(false)
       abortRef.current = null
     }
-  }, [input, isStreaming, messages, activeChatId, projectId, voiceState, toggleVoice])
+  }, [input, attachment, clearAttachment, readingFile, isStreaming, messages, activeChatId, projectId, voiceState, toggleVoice])
 
   /* ---- render ---- */
 
@@ -504,74 +513,84 @@ export function FlowbotAssistant({
           </div>
 
           <div className="border-t border-border p-3">
-            <div className="flex items-end gap-2 rounded-xl border border-border bg-muted p-2 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/40">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault()
-                    void sendMessage()
-                  }
-                }}
-                placeholder={voiceActive ? "Pode falar, estou ouvindo..." : "Pergunte ao FlowBot..."}
-                rows={1}
-                className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
-              />
-              {voiceActive && (
-                <span className="flex shrink-0 items-center gap-1 self-center text-xs text-destructive" aria-live="polite">
-                  <span className="size-2 animate-pulse rounded-full bg-destructive" aria-hidden />
-                  {Math.floor(voice.seconds / 60)}:{String(voice.seconds % 60).padStart(2, "0")}
-                </span>
-              )}
-              <Button
-                size="icon"
-                variant="ghost"
-                title={voiceActive ? "Parar de ditar" : "Ditar mensagem"}
-                aria-label={voiceActive ? "Parar de ditar" : "Ditar mensagem"}
-                aria-pressed={voiceActive}
-                disabled={isStreaming || voice.state === "transcribing" || voice.state === "starting"}
-                onClick={voice.toggle}
-                className={cn(
-                  "size-9 shrink-0",
-                  voiceActive
-                    ? "bg-destructive/10 text-destructive hover:bg-destructive/15 hover:text-destructive"
-                    : "text-muted-foreground hover:text-foreground"
+            <div className="rounded-xl border border-border bg-muted p-2 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/40">
+              <AttachmentChip attachment={attachment} reading={files.reading} onRemove={clearAttachment} />
+              <div className="flex items-end gap-2">
+                {files.input}
+                <AttachButton
+                  onClick={files.open}
+                  disabled={isStreaming}
+                  reading={Boolean(files.reading)}
+                  className="size-9 shrink-0"
+                />
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault()
+                      void sendMessage()
+                    }
+                  }}
+                  placeholder={voiceActive ? "Pode falar, estou ouvindo..." : "Pergunte ao FlowBot..."}
+                  rows={1}
+                  className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                />
+                {voiceActive && (
+                  <span className="flex shrink-0 items-center gap-1 self-center text-xs text-destructive" aria-live="polite">
+                    <span className="size-2 animate-pulse rounded-full bg-destructive" aria-hidden />
+                    {Math.floor(voice.seconds / 60)}:{String(voice.seconds % 60).padStart(2, "0")}
+                  </span>
                 )}
-              >
-                {voice.state === "transcribing" || voice.state === "starting" ? (
-                  <LoaderCircleIcon className="size-4 animate-spin" />
-                ) : voiceActive ? (
-                  <SquareIcon className="size-3.5" />
-                ) : (
-                  <MicIcon className="size-4" />
-                )}
-              </Button>
-              {isStreaming ? (
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="size-9 shrink-0"
-                  aria-label="Parar resposta"
-                  onClick={() => {
-                    abortRef.current?.abort()
-                    setIsStreaming(false)
-                  }}
+                  title={voiceActive ? "Parar de ditar" : "Ditar mensagem"}
+                  aria-label={voiceActive ? "Parar de ditar" : "Ditar mensagem"}
+                  aria-pressed={voiceActive}
+                  disabled={isStreaming || voice.state === "transcribing" || voice.state === "starting"}
+                  onClick={voice.toggle}
+                  className={cn(
+                    "size-9 shrink-0",
+                    voiceActive
+                      ? "bg-destructive/10 text-destructive hover:bg-destructive/15 hover:text-destructive"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                  <SquareIcon className="size-3.5" />
+                  {voice.state === "transcribing" || voice.state === "starting" ? (
+                    <LoaderCircleIcon className="size-4 animate-spin" />
+                  ) : voiceActive ? (
+                    <SquareIcon className="size-3.5" />
+                  ) : (
+                    <MicIcon className="size-4" />
+                  )}
                 </Button>
-              ) : (
-                <Button
-                  size="icon"
-                  className="size-9 shrink-0"
-                  aria-label="Enviar mensagem"
-                  disabled={!input.trim() || voice.state === "transcribing"}
-                  onClick={() => void sendMessage()}
-                >
-                  <ArrowUpIcon className="size-4" />
-                </Button>
-              )}
+                {isStreaming ? (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-9 shrink-0"
+                    aria-label="Parar resposta"
+                    onClick={() => {
+                      abortRef.current?.abort()
+                      setIsStreaming(false)
+                    }}
+                  >
+                    <SquareIcon className="size-3.5" />
+                  </Button>
+                ) : (
+                  <Button
+                    size="icon"
+                    className="size-9 shrink-0"
+                    aria-label="Enviar mensagem"
+                    disabled={(!input.trim() && !attachment) || voice.state === "transcribing" || Boolean(files.reading)}
+                    onClick={() => void sendMessage()}
+                  >
+                    <ArrowUpIcon className="size-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
