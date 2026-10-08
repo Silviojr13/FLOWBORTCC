@@ -62,12 +62,12 @@ export function AttachButton({
   disabled,
   reading,
   className,
-}: {
+}: Readonly<{
   onClick: () => void
   disabled?: boolean
   reading?: boolean
   className?: string
-}) {
+}>) {
   return (
     <Button
       variant="ghost"
@@ -88,11 +88,11 @@ export function AttachmentChip({
   attachment,
   reading,
   onRemove,
-}: {
+}: Readonly<{
   attachment: ChatAttachment | null
   reading: string | null
   onRemove: () => void
-}) {
+}>) {
   if (!attachment && !reading) return null
   const name = attachment?.name ?? reading ?? ""
   return (

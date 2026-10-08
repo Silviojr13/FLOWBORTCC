@@ -41,7 +41,7 @@ export async function extractDocumentText(fileName: string, bytes: Uint8Array): 
 export function compactText(raw: string): string {
   const lines = raw
     .replace(/\r\n?/g, "\n")
-    .replace(/\u0000/g, "")
+    .replaceAll("\0", "")
     .replace(/(\p{L})-\n(\p{Ll})/gu, "$1$2")
     .split("\n")
     .map((line) => line.replace(/[ \t ]+/g, " ").trim())
@@ -57,9 +57,19 @@ export function compactText(raw: string): string {
   return kept.join("\n").replace(/\n{3,}/g, "\n\n").trim()
 }
 
-// O que costuma carregar requisito, regra ou decisão num documento de projeto.
-const KEY_TERMS =
-  /\b(deve|dever[áa]o?|precisa|necess[áa]ri|obrigat[óo]ri|n[ãa]o (pode|deve)|requisit|RF\s?\d|RNF\s?\d|regra|restri[çc]|crit[ée]rio|objetivo|escopo|usu[áa]ri|sistema|funcionalidade|m[óo]dulo|prazo|or[çc]amento|custo|sensor|atuador|componente|meta|entrega)/i
+// O que costuma carregar requisito, regra ou decisão num documento de projeto (sem acento).
+const KEY_STEMS = [
+  "deve", "devera", "precisa", "necessari", "obrigatori", "nao pode", "requisit", "regra",
+  "restric", "criterio", "objetivo", "escopo", "usuari", "sistema", "funcionalidade", "modulo",
+  "prazo", "orcamento", "custo", "sensor", "atuador", "componente", "meta", "entrega",
+]
+const REQUIREMENT_CODE = /\bRN?F\s?\d/i
+
+function hasKeyTerm(line: string): boolean {
+  if (REQUIREMENT_CODE.test(line)) return true
+  const plain = line.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+  return KEY_STEMS.some((stem) => plain.includes(stem))
+}
 
 function isHeading(line: string): boolean {
   if (/^#{1,6}\s/.test(line)) return true
@@ -85,7 +95,7 @@ export function condenseText(text: string, maxChars: number): CondensedText {
   if (text.length <= maxChars) return { text, condensed: false }
 
   const blocks = text.split(/\n+/).filter(Boolean)
-  const essential = blocks.map((b) => isHeading(b) || isListItem(b) || KEY_TERMS.test(b))
+  const essential = blocks.map((b) => isHeading(b) || isListItem(b) || hasKeyTerm(b))
   const pick = new Array<string | null>(blocks.length).fill(null)
   let used = 0
   const take = (i: number, value: string) => {
@@ -100,7 +110,7 @@ export function condenseText(text: string, maxChars: number): CondensedText {
   for (let i = 0; i < blocks.length; i++) if (essential[i]) take(i, blocks[i])
   for (let i = 0; i < blocks.length; i++) {
     if (pick[i] !== null) continue
-    const first = blocks[i].match(/^.{20,}?[.!?](\s|$)/)?.[0].trim() ?? blocks[i].slice(0, 160)
+    const first = /^.{20,}?[.!?](\s|$)/.exec(blocks[i])?.[0].trim() ?? blocks[i].slice(0, 160)
     take(i, first)
   }
   for (let i = 0; i < blocks.length; i++) {
