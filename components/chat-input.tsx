@@ -1,25 +1,10 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  ArrowUpIcon,
-  SquareIcon,
-  PaperclipIcon,
-  MicIcon,
-  FileTextIcon,
-  LoaderCircleIcon,
-  XIcon,
-} from "lucide-react";
-import {
-  ATTACHMENT_EXTENSIONS,
-  MAX_ATTACHMENT_BYTES,
-  isAcceptedAttachment,
-  prepareAttachment,
-  withAttachment,
-  type ChatAttachment,
-} from "@/lib/chat-attachments";
+import { ArrowUpIcon, SquareIcon, MicIcon, LoaderCircleIcon } from "lucide-react";
+import { withAttachment } from "@/lib/chat-attachments";
+import { AttachButton, AttachmentChip, useAttachmentPicker } from "@/components/chat/attachment-picker";
 import { useVoiceInput } from "@/lib/use-voice-input";
 import { cn } from "@/lib/utils";
 
@@ -45,8 +30,8 @@ export function ChatInput({
   onStop: () => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [attachment, setAttachment] = useState<ChatAttachment | null>(null);
+  const files = useAttachmentPicker(() => textareaRef.current?.focus());
+  const attachment = files.attachment;
   const voice = useVoiceInput({ text: input, onText: onInputChange });
   const voiceActive = voice.state === "listening" || voice.state === "recording";
 
@@ -57,60 +42,21 @@ export function ChatInput({
     }
   }, [input]);
 
-  const canSend = (input.trim().length > 0 || attachment !== null) && voice.state !== "transcribing";
+  const canSend =
+    (input.trim().length > 0 || attachment !== null) && voice.state !== "transcribing" && !files.reading;
 
   function send() {
     if (!canSend || isStreaming) return;
     if (voiceActive) voice.toggle();
     onSend(withAttachment(input, attachment));
-    setAttachment(null);
-  }
-
-  async function pickFile(file: File | undefined) {
-    if (fileRef.current) fileRef.current.value = "";
-    if (!file) return;
-    if (!isAcceptedAttachment(file.name)) {
-      toast.error("Por enquanto o chat lê arquivos de texto, dados e código (.txt, .md, .csv, .json, .ino, .py...).");
-      return;
-    }
-    if (file.size > MAX_ATTACHMENT_BYTES) {
-      toast.error("Arquivo grande demais. Envie um arquivo de até 300 KB.");
-      return;
-    }
-    const prepared = prepareAttachment(file.name, await file.text());
-    if (!prepared.content) {
-      toast.error("O arquivo está vazio.");
-      return;
-    }
-    setAttachment(prepared);
-    if (prepared.truncated) {
-      toast.info("O arquivo é longo: só o começo será enviado, por causa do limite da IA.");
-    }
-    textareaRef.current?.focus();
+    files.clear();
   }
 
   return (
     <div className="safe-bottom sticky bottom-0 z-30 bg-gradient-to-t from-background via-background/95 to-transparent px-0 pb-3 pt-2 sm:pb-4">
       <div className={embedded ? "w-full" : "mx-auto w-full max-w-3xl"}>
         <div data-tour="home-chat-input" className="rounded-xl border border-border bg-card p-2 shadow-sm transition-[border-color,box-shadow] duration-200 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10">
-          {attachment && (
-            <div className="px-1 pb-1">
-              <span className="inline-flex max-w-full items-center gap-2 rounded-lg border border-border bg-muted/60 py-1 pr-1 pl-2 text-xs text-foreground">
-                <FileTextIcon className="size-3.5 shrink-0 text-primary" aria-hidden />
-                <span className="truncate">{attachment.name}</span>
-                {attachment.truncated && <span className="shrink-0 text-muted-foreground">(só o começo)</span>}
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="size-6 shrink-0 text-muted-foreground"
-                  aria-label={`Remover o anexo ${attachment.name}`}
-                  onClick={() => setAttachment(null)}
-                >
-                  <XIcon className="size-3.5" />
-                </Button>
-              </span>
-            </div>
-          )}
+          <AttachmentChip attachment={attachment} reading={files.reading} onRemove={files.clear} />
 
           <div className="flex items-end gap-2">
             <textarea
@@ -131,24 +77,8 @@ export function ChatInput({
 
           <div className="flex items-center justify-between px-1 pt-1.5">
             <div className="flex items-center gap-1">
-              <input
-                ref={fileRef}
-                type="file"
-                accept={ATTACHMENT_EXTENSIONS.join(",")}
-                className="hidden"
-                onChange={(e) => void pickFile(e.target.files?.[0])}
-              />
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                title="Anexar arquivo de texto"
-                aria-label="Anexar arquivo de texto"
-                disabled={isStreaming}
-                onClick={() => fileRef.current?.click()}
-                className="text-muted-foreground transition-colors duration-150 hover:text-foreground"
-              >
-                <PaperclipIcon className="size-4" />
-              </Button>
+              {files.input}
+              <AttachButton onClick={files.open} disabled={isStreaming} reading={Boolean(files.reading)} />
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -209,7 +139,7 @@ export function ChatInput({
         </div>
 
         <p className="mt-2 text-center text-xs text-muted-foreground">
-          Enter para enviar · Shift+Enter para nova linha · 📎 anexa arquivo de texto · 🎤 dita a mensagem
+          Enter para enviar · Shift+Enter para nova linha · 📎 anexa documento (PDF, Word, texto) · 🎤 dita a mensagem
         </p>
       </div>
     </div>

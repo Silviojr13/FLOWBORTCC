@@ -141,7 +141,7 @@ function UserContent({ content }: { content: string }) {
             <FileTextIcon className="size-3.5 shrink-0 text-primary" aria-hidden />
             <span className="truncate font-medium">{file.name}</span>
             <span className="shrink-0 text-muted-foreground">
-              {file.content.split("\n").length} linha(s){file.truncated ? " · só o começo" : ""}
+              {file.content.split("\n").length} linha(s){file.truncated ? " · condensado" : ""}
             </span>
           </summary>
           <pre className="max-h-48 overflow-auto border-t border-border/60 px-2.5 py-2 font-mono text-[11px] whitespace-pre-wrap">
