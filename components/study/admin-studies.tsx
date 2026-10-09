@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { createContext, useCallback, useContext, useEffect, useState } from "react"
 import { toast } from "sonner"
 import {
   CopyIcon,
@@ -128,29 +128,49 @@ const INVITATION_STATUS: Record<EmailInvitation["status"], { label: string; clas
 }
 
 /**
- * Convite por e-mail: o admin digita o e-mail exato e o convite aparece dentro do FlowBot
+ * Endereço da API das avaliações: a tela do admin usa /api/admin/studies; a aba Avaliação do
+ * projeto, /api/projects/[id]/studies. O resto do componente é igual nos dois lugares.
+ */
+const StudiesApi = createContext("/api/admin/studies")
+
+/** De quanto em quanto tempo a lista de convites se atualiza enquanto a tela está aberta. */
+const INVITATIONS_REFRESH_MS = 15_000
+
+/**
+ * Convite por e-mail: quem gerencia digita o e-mail exato e o convite aparece dentro do FlowBot
  * para essa conta (ou quando ela for criada). Não há busca nem lista de contas cadastradas.
  */
 function EmailInvites({ studyId, open }: { studyId: string; open: boolean }) {
+  const api = useContext(StudiesApi)
   const [invitations, setInvitations] = useState<EmailInvitation[]>([])
   const [email, setEmail] = useState("")
   const [busy, setBusy] = useState(false)
 
+  // A lista se atualiza sozinha (a cada 15 s com a aba visível e ao voltar para ela), para
+  // acompanhar quem aceitou durante as sessões de avaliação sem recarregar a página.
   useEffect(() => {
     let cancelled = false
-    fetch(`/api/admin/studies/${studyId}/invitations`)
-      .then((r) => r.json())
-      .then((data) => !cancelled && setInvitations(data.invitations ?? []))
-      .catch(() => {})
+    const load = () => {
+      if (document.visibilityState !== "visible") return
+      fetch(`${api}/${studyId}/invitations`)
+        .then((r) => r.json())
+        .then((data) => !cancelled && data.invitations && setInvitations(data.invitations))
+        .catch(() => {})
+    }
+    load()
+    const timer = window.setInterval(load, INVITATIONS_REFRESH_MS)
+    document.addEventListener("visibilitychange", load)
     return () => {
       cancelled = true
+      window.clearInterval(timer)
+      document.removeEventListener("visibilitychange", load)
     }
-  }, [studyId])
+  }, [api, studyId])
 
   async function invite() {
     setBusy(true)
     try {
-      const res = await fetch(`/api/admin/studies/${studyId}/invitations`, {
+      const res = await fetch(`${api}/${studyId}/invitations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -173,7 +193,7 @@ function EmailInvites({ studyId, open }: { studyId: string; open: boolean }) {
   }
 
   async function cancel(invitation: EmailInvitation) {
-    const res = await fetch(`/api/admin/studies/${studyId}/invitations/${invitation.id}`, { method: "DELETE" })
+    const res = await fetch(`${api}/${studyId}/invitations/${invitation.id}`, { method: "DELETE" })
     if (!res.ok) {
       toast.error("Não foi possível cancelar o convite.")
       return
@@ -248,6 +268,7 @@ function EmailInvites({ studyId, open }: { studyId: string; open: boolean }) {
 /* ------------------------------------------------------------------ */
 
 function StudyDetail({ study, onChanged }: { study: StudySummary; onChanged: (s: StudySummary) => void }) {
+  const api = useContext(StudiesApi)
   const [results, setResults] = useState<StudyResults | null>(null)
   const [refreshToken, setRefreshToken] = useState(0)
   const [draft, setDraft] = useState({ title: study.title, intro: study.intro, privacy: study.privacy, contact: study.contact ?? "" })
@@ -259,7 +280,7 @@ function StudyDetail({ study, onChanged }: { study: StudySummary; onChanged: (s:
 
   useEffect(() => {
     let cancelled = false
-    fetch(`/api/admin/studies/${study.id}`)
+    fetch(`${api}/${study.id}`)
       .then((r) => r.json())
       .then((data) => {
         if (!cancelled && data.results) setResults(data.results)
@@ -268,12 +289,12 @@ function StudyDetail({ study, onChanged }: { study: StudySummary; onChanged: (s:
     return () => {
       cancelled = true
     }
-  }, [study.id, refreshToken])
+  }, [api, study.id, refreshToken])
 
   async function patch(data: Record<string, string>) {
     setSaving(true)
     try {
-      const res = await fetch(`/api/admin/studies/${study.id}`, {
+      const res = await fetch(`${api}/${study.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -290,7 +311,7 @@ function StudyDetail({ study, onChanged }: { study: StudySummary; onChanged: (s:
   }
 
   async function removeParticipant(id: string) {
-    const res = await fetch(`/api/admin/studies/${study.id}/participants/${id}`, { method: "DELETE" })
+    const res = await fetch(`${api}/${study.id}/participants/${id}`, { method: "DELETE" })
     setConfirmRemove(null)
     if (!res.ok) {
       toast.error("Não foi possível remover a participação.")
@@ -644,25 +665,35 @@ function StudyDetail({ study, onChanged }: { study: StudySummary; onChanged: (s:
 
 /* ------------------------------------------------------------------ */
 
-export function AdminStudies() {
+/** Avaliações da tela do admin (todas) ou da aba Avaliação de um projeto (as dele). */
+export function AdminStudies({ projectId }: Readonly<{ projectId?: string }>) {
+  const api = projectId ? `/api/projects/${projectId}/studies` : "/api/admin/studies"
+  return (
+    <StudiesApi.Provider value={api}>
+      <StudiesManager api={api} />
+    </StudiesApi.Provider>
+  )
+}
+
+function StudiesManager({ api }: Readonly<{ api: string }>) {
   const [studies, setStudies] = useState<StudySummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
 
   const load = useCallback(() => {
-    return fetch("/api/admin/studies")
+    return fetch(api)
       .then((r) => r.json())
       .then((data) => {
         const list: StudySummary[] = data.studies ?? []
         setStudies(list)
         setSelectedId((current) => current ?? list[0]?.id ?? null)
       })
-  }, [])
+  }, [api])
 
   useEffect(() => {
     let cancelled = false
-    fetch("/api/admin/studies")
+    fetch(api)
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return
@@ -675,12 +706,12 @@ export function AdminStudies() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [api])
 
   async function create() {
     setCreating(true)
     try {
-      const res = await fetch("/api/admin/studies", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
+      const res = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Não foi possível criar a avaliação.")
       await load()

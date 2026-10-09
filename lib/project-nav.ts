@@ -3,6 +3,7 @@ import {
   BoxIcon,
   BrainCircuitIcon,
   CalendarRangeIcon,
+  ClipboardCheckIcon,
   ClipboardListIcon,
   CodeXmlIcon,
   Columns3Icon,
@@ -28,6 +29,7 @@ export type ProjectModuleKey =
   | "requirements"
   | "diagrams"
   | "docs"
+  | "evaluation"
   | "sharing"
 
 export type ProjectModule = {
@@ -124,6 +126,13 @@ export const PROJECT_MODULES: ProjectModule[] = [
     href: (projectId) => `/dashboard/projects/${projectId}/docs`,
   },
   {
+    key: "evaluation",
+    label: "Avaliação",
+    description: "Avaliação de usabilidade com participantes: convites, tarefas e nota SUS.",
+    icon: ClipboardCheckIcon,
+    href: (projectId) => `/dashboard/projects/${projectId}/avaliacao`,
+  },
+  {
     key: "sharing",
     label: "Compartilhamento",
     description: "Quem participa do projeto e com qual cargo.",
@@ -146,7 +155,7 @@ export const PROJECT_MODULE_GROUPS = [
   {
     id: "team",
     label: "Equipe",
-    keys: ["sharing"] as const,
+    keys: ["sharing", "evaluation"] as const,
   },
 ]
 
@@ -203,6 +212,7 @@ export function getProjectModuleKey(
   if (matchesPath(pathname, `${base}/diagrams`)) return "diagrams"
   if (matchesPath(pathname, `${base}/docs`)) return "docs"
   if (matchesPath(pathname, `${base}/sharing`)) return "sharing"
+  if (matchesPath(pathname, `${base}/avaliacao`)) return "evaluation"
   return null
 }
 

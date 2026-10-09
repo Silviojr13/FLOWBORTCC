@@ -1,13 +1,13 @@
 import { NextRequest } from "next/server";
-import { adminGuard, removeParticipantResponse } from "@/lib/study-admin";
+import { projectStudyGuard, removeParticipantResponse } from "@/lib/study-admin";
 
 // DELETE: remove uma participação (ex.: testes da equipe antes da validação).
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: Promise<{ studyId: string; participantId: string }> }
+  { params }: { params: Promise<{ id: string; studyId: string; participantId: string }> }
 ) {
-  const guard = await adminGuard();
+  const { id, studyId, participantId } = await params;
+  const guard = await projectStudyGuard(id, studyId);
   if (guard instanceof Response) return guard;
-  const { studyId, participantId } = await params;
   return removeParticipantResponse(studyId, participantId);
 }

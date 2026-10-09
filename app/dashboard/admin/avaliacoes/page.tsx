@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import { Workspace } from "@/components/layout/workspace"
 import { AdminStudies } from "@/components/study/admin-studies"
 import { isAdmin } from "@/lib/study-server"
+import { tursoDb } from "@/lib/turso-db"
 
 export const metadata = { title: "Avaliações de usabilidade · FlowBot" }
 
@@ -10,6 +11,14 @@ export const metadata = { title: "Avaliações de usabilidade · FlowBot" }
 export default async function AdminStudiesPage() {
   const session = await auth()
   if (!session?.user?.id || !(await isAdmin(session.user.id))) redirect("/dashboard")
+
+  // As avaliações agora ficam na aba Avaliação do projeto avaliado. Esta tela só continua
+  // para as que ainda não têm projeto.
+  const [linked, unlinked] = await Promise.all([
+    tursoDb.study.findFirst({ where: { projectId: { not: null } }, orderBy: { createdAt: "desc" }, select: { projectId: true } }),
+    tursoDb.study.count({ where: { projectId: null } }),
+  ])
+  if (linked?.projectId && unlinked === 0) redirect(`/dashboard/projects/${linked.projectId}/avaliacao`)
 
   return (
     <Workspace width="wide">
