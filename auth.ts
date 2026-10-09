@@ -29,14 +29,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          console.log("Credenciais ausentes no authorize:", credentials);
+          // Sem registrar as credenciais: o objeto traz a senha digitada.
+          console.log("Credenciais ausentes no login.");
           return null;
         }
 
         try {
-          // Procura o usuário pelo e-mail
-          const user = await tursoDb.user.findUnique({
-            where: { email: credentials.email as string }
+          // Procura o usuário pelo e-mail sem diferenciar maiúsculas (contas antigas podem ter
+          // sido gravadas como foram digitadas).
+          const typed = String(credentials.email).trim();
+          const user = await tursoDb.user.findFirst({
+            where: { OR: [{ email: typed.toLowerCase() }, { email: typed }] }
           });
 
           if (!user || !user.password) {

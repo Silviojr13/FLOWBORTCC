@@ -18,7 +18,7 @@ export async function GET() {
         where: { userId: user.id },
         orderBy: { updatedAt: "desc" },
         include: {
-          _count: { select: { requirements: true, tasks: true, components: true } },
+          _count: { select: { requirements: true, tasks: true, components: true, studies: true } },
         },
       }),
       tursoDb.projectMember.findMany({
@@ -29,7 +29,7 @@ export async function GET() {
           canSeeCosts: true,
           project: {
             include: {
-              _count: { select: { requirements: true, tasks: true, components: true } },
+              _count: { select: { requirements: true, tasks: true, components: true, studies: true } },
               user: { select: { name: true } },
             },
           },

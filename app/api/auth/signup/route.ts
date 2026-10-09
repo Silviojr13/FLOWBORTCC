@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { hash } from "bcrypt";
 import { tursoDb } from "@/lib/turso-db";
 import { ZodError } from "zod";
+import { normalizeEmail } from "@/lib/study-server";
 
 export async function POST(request: Request) {
   try {
@@ -22,9 +23,13 @@ export async function POST(request: Request) {
       );
     }
 
+    // E-mail sempre em minúsculas e sem espaços: "Joao@..." e "joao@..." são a mesma conta
+    // (o teclado do celular costuma pôr a primeira letra em maiúscula).
+    const normalizedEmail = normalizeEmail(String(email));
+
     // Check if user already exists
-    const existingUser = await tursoDb.user.findUnique({
-      where: { email: email }
+    const existingUser = await tursoDb.user.findFirst({
+      where: { OR: [{ email: normalizedEmail }, { email: String(email).trim() }] }
     });
 
     if (existingUser) {
@@ -41,7 +46,7 @@ export async function POST(request: Request) {
     const newUser = await tursoDb.user.create({
       data: {
         name,
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
       }
     });

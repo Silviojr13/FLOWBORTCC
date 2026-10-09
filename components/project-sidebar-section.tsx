@@ -37,6 +37,7 @@ interface ProjectListItem {
   /** Só nos projetos compartilhados com a pessoa. */
   role?: string
   canSeeCosts?: boolean
+  _count?: { studies?: number }
 }
 
 const RECENT_LIMIT = 5
@@ -221,6 +222,11 @@ export function ProjectSidebarSection() {
               {group.keys.map((key) => {
                 const navItem = PROJECT_MODULES.find((item) => item.key === key)
                 if (!navItem) return null
+                // Avaliação: só no projeto que tem avaliação, para o dono e os gestores (as
+                // respostas dos participantes são dados pessoais).
+                if (key === "evaluation" && !(project?._count?.studies && (!project.role || project.role === "gestor"))) {
+                  return null
+                }
                 // Recursos trazem custos: some para o visitante que não pode vê-los.
                 if (key === "resources" && project?.role && !permissionsFor(isMemberRole(project.role) ? project.role : "visitante", project.canSeeCosts).canSeeCosts) {
                   return null

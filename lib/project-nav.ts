@@ -3,6 +3,7 @@ import {
   BoxIcon,
   BrainCircuitIcon,
   CalendarRangeIcon,
+  ClipboardCheckIcon,
   ClipboardListIcon,
   CodeXmlIcon,
   Columns3Icon,
@@ -28,6 +29,7 @@ export type ProjectModuleKey =
   | "requirements"
   | "diagrams"
   | "docs"
+  | "evaluation"
   | "sharing"
 
 export type ProjectModule = {
@@ -124,6 +126,13 @@ export const PROJECT_MODULES: ProjectModule[] = [
     href: (projectId) => `/dashboard/projects/${projectId}/docs`,
   },
   {
+    key: "evaluation",
+    label: "Avaliação",
+    description: "Avaliação de usabilidade com participantes: convites, tarefas e nota SUS.",
+    icon: ClipboardCheckIcon,
+    href: (projectId) => `/dashboard/projects/${projectId}/avaliacao`,
+  },
+  {
     key: "sharing",
     label: "Compartilhamento",
     description: "Quem participa do projeto e com qual cargo.",
@@ -146,7 +155,7 @@ export const PROJECT_MODULE_GROUPS = [
   {
     id: "team",
     label: "Equipe",
-    keys: ["sharing"] as const,
+    keys: ["sharing", "evaluation"] as const,
   },
 ]
 
@@ -181,6 +190,23 @@ function matchesPath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
+// Trecho do endereço depois de /dashboard/projects/<id>/ → aba correspondente.
+const MODULE_SEGMENTS: [string, ProjectModuleKey][] = [
+  ["kanban", "kanban"],
+  ["sprints", "sprints"],
+  ["report", "report"],
+  ["development", "development"],
+  ["council", "council"],
+  ["features", "features"],
+  ["components-costs", "components"],
+  ["resources", "resources"],
+  ["requirements", "requirements"],
+  ["diagrams", "diagrams"],
+  ["docs", "docs"],
+  ["sharing", "sharing"],
+  ["avaliacao", "evaluation"],
+]
+
 export function getProjectModuleKey(
   pathname: string,
   projectId: string,
@@ -191,19 +217,8 @@ export function getProjectModuleKey(
   // Com ?step= a página é o assistente de criação, que não corresponde a nenhuma aba.
   if (pathname === base) return step ? null : "overview"
 
-  if (matchesPath(pathname, `${base}/kanban`)) return "kanban"
-  if (matchesPath(pathname, `${base}/sprints`)) return "sprints"
-  if (matchesPath(pathname, `${base}/report`)) return "report"
-  if (matchesPath(pathname, `${base}/development`)) return "development"
-  if (matchesPath(pathname, `${base}/council`)) return "council"
-  if (matchesPath(pathname, `${base}/features`)) return "features"
-  if (matchesPath(pathname, `${base}/components-costs`)) return "components"
-  if (matchesPath(pathname, `${base}/resources`)) return "resources"
-  if (matchesPath(pathname, `${base}/requirements`)) return "requirements"
-  if (matchesPath(pathname, `${base}/diagrams`)) return "diagrams"
-  if (matchesPath(pathname, `${base}/docs`)) return "docs"
-  if (matchesPath(pathname, `${base}/sharing`)) return "sharing"
-  return null
+  const found = MODULE_SEGMENTS.find(([segment]) => matchesPath(pathname, `${base}/${segment}`))
+  return found ? found[1] : null
 }
 
 export function getProjectModule(key: ProjectModuleKey) {
