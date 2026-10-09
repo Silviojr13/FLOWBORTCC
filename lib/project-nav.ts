@@ -190,6 +190,23 @@ function matchesPath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
+// Trecho do endereço depois de /dashboard/projects/<id>/ → aba correspondente.
+const MODULE_SEGMENTS: [string, ProjectModuleKey][] = [
+  ["kanban", "kanban"],
+  ["sprints", "sprints"],
+  ["report", "report"],
+  ["development", "development"],
+  ["council", "council"],
+  ["features", "features"],
+  ["components-costs", "components"],
+  ["resources", "resources"],
+  ["requirements", "requirements"],
+  ["diagrams", "diagrams"],
+  ["docs", "docs"],
+  ["sharing", "sharing"],
+  ["avaliacao", "evaluation"],
+]
+
 export function getProjectModuleKey(
   pathname: string,
   projectId: string,
@@ -200,20 +217,8 @@ export function getProjectModuleKey(
   // Com ?step= a página é o assistente de criação, que não corresponde a nenhuma aba.
   if (pathname === base) return step ? null : "overview"
 
-  if (matchesPath(pathname, `${base}/kanban`)) return "kanban"
-  if (matchesPath(pathname, `${base}/sprints`)) return "sprints"
-  if (matchesPath(pathname, `${base}/report`)) return "report"
-  if (matchesPath(pathname, `${base}/development`)) return "development"
-  if (matchesPath(pathname, `${base}/council`)) return "council"
-  if (matchesPath(pathname, `${base}/features`)) return "features"
-  if (matchesPath(pathname, `${base}/components-costs`)) return "components"
-  if (matchesPath(pathname, `${base}/resources`)) return "resources"
-  if (matchesPath(pathname, `${base}/requirements`)) return "requirements"
-  if (matchesPath(pathname, `${base}/diagrams`)) return "diagrams"
-  if (matchesPath(pathname, `${base}/docs`)) return "docs"
-  if (matchesPath(pathname, `${base}/sharing`)) return "sharing"
-  if (matchesPath(pathname, `${base}/avaliacao`)) return "evaluation"
-  return null
+  const found = MODULE_SEGMENTS.find(([segment]) => matchesPath(pathname, `${base}/${segment}`))
+  return found ? found[1] : null
 }
 
 export function getProjectModule(key: ProjectModuleKey) {

@@ -99,7 +99,20 @@ export async function deleteStudyResponse(studyId: string) {
 
 /* ---------------------------------------------------------------- convites por e-mail */
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** E-mail plausível: um @, sem espaços, e domínio com ponto que não fica na ponta. */
+function isEmail(value: string): boolean {
+  if (/\s/.test(value)) return false;
+  const at = value.indexOf("@");
+  if (at < 1 || at !== value.lastIndexOf("@")) return false;
+  const domain = value.slice(at + 1);
+  const dot = domain.lastIndexOf(".");
+  return dot > 0 && dot < domain.length - 1;
+}
+
+function invitationStatus(i: { acceptedAt: Date | null; declinedAt: Date | null }) {
+  if (i.acceptedAt) return "aceito";
+  return i.declinedAt ? "recusado" : "pendente";
+}
 
 type InvitationRow = {
   id: string;
@@ -123,7 +136,7 @@ async function describe(invitations: InvitationRow[]) {
     id: i.id,
     email: i.email,
     invitedAt: i.invitedAt.toISOString(),
-    status: i.acceptedAt ? "aceito" : i.declinedAt ? "recusado" : "pendente",
+    status: invitationStatus(i),
     hasAccount: registered.has(i.email),
   }));
 }
@@ -138,7 +151,7 @@ export async function listInvitationsResponse(studyId: string) {
 
 /** Convida um e-mail exato. Convidar de novo um e-mail que recusou reabre o convite. */
 export async function inviteResponse(studyId: string, email: unknown) {
-  if (typeof email !== "string" || !EMAIL.test(email.trim())) return deny("Informe um e-mail válido.", 400);
+  if (typeof email !== "string" || !isEmail(email.trim())) return deny("Informe um e-mail válido.", 400);
 
   const study = await tursoDb.study.findUnique({ where: { id: studyId }, select: { status: true } });
   if (!study) return deny("Avaliação não encontrada", 404);
